@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe: a normal Windows app, so no console window opens behind it -->
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Dotburg</AssemblyName>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The exe icon, so the taskbar, Desktop and Start menu shortcuts all show it -->
+    <ApplicationIcon>resources/dotburg.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The same art as a PNG, for the window icon and the legend panel -->
+    <None Include="resources\dotburg.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="resources\emoticons.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The pixel font used by the side panels -->
+    <None Include="resources\fonts\PixelifySans.ttf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
+    <PackageReference Include="Raylib-cs" Version="8.0.0" />
+    <PackageReference Include="rlImgui-cs" Version="3.2.0" />
+  </ItemGroup>
+
+</Project>

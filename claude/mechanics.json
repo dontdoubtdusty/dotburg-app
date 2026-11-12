@@ -1,0 +1,954 @@
+{
+  "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then republish the page (claude/mechanics-page.html). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Checked against CLAUDE.md and the code notes Nov 11 (0.45), not yet line by line.",
+  "updated": "2026-11-12",
+  "version": "0.52",
+  "levels": [
+    {
+      "level": 0,
+      "name": "None",
+      "percent": 0
+    },
+    {
+      "level": 1,
+      "name": "Flavor",
+      "percent": 33
+    },
+    {
+      "level": 2,
+      "name": "Nudge",
+      "percent": 66
+    },
+    {
+      "level": 3,
+      "name": "Drives",
+      "percent": 100
+    }
+  ],
+  "groups": [
+    {
+      "id": "town",
+      "name": "Town and people"
+    },
+    {
+      "id": "world",
+      "name": "Time and sky"
+    },
+    {
+      "id": "rule",
+      "name": "Rule and politics"
+    },
+    {
+      "id": "region",
+      "name": "Region"
+    },
+    {
+      "id": "events",
+      "name": "Events"
+    }
+  ],
+  "mechanics": [
+    {
+      "id": "growth",
+      "name": "Growth",
+      "group": "town",
+      "summary": "Own clock gives one unit per 20 s; units become newcomers, buildings, upgrades and tiers up to City."
+    },
+    {
+      "id": "construction",
+      "name": "Construction",
+      "group": "town",
+      "summary": "Scaffolding and builders over a lot while something is built or upgraded."
+    },
+    {
+      "id": "walkers",
+      "name": "Dot-men",
+      "group": "town",
+      "summary": "Homes, visits, night owls, stable ids and habits; the people the rest acts on."
+    },
+    {
+      "id": "crier",
+      "name": "Crier and chronicle",
+      "group": "town",
+      "summary": "The news, as toasts over the town picture (0.52; the crier box is gone), and the file of major events."
+    },
+    {
+      "id": "daynight",
+      "name": "Day and night",
+      "group": "world",
+      "summary": "Six-minute day: lights, sleep, curfew hours, the clock politics and events roll on."
+    },
+    {
+      "id": "seasons",
+      "name": "Seasons",
+      "group": "world",
+      "summary": "Four seasons of four days; palettes, mood drift, illness timing."
+    },
+    {
+      "id": "weather",
+      "name": "Weather",
+      "group": "world",
+      "summary": "Markov sky by scheme and season: clouds, rain, snow cover, fog, storms, lightning flash."
+    },
+    {
+      "id": "wildlife",
+      "name": "Small life",
+      "group": "world",
+      "summary": "Smoke, cat, ducks, fireflies, birds, aurora. Cosmetic."
+    },
+    {
+      "id": "gov",
+      "name": "Rule",
+      "group": "rule",
+      "summary": "Nine rules chosen on becoming a Village; costs, home bonus, curfew, guards, banner."
+    },
+    {
+      "id": "leader",
+      "name": "Leader and traits",
+      "group": "rule",
+      "summary": "A leader dot-man with two of eight traits, epithets, heirs, statues."
+    },
+    {
+      "id": "mood",
+      "name": "Mood",
+      "group": "rule",
+      "summary": "The town's mood bar, pulled by season, crowding, illness, festivals and the leader."
+    },
+    {
+      "id": "politics",
+      "name": "Politics",
+      "group": "rule",
+      "summary": "Every quarter day: revolution, coup, assassination, elections, reforms, emigration, arrests."
+    },
+    {
+      "id": "guards",
+      "name": "Guards and curfew",
+      "group": "rule",
+      "summary": "Patrols, escorts, curfew, rallies under harsh rule."
+    },
+    {
+      "id": "festivals",
+      "name": "Festivals",
+      "group": "events",
+      "summary": "Bunting and dancing after a finished public building or a tier-up."
+    },
+    {
+      "id": "illness",
+      "name": "Illness",
+      "group": "events",
+      "summary": "Five illnesses, spread by shared building, severity racing immunity, care and quarantine."
+    },
+    {
+      "id": "births",
+      "name": "Weddings and births",
+      "group": "events",
+      "summary": "Weddings owe a baby; children drawn lighter for a day, extra to the cap."
+    },
+    {
+      "id": "fires",
+      "name": "Fires",
+      "group": "events",
+      "summary": "RimWorld-style: a fire has a size that grows on fuel and shrinks under rain, water and fighters; it eats the building, may jump to flammable neighbours, and leaves a ruin rebuilt after a day or two."
+    },
+    {
+      "id": "treasury",
+      "name": "Treasury",
+      "group": "region",
+      "summary": "Gold from caravans and aid; paid out in pleas, pacts and tribute."
+    },
+    {
+      "id": "sisters",
+      "name": "Sister towns",
+      "group": "region",
+      "summary": "Charter, relations, envoys, letters, aid, pacts, quarrels, absorption and collapse."
+    },
+    {
+      "id": "migration",
+      "name": "Migration",
+      "group": "region",
+      "summary": "Newcomers and emigrants carry a colour to and from named sisters; refugees, exiles."
+    },
+    {
+      "id": "visitors",
+      "name": "Visitors",
+      "group": "region",
+      "summary": "Envoys, trade teams, spies, caravans: not citizens, not saved."
+    },
+    {
+      "id": "war",
+      "name": "War",
+      "group": "events",
+      "summary": "This town and a sister fight for one to three days: soldiers march out of the west gate, news comes from the front, raiders may set a building alight; the harsher, bigger side usually wins. Two sisters can also fight (news only)."
+    },
+    {
+      "id": "blight",
+      "name": "Plague and famine",
+      "group": "events",
+      "summary": "One plague or famine at a time starts in a random town of the region and creeps from town to town for three to six days. Sisters lose people; here plague becomes the grey plague outbreak and famine means dear goods, hunger deaths and leavers."
+    },
+    {
+      "id": "messenger",
+      "name": "Messenger",
+      "group": "region",
+      "summary": "MSN-style panel in place of the chronicle: our leader as \"me\", sisters, group chats between sisters and notables (captain, physician, warden, ringleader) as contacts with status and personal messages; read only, emoticons, typing delay, nudge on urgent news. Last 40 lines per chat saved."
+    }
+  ],
+  "links": [
+    {
+      "from": "growth",
+      "to": "walkers",
+      "level": 3,
+      "why": "Units become newcomers who walk in at the west gate and take the emptiest home."
+    },
+    {
+      "from": "growth",
+      "to": "construction",
+      "level": 3,
+      "why": "Each building or upgrade starts scaffolding on its lot."
+    },
+    {
+      "from": "growth",
+      "to": "gov",
+      "level": 3,
+      "why": "Becoming a Village makes the town choose its rule."
+    },
+    {
+      "from": "gov",
+      "to": "growth",
+      "level": 2,
+      "why": "Rule cost multiplier and home bonus change unit cost and population cap."
+    },
+    {
+      "from": "growth",
+      "to": "festivals",
+      "level": 3,
+      "why": "A finished public building or a tier-up triggers a festival."
+    },
+    {
+      "from": "growth",
+      "to": "sisters",
+      "level": 3,
+      "why": "A finished City is chartered as a sister and a new hamlet is founded."
+    },
+    {
+      "from": "growth",
+      "to": "mood",
+      "level": 1,
+      "why": "A town at its population cap is a little less content."
+    },
+    {
+      "from": "growth",
+      "to": "illness",
+      "level": 2,
+      "why": "Crowding raises the odds of an outbreak."
+    },
+    {
+      "from": "illness",
+      "to": "growth",
+      "level": 2,
+      "why": "Deaths and leavers open places, so newcomers fill them again."
+    },
+    {
+      "from": "construction",
+      "to": "walkers",
+      "level": 1,
+      "why": "Builders appear on scaffolding."
+    },
+    {
+      "from": "daynight",
+      "to": "walkers",
+      "level": 3,
+      "why": "Dot-men sleep at night; night owls and curfew change who is out."
+    },
+    {
+      "from": "daynight",
+      "to": "politics",
+      "level": 3,
+      "why": "Politics and events roll once per quarter day."
+    },
+    {
+      "from": "daynight",
+      "to": "wildlife",
+      "level": 1,
+      "why": "Fireflies and the aurora come out at night."
+    },
+    {
+      "from": "daynight",
+      "to": "illness",
+      "level": 2,
+      "why": "Incubation, severity and immunity run in days."
+    },
+    {
+      "from": "seasons",
+      "to": "weather",
+      "level": 3,
+      "why": "Sky odds and snow cover depend on the season."
+    },
+    {
+      "from": "seasons",
+      "to": "mood",
+      "level": 1,
+      "why": "Each season nudges mood up or down."
+    },
+    {
+      "from": "seasons",
+      "to": "illness",
+      "level": 2,
+      "why": "Each illness has the seasons it favours."
+    },
+    {
+      "from": "seasons",
+      "to": "wildlife",
+      "level": 1,
+      "why": "Snow, ducks and birds follow the season."
+    },
+    {
+      "from": "weather",
+      "to": "walkers",
+      "level": 2,
+      "why": "Storms keep people indoors; nobody sits in the park in the rain."
+    },
+    {
+      "from": "weather",
+      "to": "wildlife",
+      "level": 1,
+      "why": "Rain, snow and fog change what the small life does."
+    },
+    {
+      "from": "weather",
+      "to": "crier",
+      "level": 1,
+      "why": "Weather changes are announced."
+    },
+    {
+      "from": "gov",
+      "to": "leader",
+      "level": 3,
+      "why": "The rule sets the title, term, succession and which traits are likely."
+    },
+    {
+      "from": "gov",
+      "to": "mood",
+      "level": 3,
+      "why": "Each rule has its own baseline mood."
+    },
+    {
+      "from": "gov",
+      "to": "guards",
+      "level": 3,
+      "why": "Harsh rules have curfew, guards and rallies."
+    },
+    {
+      "from": "gov",
+      "to": "politics",
+      "level": 3,
+      "why": "Harshness sets the odds of revolt, coup, arrest and emigration."
+    },
+    {
+      "from": "gov",
+      "to": "illness",
+      "level": 2,
+      "why": "Harsh rule seals sick houses: less spread, lower mood."
+    },
+    {
+      "from": "gov",
+      "to": "festivals",
+      "level": 1,
+      "why": "The festival line and look follow the rule."
+    },
+    {
+      "from": "gov",
+      "to": "sisters",
+      "level": 2,
+      "why": "Rules that differ in harshness quarrel; similar ones sign agreements."
+    },
+    {
+      "from": "leader",
+      "to": "mood",
+      "level": 2,
+      "why": "Traits move the mood level."
+    },
+    {
+      "from": "leader",
+      "to": "politics",
+      "level": 3,
+      "why": "Traits change assassination, revolt, coup, arrest, scandal and emigration odds."
+    },
+    {
+      "from": "leader",
+      "to": "illness",
+      "level": 2,
+      "why": "Merciful and able leaders raise care for the sick; a Cruel one seals houses."
+    },
+    {
+      "from": "leader",
+      "to": "treasury",
+      "level": 2,
+      "why": "Traits change income."
+    },
+    {
+      "from": "leader",
+      "to": "walkers",
+      "level": 1,
+      "why": "The leader lives at the seat and wears a gold pixel; proud leaders get statues."
+    },
+    {
+      "from": "mood",
+      "to": "politics",
+      "level": 3,
+      "why": "Anger makes revolt possible; unrest drives emigration."
+    },
+    {
+      "from": "mood",
+      "to": "walkers",
+      "level": 2,
+      "why": "Unhappy dot-men leave town."
+    },
+    {
+      "from": "mood",
+      "to": "births",
+      "level": 2,
+      "why": "Content towns marry more."
+    },
+    {
+      "from": "politics",
+      "to": "gov",
+      "level": 3,
+      "why": "Revolutions, coups and reforms change the rule."
+    },
+    {
+      "from": "politics",
+      "to": "leader",
+      "level": 3,
+      "why": "Deaths, elections, step downs and coups change who leads."
+    },
+    {
+      "from": "politics",
+      "to": "mood",
+      "level": 2,
+      "why": "Events dip or lift mood."
+    },
+    {
+      "from": "politics",
+      "to": "walkers",
+      "level": 3,
+      "why": "Arrests, exiles and emigrants leave; escorts walk."
+    },
+    {
+      "from": "politics",
+      "to": "migration",
+      "level": 3,
+      "why": "Emigrants and exiles join a named sister."
+    },
+    {
+      "from": "politics",
+      "to": "crier",
+      "level": 1,
+      "why": "Each turn of events is announced and the big ones chronicled."
+    },
+    {
+      "from": "guards",
+      "to": "mood",
+      "level": 2,
+      "why": "Curfew and rallies press on mood."
+    },
+    {
+      "from": "guards",
+      "to": "walkers",
+      "level": 2,
+      "why": "Curfew sends people home early; guards patrol the roads."
+    },
+    {
+      "from": "festivals",
+      "to": "walkers",
+      "level": 3,
+      "why": "Dot-men join the dancing under bunting."
+    },
+    {
+      "from": "festivals",
+      "to": "mood",
+      "level": 2,
+      "why": "A festival lifts spirits."
+    },
+    {
+      "from": "illness",
+      "to": "walkers",
+      "level": 3,
+      "why": "The sick go home to bed, tinted by the illness; some die."
+    },
+    {
+      "from": "illness",
+      "to": "mood",
+      "level": 2,
+      "why": "Sickness drags mood down."
+    },
+    {
+      "from": "illness",
+      "to": "leader",
+      "level": 2,
+      "why": "A leader can die of it."
+    },
+    {
+      "from": "illness",
+      "to": "crier",
+      "level": 1,
+      "why": "The first visible case is announced and the toll chronicled."
+    },
+    {
+      "from": "walkers",
+      "to": "illness",
+      "level": 3,
+      "why": "Illness spreads between dot-men who share a building."
+    },
+    {
+      "from": "walkers",
+      "to": "births",
+      "level": 3,
+      "why": "Adults marry and are the parents of children."
+    },
+    {
+      "from": "births",
+      "to": "walkers",
+      "level": 3,
+      "why": "A baby is a new dot-man, lighter until grown, extra to the cap."
+    },
+    {
+      "from": "sisters",
+      "to": "births",
+      "level": 1,
+      "why": "A letter from a friendly sister can propose a wedding."
+    },
+    {
+      "from": "treasury",
+      "to": "sisters",
+      "level": 2,
+      "why": "Gold buys aid, pacts and tribute, and moves relations."
+    },
+    {
+      "from": "treasury",
+      "to": "visitors",
+      "level": 2,
+      "why": "A fuller treasury draws more caravans."
+    },
+    {
+      "from": "sisters",
+      "to": "visitors",
+      "level": 3,
+      "why": "Envoys, teams, spies and caravans come from sisters, drawn by attitude."
+    },
+    {
+      "from": "visitors",
+      "to": "treasury",
+      "level": 2,
+      "why": "Caravans and fairs earn gold."
+    },
+    {
+      "from": "sisters",
+      "to": "migration",
+      "level": 3,
+      "why": "Newcomers arrive from, and leavers settle in, named sisters."
+    },
+    {
+      "from": "migration",
+      "to": "walkers",
+      "level": 3,
+      "why": "Migrants and refugees change the town colours and headcount."
+    },
+    {
+      "from": "sisters",
+      "to": "crier",
+      "level": 1,
+      "why": "Letters, pacts and quarrels are announced."
+    },
+    {
+      "from": "weather",
+      "to": "fires",
+      "level": 3,
+      "why": "Rain cuts a fire down and puts it out in seconds; snow cover and a dry spell change how likely and how fierce."
+    },
+    {
+      "from": "seasons",
+      "to": "fires",
+      "level": 2,
+      "why": "Summer and dry spells raise the odds of a kitchen fire; winter hearths a little."
+    },
+    {
+      "from": "fires",
+      "to": "walkers",
+      "level": 3,
+      "why": "Dot-men run out, rush to the blaze with buckets (a blue pixel), and sleepers may be caught inside."
+    },
+    {
+      "from": "walkers",
+      "to": "fires",
+      "level": 3,
+      "why": "More dot-men at the blaze means more water on it; a small town has too few and loses the building."
+    },
+    {
+      "from": "fires",
+      "to": "construction",
+      "level": 3,
+      "why": "A burnt lot becomes a ruin, then is rebuilt through scaffolding."
+    },
+    {
+      "from": "growth",
+      "to": "fires",
+      "level": 2,
+      "why": "A Town gets a fire brigade; wells and fountains next door help; bigger towns have more neighbours to catch fire."
+    },
+    {
+      "from": "fires",
+      "to": "mood",
+      "level": 2,
+      "why": "Live fires and ruins weigh on mood; a burn-down dips it."
+    },
+    {
+      "from": "fires",
+      "to": "treasury",
+      "level": 2,
+      "why": "A building lost costs gold; a rich town rebuilds faster, a poor one slower."
+    },
+    {
+      "from": "gov",
+      "to": "fires",
+      "level": 2,
+      "why": "Harsh rule blames a saboteur and arrests; commune and council take a collection; a guild rebuilds in half the time."
+    },
+    {
+      "from": "fires",
+      "to": "politics",
+      "level": 1,
+      "why": "A harsh state turns a fire into an arrest."
+    },
+    {
+      "from": "fires",
+      "to": "leader",
+      "level": 1,
+      "why": "A leader can perish in a fire."
+    },
+    {
+      "from": "fires",
+      "to": "crier",
+      "level": 1,
+      "why": "Alarm, spread, rain, bucket line and burn-down lines; burn-downs are chronicled."
+    },
+    {
+      "from": "fires",
+      "to": "sisters",
+      "level": 1,
+      "why": "A saboteur from a sister can start one."
+    },
+    {
+      "from": "sisters",
+      "to": "fires",
+      "level": 2,
+      "why": "Spies sent by a sister may turn out to be saboteurs."
+    },
+    {
+      "from": "daynight",
+      "to": "fires",
+      "level": 1,
+      "why": "Flames glow brighter at night, and fewer people are awake to fight them."
+    },
+    {
+      "from": "gov",
+      "to": "war",
+      "level": 2,
+      "why": "The harsher the rule (and the harsher its neighbours), the likelier it picks a fight."
+    },
+    {
+      "from": "sisters",
+      "to": "war",
+      "level": 3,
+      "why": "Every war is against a named sister; the war moves her relation, and she shrinks when she loses."
+    },
+    {
+      "from": "war",
+      "to": "sisters",
+      "level": 3,
+      "why": "A beaten sister loses a fifth of her people and may change rule; relations fall; struck sisters lose gold and may be sent aid."
+    },
+    {
+      "from": "war",
+      "to": "walkers",
+      "level": 3,
+      "why": "Soldiers march out of the west gate; some never come home, the rest walk back in."
+    },
+    {
+      "from": "war",
+      "to": "mood",
+      "level": 2,
+      "why": "War presses on mood, except under harsh rule that thrives on it; victory lifts it, defeat sinks it."
+    },
+    {
+      "from": "war",
+      "to": "treasury",
+      "level": 2,
+      "why": "A war costs gold every quarter day; victory brings plunder, defeat a bill."
+    },
+    {
+      "from": "war",
+      "to": "fires",
+      "level": 3,
+      "why": "Raiders from the foe set a building alight."
+    },
+    {
+      "from": "war",
+      "to": "politics",
+      "level": 3,
+      "why": "A lost war can topple a harsh ruler by revolution, or hand a gentle town to its army."
+    },
+    {
+      "from": "war",
+      "to": "festivals",
+      "level": 2,
+      "why": "Victory is celebrated with a festival."
+    },
+    {
+      "from": "war",
+      "to": "visitors",
+      "level": 2,
+      "why": "No envoys, teams or caravans come while the war lasts."
+    },
+    {
+      "from": "war",
+      "to": "migration",
+      "level": 2,
+      "why": "When one sister overruns another, refugees reach the gate: taken in or turned back."
+    },
+    {
+      "from": "war",
+      "to": "crier",
+      "level": 1,
+      "why": "Marches, black-edged letters, victory and defeat are announced and chronicled."
+    },
+    {
+      "from": "blight",
+      "to": "illness",
+      "level": 3,
+      "why": "Plague reaching the town starts the grey plague outbreak."
+    },
+    {
+      "from": "blight",
+      "to": "walkers",
+      "level": 3,
+      "why": "Famine kills by hunger and sends people away."
+    },
+    {
+      "from": "blight",
+      "to": "growth",
+      "level": 2,
+      "why": "In a famine everything costs a third more."
+    },
+    {
+      "from": "blight",
+      "to": "mood",
+      "level": 2,
+      "why": "A famine drags the town down."
+    },
+    {
+      "from": "blight",
+      "to": "sisters",
+      "level": 3,
+      "why": "Stricken sisters lose people and gold, may need aid, and the weakest can collapse."
+    },
+    {
+      "from": "blight",
+      "to": "visitors",
+      "level": 2,
+      "why": "No caravans travel in a plague or famine."
+    },
+    {
+      "from": "blight",
+      "to": "crier",
+      "level": 1,
+      "why": "Each new town it reaches is announced."
+    },
+    {
+      "from": "seasons",
+      "to": "blight",
+      "level": 2,
+      "why": "Plague favours winter; famine favours hard winters and dry spells."
+    },
+    {
+      "from": "weather",
+      "to": "blight",
+      "level": 2,
+      "why": "A wet sky raises the odds of plague; a long dry spell raises the odds of famine."
+    },
+    {
+      "from": "sisters",
+      "to": "blight",
+      "level": 3,
+      "why": "It starts in any town of the region and spreads from sister to sister, so it can reach us from outside."
+    },
+    {
+      "from": "weather",
+      "to": "festivals",
+      "level": 3,
+      "why": "Rain or snow puts a festival off until the sky clears and breaks up one already under way; a ruler's rally goes ahead regardless."
+    },
+    {
+      "from": "sisters",
+      "to": "messenger",
+      "level": 3,
+      "why": "Each sister is a contact: her status comes from relations, war and blight (Busy, Away, Blocked), and she writes about envoys, letters, fairs, spies, caravans, wars and her own revolutions; she signs in when founded and off when absorbed or collapsed."
+    },
+    {
+      "from": "war",
+      "to": "messenger",
+      "level": 2,
+      "why": "The captain reports from the front; a declared war nudges the panel; sisters at war show Busy and quarrel in group chats."
+    },
+    {
+      "from": "illness",
+      "to": "messenger",
+      "level": 2,
+      "why": "The physician writes when an outbreak starts and when it passes; plague nudges the panel; our status turns Busy."
+    },
+    {
+      "from": "fires",
+      "to": "messenger",
+      "level": 2,
+      "why": "The warden writes at each fire, put-out, burn-down and death; a great fire nudges the panel."
+    },
+    {
+      "from": "blight",
+      "to": "messenger",
+      "level": 1,
+      "why": "A sister in a blight shows Away and writes about plague or famine."
+    },
+    {
+      "from": "gov",
+      "to": "messenger",
+      "level": 1,
+      "why": "Our leader answers gently or harshly by the rule (0.6 and up is harsh); each rule has a motto as a personal message."
+    },
+    {
+      "from": "politics",
+      "to": "messenger",
+      "level": 1,
+      "why": "Under harsh rule a ringleader contact grumbles, mourns arrests and cheers a revolution, then retires."
+    },
+    {
+      "from": "leader",
+      "to": "messenger",
+      "level": 1,
+      "why": "The leader is the signed-in \"me\": name, display picture and the reply voice."
+    },
+    {
+      "from": "growth",
+      "to": "messenger",
+      "level": 1,
+      "why": "A friendly sister congratulates us on each new tier."
+    },
+    {
+      "from": "crier",
+      "to": "messenger",
+      "level": 1,
+      "why": "Crier lines pop up as toasts; a chat line in the same moment replaces the crier toast; the Chronicle is a contact."
+    }
+  ],
+  "ideas": [
+    {
+      "from": "festivals",
+      "to": "illness",
+      "level": 2,
+      "fits": "Illness polish",
+      "idea": "A festival crowd is a shared room: it spreads illness; a festival could be called off in an outbreak."
+    },
+    {
+      "from": "births",
+      "to": "gov",
+      "level": 2,
+      "fits": "Births follow-up",
+      "idea": "A monarch heir is a child born in town and takes the throne when grown."
+    },
+    {
+      "from": "births",
+      "to": "growth",
+      "level": 1,
+      "fits": "Births follow-up",
+      "idea": "A school makes children grow up sooner."
+    },
+    {
+      "from": "sisters",
+      "to": "illness",
+      "level": 2,
+      "fits": "Undecided in vision",
+      "idea": "A sick migrant or caravan carries illness to or from a sister."
+    },
+    {
+      "from": "seasons",
+      "to": "growth",
+      "level": 2,
+      "fits": "Floods step",
+      "idea": "Floods hit low lots in spring and a poor harvest slows growth (famine already makes everything dearer)."
+    },
+    {
+      "from": "leader",
+      "to": "crier",
+      "level": 1,
+      "fits": "Undecided in vision",
+      "idea": "Idle crier chatter that reflects the leader traits."
+    },
+    {
+      "from": "fires",
+      "to": "walkers",
+      "level": 2,
+      "fits": "Wanderers step",
+      "idea": "A travelling hero beats back the flames (the mod did this)."
+    },
+    {
+      "from": "fires",
+      "to": "illness",
+      "level": 1,
+      "fits": "Fires follow-up",
+      "idea": "Burnt-out families crowd into other homes, so illness spreads faster after a fire."
+    },
+    {
+      "from": "war",
+      "to": "births",
+      "level": 1,
+      "fits": "War follow-up",
+      "idea": "Soldiers away mean fewer weddings; a victory brings a crop of babies."
+    },
+    {
+      "from": "guards",
+      "to": "war",
+      "level": 2,
+      "fits": "War follow-up",
+      "idea": "A junta or party state sends more soldiers than a council can."
+    },
+    {
+      "from": "blight",
+      "to": "festivals",
+      "level": 2,
+      "fits": "Blight follow-up",
+      "idea": "A festival is called off in a plague or famine; a harvest festival ends one."
+    },
+    {
+      "from": "festivals",
+      "to": "weather",
+      "level": 1,
+      "fits": "Weather follow-up",
+      "idea": "A festival in good weather lasts longer and draws bigger crowds."
+    },
+    {
+      "from": "messenger",
+      "to": "sisters",
+      "level": 2,
+      "fits": "Messenger replies",
+      "idea": "Reply buttons: choose the answer to a plea, tribute demand or wedding offer, changing relations and gold (turned down for 0.52, the owner chose read only)."
+    }
+  ],
+  "onPurpose": [
+    {
+      "id": "wildlife",
+      "why": "Small life stays cosmetic by design: it makes the town look alive and changes nothing."
+    },
+    {
+      "id": "crier",
+      "why": "The crier is a mirror of what happened, not a mechanic that acts."
+    }
+  ]
+}

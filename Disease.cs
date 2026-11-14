@@ -70,6 +70,7 @@ partial class Sim
         w.Sev = 0;
         w.Imm = 0;
         w.Resist = 0.6 + 0.8 * Trait01(w.Id, 100 + d); // a dot-man's constitution: always the same against the same illness
+        if (BodyOf(w) is { } b) w.Resist *= Wear(b);   // the old, frail or wounded fight it off slower
         if (Ill != null) Ill.Cases++;
     }
 
@@ -132,16 +133,16 @@ partial class Sim
         if (G.Harsh >= 0.7 || TraitSum(t => t.Quarantine ? 1 : 0) > 0)
         {
             Ill.Sealed = true;
-            Nudge(-0.04);
+            Nudge(-0.04, "sick houses sealed");
             answer = "Guards seal the houses of the sick.";
         }
-        else if (HasTrait("merciful")) { Nudge(0.02); answer = $"{LeaderTitle} visits the sick."; }
-        else if (HasTrait("idle")) { Nudge(-0.02); answer = $"{LeaderTitle} does nothing."; }
+        else if (HasTrait("merciful")) { Nudge(0.02, "the leader visits the sick"); answer = $"{LeaderTitle} visits the sick."; }
+        else if (HasTrait("idle")) { Nudge(-0.02, "the leader ignores the sick"); answer = $"{LeaderTitle} does nothing."; }
         else if (Built.Contains("church") || Built.Contains("cathedral")) answer = "The church takes in the sick.";
         else if (GovKey is "commune" or "council") answer = "Neighbours take turns nursing the sick.";
         else answer = "Doors are shut and windows hung with herbs.";
-        Say($"{line} {answer}");
-        Note(line);
+        Say($"{line} {answer}", false);
+        if (dz.Key == "plague") Note(line);   // a common illness is chronicled once, when it passes, with its toll
         Npc("physician", "start", dz.Key == "plague", $"{line} {answer}");
     }
 
@@ -150,15 +151,17 @@ partial class Sim
         w.Gone = true;
         w.Dis = -1;
         Ill!.Deaths++;
-        Nudge(-0.03);
+        Mourn(w, $"of the {dz.Name}");
+        Nudge(-0.03, "a death from illness");
+        string t = BodyOf(w) is { } b ? NameOf(b) : LeaderTitle;
+        string? line = BodyCause(w, $"the {dz.Name}");
         if (w.Lead)
         {
-            string t = LeaderTitle;
             Unseat(w, true);
-            Say($"{t} dies of the {dz.Name}.");
+            Say(line ?? $"{t} dies of the {dz.Name}.");
             Npc("physician", "leader", false, t);
         }
-        else Say($"{Pick(Victims)} succumbs to the {dz.Name}.");
+        else Say(line ?? $"{Pick(Victims)} succumbs to the {dz.Name}.", false);   // crier only; the toll goes in the chronicle when it passes
     }
 
     void Recover(Walker w, int d)
@@ -209,7 +212,7 @@ partial class Sim
                 if (!Ill.Told) Announce(dz);
             }
             w.Sev += dz.SevDay * (1 - care) * dtDays;
-            w.Imm += dz.ImmDay * w.Resist * dtDays;
+            w.Imm += dz.ImmDay * w.Resist * (w.Food < HungryAt ? 0.7 : 1) * dtDays; // a hungry body fights it off slower
             if (w.Imm >= 1) Recover(w, d);
             else if (w.Sev >= 1) DieOfIllness(w, dz);
         }

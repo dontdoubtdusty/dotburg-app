@@ -4,24 +4,26 @@ using Raylib_cs;
 
 namespace Dotburg;
 
-// The panels, drawn as Windows 98 windows: grey bevelled frames with navy title bars. They fill the whole app window
-// (no desktop behind them), so the app looks like one old program, and a bigger window just makes them bigger.
-// The chrome (frames, title bars, bars, the town picture) goes on ImGui's background draw list; the text sits in
-// borderless, see-through ImGui windows laid over it.
+// The panels, drawn as Windows XP windows (Luna blue, the look of MSN Messenger 7): blue frames with rounded top
+// corners and glossy title bars over a beige face. They fill the whole app window, so the app looks like a few XP
+// windows on a desktop, and a bigger window just makes them bigger. The chrome (frames, title bars, bars, the town
+// picture) goes on ImGui's background draw list; the text sits in borderless, see-through ImGui windows laid over it.
 public partial class Program
 {
     partial class App
     {
-        // ---------- Windows 98 colours ----------
-        const int Face = 0xc0c0c0, Hi = 0xffffff, Light = 0xdfdfdf, Shade = 0x808080, Ink = 0x000000;
-        const int Navy = 0x000080, Sky = 0x1084d0, Paper = 0xffffff, TipBg = 0xffffe1;
-        static readonly Color FaceCol = new(0xc0, 0xc0, 0xc0, 255);
+        // ---------- Windows XP colours ----------
+        const int Face = 0xece9d8, Hi = 0xffffff, Shade = 0x808080, Ink = 0x000000, Etch = 0xaca899;
+        const int Navy = 0x0a246a, Field = 0x7f9db9, Paper = 0xffffff, TipBg = 0xffffe1;
+        const int Frame = 0x0055e5, FrameEdge = 0x0029b0, Select = 0x316ac5, XpGreen = 0x2eb82e, Desk = 0x5a7fc7;
+        static readonly Color DeskCol = new(0x5a, 0x7f, 0xc7, 255);
 
         // ---------- fixed sizes, in pixels ----------
-        const float Bd = 4;          // window frame (two bevels and a pixel of face)
+        const float Bd = 4;          // window frame at the sides and bottom
         const float Pad = 6;         // inside a window, round its content
         const float Gap = 6;         // between windows, and between parts of one
         const float Outer = 4;       // from the screen edge
+        const float Corner = 7;      // rounding of a window's top corners
         const float MinMainW = 640;  // the town window never gets narrower than this, so the government row fits
         const float MsgMin = 320;    // narrower than this and the Messenger is left out
         const float MsgW = 440;      // the Messenger's width when the window is fitted to the panels
@@ -31,88 +33,120 @@ public partial class Program
         bool panelsOn = true;        // H hides the panels
         bool ledgerOpen = true;      // the ledger's title-bar button rolls it up
 
+        static ImFontPtr boldFont;   // Tahoma Bold, when it loaded
+        static bool hasBold;
+        static readonly Dictionary<string, ImFontPtr> chatFonts = new();   // chat fonts by face, loaded with the main font
+
         static Vector4 V(int rgb, float a = 1) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f, a);
         static uint U(int rgb, float a = 1) => ImGui.ColorConvertFloat4ToU32(V(rgb, a));
         static Vector2 Px(float x, float y) => new(MathF.Floor(x), MathF.Floor(y));
         static int Darken(int rgb, float k) => ((int)(((rgb >> 16) & 255) * k) << 16) | ((int)(((rgb >> 8) & 255) * k) << 8) | (int)((rgb & 255) * k);
 
-        // Two one-pixel edges: top and left in one colour, bottom and right in another.
-        static void Edge(ImDrawListPtr dl, Vector2 a, Vector2 b, int tl, int br)
-        {
-            dl.AddRectFilled(a, new Vector2(b.X, a.Y + 1), U(tl));
-            dl.AddRectFilled(a, new Vector2(a.X + 1, b.Y), U(tl));
-            dl.AddRectFilled(new Vector2(a.X, b.Y - 1), b, U(br));
-            dl.AddRectFilled(new Vector2(b.X - 1, a.Y), b, U(br));
-        }
+        // The height of a window's title bar (under the top frame edge), from the font.
+        static float TitleH => ImGui.GetFrameHeight() + 6;
 
-        // A raised frame, as round a window or a button.
-        static void Raised(ImDrawListPtr dl, Vector2 a, Vector2 b, int fill = Face)
-        {
-            dl.AddRectFilled(a, b, U(fill));
-            Edge(dl, a, b, Light, Ink);
-            Edge(dl, a + Vector2.One, b - Vector2.One, Hi, Shade);
-        }
+        // A vertical gradient from one colour at the top to another at the bottom.
+        static void Grad(ImDrawListPtr dl, Vector2 a, Vector2 b, int top, int bottom) =>
+            dl.AddRectFilledMultiColor(a, b, U(top), U(top), U(bottom), U(bottom));
 
-        // A sunken field, as round a text box, a progress bar or the town picture.
-        static void Sunken(ImDrawListPtr dl, Vector2 a, Vector2 b, int fill = -1)
+        // A Luna window from a to b: blue frame with rounded top corners, a glossy title bar Bd + titleH tall with the
+        // title in white bold (and the app icon), and the face colour inside under it.
+        void XpWindow(ImDrawListPtr dl, Vector2 a, Vector2 b, float titleH, string text, bool icon, float rightRoom = 0, int face = Face)
         {
-            if (fill >= 0) dl.AddRectFilled(a, b, U(fill));
-            Edge(dl, a, b, Shade, Hi);
-            Edge(dl, a + Vector2.One, b - Vector2.One, Ink, Light);
-        }
+            float h = Bd + titleH, tb = a.Y + h;
+            dl.AddRectFilled(a, b, U(Frame), Corner, ImDrawFlags.RoundCornersTop);
+            dl.AddRectFilled(a, new Vector2(b.X, a.Y + Corner * 2), U(0x2b7af4), Corner, ImDrawFlags.RoundCornersTop);
+            Grad(dl, new Vector2(a.X, a.Y + Corner), new Vector2(b.X, a.Y + h * 0.35f), 0x2b7af4, 0x0055ea);
+            Grad(dl, new Vector2(a.X, a.Y + h * 0.35f), new Vector2(b.X, a.Y + h * 0.8f), 0x0055ea, 0x0a63f2);
+            Grad(dl, new Vector2(a.X, a.Y + h * 0.8f), new Vector2(b.X, tb), 0x0a63f2, 0x0042d0);
+            dl.AddRectFilled(new Vector2(a.X + Corner, a.Y + 1), new Vector2(b.X - Corner, a.Y + 2), U(0x8ab8ff));
+            dl.AddRectFilled(new Vector2(a.X + Bd, tb), new Vector2(b.X - Bd, b.Y - Bd), U(face));
+            dl.AddRect(a, b, U(FrameEdge), Corner, ImDrawFlags.RoundCornersTop);
 
-        // Text drawn twice a pixel apart: Lucida Console has no bold, so this stands in for it.
-        static void BoldText(ImDrawListPtr dl, Vector2 at, int col, string text)
-        {
-            dl.AddText(at, U(col), text);
-            dl.AddText(at + new Vector2(1, 0), U(col), text);
-        }
-
-        // A title bar: navy fading to blue, the app icon, the title in white.
-        void TitleBar(ImDrawListPtr dl, Vector2 a, Vector2 b, string text, bool icon, float rightRoom = 0)
-        {
-            dl.AddRectFilledMultiColor(a, b, U(Navy), U(Sky), U(Sky), U(Navy));
-            float h = b.Y - a.Y, x = a.X + 4;
+            float x = a.X + Bd + 4;
             if (icon && iconTex.Id != 0)
             {
-                float s = h - 6;
-                dl.AddImage((IntPtr)iconTex.Id, Px(x, a.Y + 3), Px(x + s, a.Y + 3 + s));
+                float s = titleH - 8;
+                dl.AddImage((IntPtr)iconTex.Id, Px(x, a.Y + (h - s) / 2), Px(x + s, a.Y + (h - s) / 2 + s));
                 x += s + 6;
             }
-            dl.PushClipRect(a, new Vector2(b.X - rightRoom - 4, b.Y), true);
-            BoldText(dl, Px(x, a.Y + (h - ImGui.GetFontSize()) / 2), Hi, text);
+            dl.PushClipRect(a, new Vector2(b.X - Bd - rightRoom - 4, tb), true);
+            var at = Px(x, a.Y + (h - ImGui.GetFontSize()) / 2);
+            BoldText(dl, at + Vector2.One, 0x0a1e80, text);
+            BoldText(dl, at, Hi, text);
             dl.PopClipRect();
         }
 
-        // A title-bar button (minimise when open, maximise when rolled up). True when clicked.
+        // A white field with XP's thin blue-grey edge, as round a text box, a list or the town picture.
+        static void Sunken(ImDrawListPtr dl, Vector2 a, Vector2 b, int fill = -1, float round = 0)
+        {
+            if (fill >= 0) dl.AddRectFilled(a, b, U(fill), round);
+            dl.AddRect(a, b, U(Field), round);
+        }
+
+        // A small coloured tile with a darker edge, as for a banner.
+        static void Chip(ImDrawListPtr dl, Vector2 a, Vector2 b, int fill)
+        {
+            dl.AddRectFilled(a, b, U(fill), 2);
+            dl.AddRect(a, b, U(Darken(fill, 0.55f)), 2);
+        }
+
+        // Bold text in Tahoma Bold, or drawn twice a pixel apart if that font is missing.
+        static void BoldText(ImDrawListPtr dl, Vector2 at, int col, string text, float alpha = 1)
+        {
+            if (hasBold) { dl.AddText(boldFont, ImGui.GetFontSize(), at, U(col, alpha), text); return; }
+            dl.AddText(at, U(col, alpha), text);
+            dl.AddText(at + new Vector2(1, 0), U(col, alpha), text);
+        }
+
+        // How wide bold text is.
+        static float BoldW(string text) =>
+            hasBold ? boldFont.CalcTextSizeA(ImGui.GetFontSize(), float.MaxValue, 0, text).X : ImGui.CalcTextSize(text).X + 1;
+
+        // Bold text as an ImGui item in the current window.
+        static void BoldItem(string text)
+        {
+            if (hasBold) { ImGui.PushFont(boldFont); ImGui.Text(text); ImGui.PopFont(); return; }
+            ImGui.Text(text);
+            ImGui.GetWindowDrawList().AddText(ImGui.GetItemRectMin() + new Vector2(1, 0), U(Ink), text);
+        }
+
+        // An XP title-bar button (minimise when open, restore when rolled up): a glossy blue square with a white edge.
+        // True when clicked.
         static bool CaptionButton(ImDrawListPtr dl, Vector2 a, float s, bool open)
         {
-            var b = a + new Vector2(s + 2, s);
-            bool hot = ImGui.IsMouseHoveringRect(a, b);
+            var b = a + new Vector2(s, s);
+            bool hot = !modal && ImGui.IsMouseHoveringRect(a, b, false);
             bool down = hot && ImGui.IsMouseDown(ImGuiMouseButton.Left);
-            if (down) { dl.AddRectFilled(a, b, U(Face)); Edge(dl, a, b, Ink, Hi); Edge(dl, a + Vector2.One, b - Vector2.One, Shade, Light); }
-            else Raised(dl, a, b);
-            var o = down ? Vector2.One : Vector2.Zero;
-            float gx = a.X + (s + 2) / 2 - 4, gy = a.Y + s / 2 - 4;
-            if (open) dl.AddRectFilled(Px(gx, gy + 6) + o, Px(gx + 7, gy + 8) + o, U(Ink));
+            int top = down ? 0x1a4fc8 : hot ? 0x6aa6ff : 0x3d8cf7, bot = down ? 0x3a7ef0 : hot ? 0x2a74f2 : 0x1659e0;
+            dl.AddRectFilled(a, b, U(bot), 3);
+            Grad(dl, a + new Vector2(2, 2), new Vector2(b.X - 2, a.Y + s * 0.55f), top, bot);
+            dl.AddRect(a, b, U(Hi), 3);
+            if (open) dl.AddRectFilled(Px(a.X + s * 0.26f, a.Y + s * 0.66f), Px(a.X + s * 0.58f, a.Y + s * 0.66f + 3), U(Hi));
             else
             {
-                dl.AddRect(Px(gx - 1, gy - 1) + o, Px(gx + 9, gy + 8) + o, U(Ink));
-                dl.AddRectFilled(Px(gx - 1, gy - 1) + o, Px(gx + 9, gy + 1) + o, U(Ink));
+                dl.AddRect(Px(a.X + s * 0.26f, a.Y + s * 0.26f), Px(a.X + s * 0.76f, a.Y + s * 0.74f), U(Hi));
+                dl.AddRectFilled(Px(a.X + s * 0.26f, a.Y + s * 0.26f), Px(a.X + s * 0.76f, a.Y + s * 0.26f + 3), U(Hi));
             }
             if (hot) Tip(open ? "Roll up the ledger" : "Show the ledger");
             return hot && ImGui.IsMouseReleased(ImGuiMouseButton.Left);
         }
 
-        // A Windows 98 progress bar: a sunken trough filled with square blocks.
+        // An XP progress bar: a rounded white trough filled with glossy blocks, shiny across the middle.
         static void Blocks(ImDrawListPtr dl, Vector2 a, Vector2 b, float frac, int col)
         {
-            Sunken(dl, a, b, Paper);
-            float x0 = a.X + 3, y0 = a.Y + 3, x1 = b.X - 3, y1 = b.Y - 3;
-            float bw = MathF.Max(4, MathF.Round((y1 - y0) * 0.6f)), gap = 2;
+            dl.AddRectFilled(a, b, U(Paper), 3);
+            dl.AddRect(a, b, U(0x8e8f8f), 3);
+            float x0 = a.X + 3, y0 = a.Y + 3, x1 = b.X - 3, y1 = b.Y - 3, ym = MathF.Floor((y0 + y1) / 2);
+            float bw = MathF.Max(4, MathF.Round((y1 - y0) * 0.5f)), gap = 2;
             float end = x0 + (x1 - x0) * Math.Clamp(frac, 0, 1);
+            int shine = Lighten(col, 0.5f);
             for (float x = x0; x + bw * 0.5f <= end && x < x1; x += bw + gap)
-                dl.AddRectFilled(new Vector2(x, y0), new Vector2(MathF.Min(x + bw, x1), y1), U(col));
+            {
+                float xe = MathF.Min(x + bw, x1);
+                Grad(dl, new Vector2(x, y0), new Vector2(xe, ym), col, shine);
+                Grad(dl, new Vector2(x, ym), new Vector2(xe, y1), shine, col);
+            }
         }
 
         // Reserves a bar on the current line and draws it. True when the mouse is on it.
@@ -130,10 +164,13 @@ public partial class Program
         {
             ImGui.SetNextWindowPos(a);
             ImGui.SetNextWindowSize(b - a);
+            // No padding and no border, so the clip rect starts at the edge: the crisp GDI glyphs use their first
+            // pixel column, which a 1 px border would cut off.
             ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
             ImGui.Begin(id, ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoMove |
                 ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoBringToFrontOnFocus | ImGuiWindowFlags.NoFocusOnAppearing);
-            ImGui.PopStyleVar();
+            ImGui.PopStyleVar(2);
         }
 
         // Puts the next item at the right edge of the current line, if it is that wide.
@@ -148,16 +185,16 @@ public partial class Program
         static void Tip(string text) => ImGui.SetTooltip(Esc(text));
 
         static string MoodWord(double m) => m < 0.3 ? "angry" : m < 0.5 ? "uneasy" : m < 0.7 ? "content" : "joyful";
-        static int MoodCol(double m) => m < 0.3 ? 0xa00000 : m < 0.5 ? 0xa06000 : 0x008000;
+        static int MoodCol(double m) => m < 0.3 ? 0xd02020 : m < 0.5 ? 0xe08a00 : XpGreen;
 
         // Heights of the fixed parts, from the font: the town window less the picture, the government band, the ledger.
         // (The crier box went in 0.52: crier lines are toasts over the picture now.)
         (float mainExtra, float bandH, float ledgerH) ChromeSizes()
         {
-            float row = ImGui.GetFrameHeight(), title = row, sp = ImGui.GetStyle().ItemSpacing.Y;
+            float row = ImGui.GetFrameHeight(), title = TitleH, sp = ImGui.GetStyle().ItemSpacing.Y;
             float bandH = Pad + row * 2 + sp + Pad;
             float mainExtra = Bd + title + bandH + 4 + Pad + Bd;
-            float ledgerH = ledgerOpen ? Bd + title + Pad + row * 3 + sp * 2 + Pad + Bd : Bd + title + Bd;
+            float ledgerH = ledgerOpen ? Bd + title + Pad + row * 4 + sp * 3 + Pad + Bd : Bd + title + Bd;
             return (mainExtra, bandH, ledgerH);
         }
 
@@ -248,7 +285,7 @@ public partial class Program
                 return;
             }
 
-            float row = ImGui.GetFrameHeight(), title = row, sp = ImGui.GetStyle().ItemSpacing.Y;
+            float row = ImGui.GetFrameHeight(), title = TitleH, sp = ImGui.GetStyle().ItemSpacing.Y;
             var (mainExtra, bandH, ledgerH) = ChromeSizes();
             float chromeH = Outer + mainExtra + Gap + ledgerH + Outer;
             int scale = Math.Max(1, (int)Math.Min((sh - chromeH) / Sim.H, (sw - 2 * Outer - 2 * (Bd + Pad) - 4) / Sim.W));
@@ -265,13 +302,12 @@ public partial class Program
             // The town window: title, government band, picture (toasts rise over it).
             var mA = new Vector2(x0, y0);
             var mB = new Vector2(x0 + mainW, y0 + mainExtra + picH + extraH);
-            Raised(bg, mA, mB);
-            var tA = mA + new Vector2(Bd, Bd);
-            var tB = new Vector2(mB.X - Bd, tA.Y + title);
-            TitleBar(bg, tA, tB, $"{sim.Name} - {Sim.TierNames[sim.Tier - 1]}", true);
-            float bandTop = tB.Y;
+            float rbtn = title - 6;
+            XpWindow(bg, mA, mB, title, $"{sim.Name} - {Sim.TierNames[sim.Tier - 1]}", true, rbtn + 4);
+            RestartButton(bg, Px(mB.X - Bd - rbtn - 2, mA.Y + (Bd + title - rbtn) / 2), rbtn);
+            float bandTop = mA.Y + Bd + title;
             var picA = Px(x0 + (mainW - picW) / 2, bandTop + bandH + 2 + extraH / 2);
-            Sunken(bg, picA - new Vector2(2, 2), picA + new Vector2(picW + 2, picH + 2));
+            Sunken(bg, picA - new Vector2(1, 1), picA + new Vector2(picW + 1, picH + 1));
             townRect = new Rectangle(picA.X, picA.Y, picW, picH);
             DrawTown(bg, scale);
             DrawToasts(bg);
@@ -283,18 +319,16 @@ public partial class Program
             // The ledger: day and weather in its title; people, buildings, troubles and sisters inside.
             var lA = new Vector2(x0, mB.Y + Gap);
             var lB = new Vector2(x0 + mainW, lA.Y + ledgerH);
-            Raised(bg, lA, lB);
-            var ltA = lA + new Vector2(Bd, Bd);
-            var ltB = new Vector2(lB.X - Bd, ltA.Y + title);
+            var ltB = new Vector2(lB.X - Bd, lA.Y + Bd + title);
             float btn = title - 6;
-            TitleBar(bg, ltA, ltB, $"Day {sim.DayNumber} - {sim.SeasonNow.Name} {sim.DayName()}, {sim.WxWord}{(sim.Festival ? ", festival" : "")}", false, btn + 4);
-            if (CaptionButton(bg, Px(ltB.X - btn - 4, ltA.Y + 3), btn, ledgerOpen)) { ledgerOpen = !ledgerOpen; RefitHeight(); }
+            XpWindow(bg, lA, lB, title, $"Day {sim.DayNumber} - {sim.SeasonNow.Name} {sim.DayName()}, {sim.WxWord}{(sim.Festival ? ", festival" : "")}", false, btn + 4);
+            if (CaptionButton(bg, Px(ltB.X - btn - 2, lA.Y + (Bd + title - btn) / 2), btn, ledgerOpen)) { ledgerOpen = !ledgerOpen; Play(ledgerOpen ? Sfx.Restore : Sfx.Minimize); RefitHeight(); }
             if (ledgerOpen)
             {
                 float inX0 = lA.X + Bd + Pad, inX1 = lB.X - Bd - Pad, inY0 = ltB.Y + Pad, inY1 = lB.Y - Bd - Pad;
                 float split = MathF.Floor(inX0 + (inX1 - inX0) * 0.56f);
                 float colY1 = inY0 + row * 2 + sp;   // two rows in columns, then troubles across the whole width
-                bg.AddRectFilled(new Vector2(split + Gap - 1, inY0), new Vector2(split + Gap, colY1), U(Shade));
+                bg.AddRectFilled(new Vector2(split + Gap - 1, inY0), new Vector2(split + Gap, colY1), U(Etch));
                 bg.AddRectFilled(new Vector2(split + Gap, inY0), new Vector2(split + Gap + 1, colY1), U(Hi));
                 Area("ledgerL", new Vector2(inX0, inY0), new Vector2(split, colY1));
                 LedgerTown();
@@ -303,6 +337,7 @@ public partial class Program
                 LedgerSisters();
                 ImGui.End();
                 Area("ledgerT", new Vector2(inX0, colY1 + sp), new Vector2(inX1, inY1));
+                LedgerFood();
                 LedgerTroubles();
                 ImGui.End();
             }
@@ -310,6 +345,7 @@ public partial class Program
             // The Messenger: beside the other two, as tall as both (MessengerUi.cs).
             if (chron) Messenger(bg, new Vector2(mB.X + Gap, y0), new Vector2(mB.X + Gap + chronW, lB.Y));
             HoverTip();
+            RestartDialog();
         }
 
         // The town picture, and an outline on the building under the mouse.
@@ -344,12 +380,16 @@ public partial class Program
             var p = ImGui.GetCursorScreenPos();
             float s = row - 6;
             ImGui.Dummy(new Vector2(s, row));
-            Raised(dl, Px(p.X, p.Y + 3), Px(p.X + s, p.Y + 3 + s), gv.Banner & 0xffffff);
+            Chip(dl, Px(p.X, p.Y + 3), Px(p.X + s, p.Y + 3 + s), gv.Banner & 0xffffff);
             if (ImGui.IsItemHovered()) Tip($"The banner of the {gv.Lower}");
             ImGui.SameLine(0, 8);
             ImGui.AlignTextToFramePadding();
-            ImGui.Text(gv.Name);
-            dl.AddText(ImGui.GetItemRectMin() + new Vector2(1, 0), U(Ink), gv.Name);
+            BoldItem(gv.Name);
+            if (ImGui.IsItemHovered() || showGovTip)
+            {
+                if (showGovTip) ImGui.SetNextWindowPos(ImGui.GetItemRectMin() + new Vector2(0, ImGui.GetFrameHeight()));
+                Tip(string.Join("\n", sim.RuleLines()));
+            }
             ImGui.SameLine(0, 14);
             ImGui.Text(sim.LeaderTitle);
             float used = ImGui.GetItemRectMax().X - ImGui.GetWindowPos().X;
@@ -371,6 +411,21 @@ public partial class Program
             else ImGui.TextColored(V(Shade), "no leader sits");
             float barW = 150, wordW = ImGui.CalcTextSize("content").X, labW = ImGui.CalcTextSize("Townsfolk:").X;
             var sty = ImGui.GetStyle();
+            // The leader's age and health, with the full chart on hover; shortened to the age if the row is tight.
+            if (sim.LeaderBody is { } lb)
+            {
+                string word = sim.HealthWord(lb);
+                int col = word switch { "gravely ill" => 0xb02a2a, "wounded" => 0xb05a1a, "ailing" => 0x8a6a1a, _ => 0x3a7a3a };
+                float room = ImGui.GetWindowWidth() - (labW + barW + wordW + sty.ItemSpacing.X * 2) - (ImGui.GetItemRectMax().X - ImGui.GetWindowPos().X) - 24;
+                string txt = $"{sim.YearsOf(lb)}, {word}";
+                if (ImGui.CalcTextSize(txt).X > room) txt = $"{sim.YearsOf(lb)}";
+                if (ImGui.CalcTextSize(txt).X <= room)
+                {
+                    ImGui.SameLine(0, 12);
+                    ImGui.TextColored(V(col), txt);
+                    if (ImGui.IsItemHovered() || showHealthTip) Tip(string.Join("\n", sim.HealthLines(lb)));
+                }
+            }
             RightAlign(labW + barW + wordW + sty.ItemSpacing.X * 2);
             ImGui.Text("Townsfolk:");
             ImGui.SameLine();
@@ -378,13 +433,92 @@ public partial class Program
             ImGui.SameLine();
             ImGui.TextColored(V(Darken(MoodCol(sim.Mood), 0.8f)), MoodWord(sim.Mood));
             hov |= ImGui.IsItemHovered();
-            if (hov) Tip($"How the townsfolk feel ({sim.Mood * 100:F0} of 100). The rule, the weather, crowding,\nsickness, hunger, war and ruins all count. Low spirits breed unrest.");
+            if (hov || showMoodTip) MoodTip();
         }
+
+        // A signed whole number on the 0 to 100 scale the panels use ("+4", "-8", "0").
+        static string Signed(double d) { int n = (int)Math.Round(d * 100); return n > 0 ? $"+{n}" : $"{n}"; }
+
+        // One "reason ... amount" row of a breakdown table: the amount right-aligned, green when it helps, red when it hurts.
+        static void ReasonRow(string why, double d, bool grey = false)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            if (grey) ImGui.TextDisabled(Esc(why)); else ImGui.Text(Esc(why));
+            ImGui.TableNextColumn();
+            string s = Signed(d);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(s).X);
+            ImGui.TextColored(V(s == "0" ? Shade : d > 0 ? 0x207020 : 0xb00000), s);
+        }
+
+        // The mood tooltip: how they feel now, where it is heading and why (each standing reason with its amount),
+        // what lately moved it at once, and what low spirits lead to.
+        void MoodTip()
+        {
+            var parts = sim.MoodParts();
+            double target = sim.MoodTarget, sum = parts.Sum(p => p.D);
+            float w = ImGui.CalcTextSize("0").X * 44;
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + w);
+
+            // Headline: the word and number, then which way it is drifting.
+            ImGui.PushStyleColor(ImGuiCol.Text, V(Darken(MoodCol(sim.Mood), 0.8f)));
+            BoldItem($"The townsfolk are {MoodWord(sim.Mood)}: {sim.Mood * 100:F0} of 100");
+            ImGui.PopStyleColor();
+            int now = (int)Math.Round(sim.Mood * 100), to = (int)Math.Round(target * 100);
+            ImGui.TextDisabled(now == to ? "Steady: this is where the reasons below put it." :
+                $"Drifting {(to > now ? "up" : "down")} to {to}, about 2 an hour (a town day is 24 hours).");
+
+            // Standing reasons: what holds the mood where it is.
+            ImGui.Spacing();
+            BoldItem("Why");
+            if (ImGui.BeginTable("moodwhy", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+            {
+                ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - ImGui.CalcTextSize("-100").X - 12);
+                ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("-100").X);
+                foreach (var (why, d) in parts) if (Math.Abs(d) >= 0.005) ReasonRow(why, d);
+                ImGui.EndTable();
+            }
+            ImGui.Separator();
+            string total = $"Adds up to {Math.Round(sum * 100):F0}" + (sum > 1 ? ", held at 100" : sum < 0 ? ", held at 0" : "");
+            ImGui.Text(total);
+
+            // Lately: events that moved the mood at once, newest first, alike ones taken together.
+            var recent = sim.MoodEvents.Where(e => sim.Age - e.At <= Sim.DayMs).GroupBy(e => e.Why)
+                .Select(g => (Why: g.Count() > 1 ? $"{g.Key} (x{g.Count()})" : g.Key, D: g.Sum(e => e.D), At: g.Max(e => e.At)))
+                .OrderByDescending(e => e.At).Take(8).ToList();
+            if (recent.Count > 0)
+            {
+                ImGui.Spacing();
+                BoldItem("Lately");
+                ImGui.TextDisabled("Felt at once, then worn off as the mood drifts back.");
+                if (ImGui.BeginTable("moodlately", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+                {
+                    ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - ImGui.CalcTextSize("-100").X - 12);
+                    ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, ImGui.CalcTextSize("-100").X);
+                    foreach (var e in recent)
+                    {
+                        int hours = (int)((sim.Age - e.At) / Sim.DayMs * 24);
+                        ReasonRow($"{char.ToUpperInvariant(e.Why[0])}{e.Why[1..]}, {(hours < 1 ? "just now" : hours == 1 ? "an hour ago" : $"{hours} hours ago")}", e.D);
+                    }
+                    ImGui.EndTable();
+                }
+            }
+
+            // Footnote: what the mood does.
+            ImGui.Separator();
+            ImGui.TextDisabled(Esc("Under 30 the town is angry: coups and plots grow likelier, and under harsh rule a revolt can start below 20. Low spirits also slow weddings."));
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+
+        // The width of the ledger's label column: the widest label plus a gap.
+        static float LabelW() => new[] { "Dot-men", "Buildings", "Troubles", "Food" }.Max(s => ImGui.CalcTextSize(s).X) + 8;
 
         // Ledger, left: dot-men by colour, buildings and the next thing to come, and any troubles.
         void LedgerTown()
         {
-            float labW = ImGui.CalcTextSize("Buildings ").X, valW = ImGui.CalcTextSize("000/000 ").X;
+            float labW = LabelW(), valW = ImGui.CalcTextSize("000/000 ").X;
             int pop = sim.Walkers.Count(w => !w.Gone);
 
             ImGui.AlignTextToFramePadding();
@@ -407,11 +541,162 @@ public partial class Program
             float frac = (float)Math.Clamp(sim.Pool / Math.Max(1, sim.Cost), 0, 1);
             float roomX = ImGui.GetContentRegionAvail().X;
             float barW = Math.Clamp(roomX - ImGui.CalcTextSize(shortNext).X - ImGui.GetStyle().ItemSpacing.X, 60, roomX * 0.45f);
-            bool hov = BarItem(barW, frac, Navy);
+            bool hov = BarItem(barW, frac, XpGreen);
             ImGui.SameLine();
             ImGui.Text(Esc(shortNext));
             hov |= ImGui.IsItemHovered();
-            if (hov) Tip($"Next: {next} ({frac * 100:F0}% saved up).");
+            if (hov) Tip(GrowthTip(next, frac));
+        }
+
+        // The growth bar's tooltip: what comes next, what the bar means, and how long until it fills.
+        string GrowthTip(string next, float frac)
+        {
+            string head = $"Coming next: {next}.";
+            string how = "The town grows one step at a time (a newcomer, a building, an upgrade\nor a new tier). This bar fills while the app is open; when it is full,\nthe next step happens.";
+            double secs = Math.Max(0, sim.Cost - sim.Pool) * OwnClock.ThinkMs / 1000;
+            string left = frac >= 1
+                ? (sim.FedEnough ? "Full: the step happens any moment." : "Full, but waiting until there is food to spare.")
+                : $"{frac * 100:F0}% full, about {(secs < 90 ? $"{Math.Ceiling(secs)} seconds" : $"{Math.Ceiling(secs / 60)} minutes")} to go.";
+            return $"{head}\n{how}\n{left}";
+        }
+
+        // Ledger, a row across both columns: days of food in store as a bar split by kind (grain, flour, bread, greens,
+        // pantries; full at two weeks), then who is hungry. The tip has the whole chain.
+        void LedgerFood()
+        {
+            ImGui.AlignTextToFramePadding();
+            ImGui.Text("Food");
+            float labW = LabelW(), valW = ImGui.CalcTextSize("000/000 ").X;
+            double days = Math.Max(0, sim.FoodDays);
+            ImGui.SameLine(labW);
+            ImGui.TextColored(V(days < 3 ? 0xb00000 : days < 6 ? 0x806000 : Ink), $"{days:F0} days");
+            bool hov = ImGui.IsItemHovered();
+            ImGui.SameLine(labW + valW);
+            string note = sim.FoodLine() is { Length: > 0 } fl ? fl : sim.Carriers > 0 ? $"fed; {sim.Carriers} carrying" : "fed";
+            float roomX = ImGui.GetContentRegionAvail().X;
+            float barW = Math.Clamp(roomX - ImGui.CalcTextSize(note).X - ImGui.GetStyle().ItemSpacing.X, 60, roomX * 0.6f);
+            var p = ImGui.GetCursorScreenPos();
+            float h = ImGui.GetFrameHeight();
+            ImGui.Dummy(new Vector2(barW, h));
+            hov |= ImGui.IsItemHovered();
+            var dl = ImGui.GetWindowDrawList();
+            var a = Px(p.X, p.Y);
+            var b = Px(p.X + barW, p.Y + h);
+            dl.AddRectFilled(a, b, U(Paper), 3);
+            var t = sim.GoodsTotals();
+            double sum = t.Sum();
+            float full = (b.X - a.X - 4) * (float)Math.Min(1, days / 14), x = a.X + 2;
+            for (int g = 0; g < t.Length && sum > 0; g++)
+            {
+                float wg = MathF.Round(full * (float)(t[g] / sum));
+                if (wg < 1) continue;
+                dl.AddRectFilled(new Vector2(x, a.Y + 2), new Vector2(x + wg, b.Y - 2), U(Sim.GoodColors[g]));
+                dl.AddRectFilled(new Vector2(x, a.Y + 2), new Vector2(x + wg, a.Y + (b.Y - a.Y) * 0.4f), U(0xffffff, 0.25f));
+                x += wg;
+            }
+            dl.AddRect(a, b, U(0x7a96df), 3);
+            ImGui.SameLine();
+            ImGui.TextColored(V(sim.WeakCount > 0 ? 0xb00000 : sim.HungryCount > 2 ? 0x806000 : 0x004000), Esc(note));
+            hov |= ImGui.IsItemHovered();
+            if (hov || showFoodTip) FoodTip();
+        }
+
+        // The food tooltip: days of food against what the rule holds back, the goods by where they are, then who is hungry.
+        void FoodTip()
+        {
+            var f = sim.GetFoodReport();
+            float w = ImGui.CalcTextSize("0").X * 46;
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + w);
+
+            // Headline: days of food, large and coloured, with who eats beside it.
+            int dayCol = f.Days < 3 ? 0xb00000 : f.Days < f.Keep ? 0x806000 : Ink;
+            ImGui.PushStyleColor(ImGuiCol.Text, V(dayCol));
+            BoldItem($"{f.Days:F1} days of food");
+            ImGui.PopStyleColor();
+            ImGui.TextDisabled(Esc(f.Who));
+
+            // Bar: food on hand, with a marker where the rule's held-back grain ends.
+            double scale = Math.Max(14, Math.Max(f.Days, f.Keep) * 1.15);
+            var p = ImGui.GetCursorScreenPos();
+            float h = ImGui.GetTextLineHeight();
+            ImGui.Dummy(new Vector2(w, h + 4));
+            var dl = ImGui.GetWindowDrawList();
+            var a = Px(p.X, p.Y + 2);
+            var b = Px(p.X + w, p.Y + 2 + h);
+            int barCol = f.Days < 3 ? 0xd02020 : f.Days < f.Keep ? 0xe08a00 : XpGreen;
+            Blocks(dl, a, b, (float)(f.Days / scale), barCol);
+            float mx = MathF.Floor(a.X + 3 + (b.X - a.X - 6) * (float)(f.Keep / scale));
+            dl.AddRectFilled(new Vector2(mx - 1, a.Y - 2), new Vector2(mx + 1, b.Y + 2), U(Ink));
+            ImGui.TextDisabled(Esc($"Marker: {f.Keep:F0} days held back ({f.ToHarvest:F0} to the harvest + {f.Reserve:F0} spare)"));
+
+            // Goods table: a coloured swatch per good, the barn and the town as rows, nothing shown as a dash.
+            ImGui.Spacing();
+            string[] heads = { "Grain", "Flour", "Bread", "Greens", "Pantries" };
+            if (ImGui.BeginTable("foodgoods", 6, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+            {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                for (int g = 0; g < 5; g++)
+                {
+                    ImGui.TableNextColumn();
+                    var s = ImGui.GetCursorScreenPos();
+                    float sw = MathF.Floor(h * 0.6f), sy = MathF.Floor(s.Y + (h - sw) / 2);
+                    ImGui.GetWindowDrawList().AddRectFilled(new Vector2(s.X, sy), new Vector2(s.X + sw, sy + sw), U(Sim.GoodColors[g]));
+                    ImGui.GetWindowDrawList().AddRect(new Vector2(s.X, sy), new Vector2(s.X + sw, sy + sw), U(Shade));
+                    ImGui.Dummy(new Vector2(sw + 3, h));
+                    ImGui.SameLine(0, 0);
+                    ImGui.Text(heads[g]);
+                }
+                GoodsRow("Barn", new double[] { f.BarnGrain, -1, -1, f.BarnGreens, -1 });
+                GoodsRow("In town", f.Town);
+                ImGui.EndTable();
+            }
+            if (f.Seed >= 0.5) ImGui.TextDisabled(Esc($"Seed corn kept back: {Math.Round(f.Seed)}"));
+
+            // Fields: the season's state, and the crop's look in a colour while it grows.
+            ImGui.Text("Fields:");
+            ImGui.SameLine();
+            ImGui.Text(Esc(f.Fields));
+            if (f.Crop != "")
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(V(f.CropQ < 0.55 ? 0xb00000 : f.CropQ < 0.85 ? 0x806000 : 0x207020), $"crop {f.Crop}");
+            }
+
+            // Who is out and who is hungry: grey when nothing is wrong, orange and red when something is.
+            StatusCount("Carriers", f.Carriers, f.Carriers > 0 ? Ink : Shade, false);
+            StatusCount("Hungry", f.Hungry, f.Hungry > 0 ? 0xc06000 : Shade, true);
+            StatusCount("Starving", f.Weak, f.Weak > 0 ? 0xb00000 : Shade, true);
+            if (f.Dead > 0) ImGui.TextColored(V(0xb00000), $"Starved since the app opened: {f.Dead}");
+
+            // Footnote: how this rule handles food.
+            ImGui.Separator();
+            ImGui.TextDisabled(Esc(f.RuleLine));
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+
+        // One row of the food tooltip's goods table: a label, then each amount (a dash for none, blank where it cannot be).
+        static void GoodsRow(string label, double[] vals)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.Text(label);
+            foreach (var v in vals)
+            {
+                ImGui.TableNextColumn();
+                if (v < 0) continue;
+                if (v < 0.5) ImGui.TextDisabled("-");
+                else ImGui.Text($"{Math.Round(v)}");
+            }
+        }
+
+        // A label and a number on the food tooltip's status line; same says whether it follows the last one on the line.
+        static void StatusCount(string label, int n, int col, bool same)
+        {
+            if (same) ImGui.SameLine(0, 16);
+            ImGui.TextColored(V(col), $"{label} {n}");
         }
 
         // Ledger, bottom row across both columns: fires and ruins, war or famine, illness, or "none".
@@ -419,11 +704,12 @@ public partial class Program
         {
             ImGui.AlignTextToFramePadding();
             ImGui.Text("Troubles");
-            ImGui.SameLine(ImGui.CalcTextSize("Buildings ").X);
+            ImGui.SameLine(LabelW());
             var troubles = new List<(string text, int col)>();
             if (sim.FireLine() is { Length: > 0 } f) troubles.Add((f, sim.Fires.Count > 0 ? 0xb00000 : 0x704000));
             if (sim.WarLine() is { Length: > 0 } w) troubles.Add((w, 0x800000));
             if (sim.IllnessLine() is { Length: > 0 } ill) troubles.Add((ill, 0x405000));
+            if (sim.FoodLine() is { Length: > 0 } fo) troubles.Add((fo, 0xb00000));
             if (troubles.Count == 0) { ImGui.TextColored(V(0x004000), "none"); return; }
             for (int i = 0; i < troubles.Count; i++)
             {
@@ -472,6 +758,69 @@ public partial class Program
             if (hov) Tip(string.Join("\n", order.Select(c => $"{counts[c],3} {Content.DotNames[c]}")));
         }
 
+        // A sister town's tooltip: who she is, how she regards us (-100 to 100) and why (the standing reasons she
+        // drifts toward, then what lately moved her), and what each level of regard leads to.
+        void SisterTip(Sister s)
+        {
+            var parts = sim.RelParts(s);
+            double rel = sim.RelOf(s), sum = parts.Sum(p => p.D), settle = Math.Clamp(sum, -1, 1);
+            var (word, wc) = sim.Attitude(s);
+            var lord = sim.RulerOf(s);
+            float w = ImGui.CalcTextSize("0").X * 46, numW = ImGui.CalcTextSize("-100").X;
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + w);
+
+            // Headline: her regard, in her attitude's colour, then plain facts about her.
+            ImGui.PushStyleColor(ImGuiCol.Text, V(Darken(wc, 0.55f)));
+            BoldItem($"{s.Name} is {word}: {Signed(rel)} (from -100 to 100)");
+            ImGui.PopStyleColor();
+            ImGui.TextDisabled(Esc($"{s.Total} dot-men, {Govs.Get(s.Gov).Name}, {Sim.WealthWord(sim.GoldOf(s))}, ruled by {lord.Name}."));
+            int now = (int)Math.Round(rel * 100), to = (int)Math.Round(settle * 100);
+            ImGui.TextDisabled(now == to ? "Steady: this is where the reasons below put her." :
+                $"Drifting {(to > now ? "up" : "down")} toward {Signed(settle)}, closing about a tenth of the gap a day.");
+
+            // Standing reasons, then their sum.
+            ImGui.Spacing();
+            BoldItem("Why");
+            if (ImGui.BeginTable("relwhy", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+            {
+                ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - numW - 12);
+                ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, numW);
+                foreach (var (why, d) in parts) if (Math.Abs(d) >= 0.005) ReasonRow(why, d);
+                ImGui.EndTable();
+            }
+            ImGui.Separator();
+            ImGui.Text($"Settles at {Signed(settle)}" + (sum > 1 ? " (held at 100)" : sum < -1 ? " (held at -100)" : ""));
+
+            // Lately: what moved her regard at once, newest first, alike ones together.
+            var recent = s.RelEvents.GroupBy(e => e.Why)
+                .Select(g => (Why: g.Count() > 1 ? $"{g.Key} (x{g.Count()})" : g.Key, D: g.Sum(e => e.D), At: g.Max(e => e.At)))
+                .OrderByDescending(e => e.At).Take(8).ToList();
+            if (recent.Count > 0)
+            {
+                ImGui.Spacing();
+                BoldItem("Lately");
+                ImGui.TextDisabled("Felt at once, then worn off as she drifts back.");
+                if (ImGui.BeginTable("rellately", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+                {
+                    ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - numW - 12);
+                    ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, numW);
+                    foreach (var e in recent)
+                    {
+                        int days = (int)((sim.EvClock - e.At) / Sim.DayMs);
+                        ReasonRow($"{char.ToUpperInvariant(e.Why[0])}{e.Why[1..]}, {(days < 1 ? "today" : days == 1 ? "yesterday" : $"{days} days ago")}", e.D);
+                    }
+                    ImGui.EndTable();
+                }
+            }
+
+            // Footnote: what her regard leads to.
+            ImGui.Separator();
+            ImGui.TextDisabled(Esc("At +25 or more she is friendly: gifts, fairs, and aid both ways; at +40 she proposes weddings; at +60 allied. Below 0 a harsh sister sends spies; below -30 she demands tribute; at -45 or less she is hostile and blocks us. Wars follow harsh rule, not regard."));
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+
         // Ledger, right: a strip of sister-town icons (hover for each), then the newest two by name.
         void LedgerSisters()
         {
@@ -503,7 +852,7 @@ public partial class Program
                     dl.AddRectFilled(q, q + new Vector2(px, px), U(ip[j]));
                 }
                 if (ImGui.IsMouseHoveringRect(at, at + new Vector2(Sim.IconSize * px, Sim.IconSize * px)))
-                    Tip($"{s.Name}: {s.Total} dot-men, {Govs.Get(s.Gov).Name}, {Sim.WealthWord(sim.GoldOf(s))}, {sim.Attitude(s).word}");
+                    SisterTip(s);
             }
             ImGui.Dummy(new Vector2(Math.Max(1, icons * step), row));
             // The newest sister by name and how she feels about us; the rest is in the icon tips.
@@ -514,44 +863,56 @@ public partial class Program
             bool hov = ImGui.IsItemHovered();
             ImGui.SameLine(0, 8);
             ImGui.TextColored(V(Darken(wc, 0.55f)), word);
-            if (hov || ImGui.IsItemHovered()) Tip($"{ns.Name}: {ns.Total} dot-men, {Govs.Get(ns.Gov).Name}, {Sim.WealthWord(sim.GoldOf(ns))}, {word}");
+            if (hov || ImGui.IsItemHovered() || showSisterTip) SisterTip(ns);
         }
 
         // The tooltip for the building under the mouse.
         void HoverTip()
         {
+            if (modal) return;
             if (hoverRank < 0 || hoverRank >= sim.Built.Count) return;
             var (title, lines) = sim.InfoFor(hoverRank);
             if (testMouse != null) ImGui.SetNextWindowPos(testMouse.Value + new Vector2(16, 16));
             ImGui.BeginTooltip();
             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 24);
-            var tp = ImGui.GetCursorScreenPos();
-            ImGui.Text(title);
-            ImGui.GetWindowDrawList().AddText(tp + new Vector2(1, 0), U(Ink), title);
+            BoldItem(title);
             ImGui.Separator();
             foreach (var l in lines) ImGui.TextWrapped(Esc(l));
             ImGui.PopTextWrapPos();
             ImGui.EndTooltip();
         }
 
-        // The panels use Lucida Console (the font of the PowerShell console the mods run in) at 18 px.
-        // Falls back to Segoe UI, then Pixelify Sans, then the ImGui default.
+        // The panels use Tahoma (the XP and MSN Messenger font, ships with Windows) at 18 px, with Tahoma Bold for
+        // titles and names. Falls back to Lucida Console, Segoe UI, Pixelify Sans, then the ImGui default (faux bold).
         static unsafe void LoadFont()
         {
             var io = ImGui.GetIO();
             string fonts = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts");
-            string[] tries = { Path.Combine(fonts, "lucon.ttf"), Path.Combine(fonts, "segoeui.ttf"), Path.Combine(AppContext.BaseDirectory, "resources", "fonts", "PixelifySans.ttf") };
+            string[] tries = { Path.Combine(fonts, "tahoma.ttf"), Path.Combine(fonts, "lucon.ttf"), Path.Combine(fonts, "segoeui.ttf"), Path.Combine(AppContext.BaseDirectory, "resources", "fonts", "PixelifySans.ttf") };
             string? path = tries.FirstOrDefault(File.Exists);
             if (path == null) { io.Fonts.AddFontDefault(); io.FontGlobalScale = 1.5f; return; }
-            io.Fonts.AddFontFromFileTTF(path, 18f);
+            // Each font is drawn by Windows' GDI renderer when it can be (XpText, XP-style crisp text), else by ImGui.
+            // cell is the GDI cell height; Impact is a size smaller because it runs tall.
+            ImFontPtr Load(string file, int cell = 18) => XpText.Add(file, 18f, cell) ?? io.Fonts.AddFontFromFileTTF(file, cell);
+            Load(path);
+            string bold = Path.Combine(fonts, "tahomabd.ttf");
+            if (path.EndsWith("tahoma.ttf") && File.Exists(bold)) { boldFont = Load(bold); hasBold = true; }
+            // The chat fonts people pick (Messenger.ChatStyles); a missing one falls back to the main font.
+            foreach (var face in Sim.ChatFaces)
+            {
+                string f = Path.Combine(fonts, face + ".ttf");
+                if (File.Exists(f)) chatFonts[face] = Load(f, face == "impact" ? 17 : 18);
+            }
         }
 
-        // Square corners, black text, Windows 98 tooltips (pale yellow, black edge). The windows themselves are
-        // see-through: their frames are drawn by DrawUi.
+        // XP style for what ImGui draws itself: square pale yellow tooltips with a black edge, rounded blue scrollbars.
+        // The windows themselves are see-through: their frames are drawn by DrawUi.
         static void Theme()
         {
             var st = ImGui.GetStyle();
-            st.WindowRounding = st.ChildRounding = st.FrameRounding = st.PopupRounding = st.ScrollbarRounding = st.GrabRounding = 0;
+            st.WindowRounding = st.ChildRounding = st.FrameRounding = st.PopupRounding = 0;
+            st.ScrollbarRounding = 6;
+            st.GrabRounding = 3;
             st.WindowBorderSize = 1;
             st.ChildBorderSize = 0;
             st.PopupBorderSize = 1;
@@ -566,11 +927,11 @@ public partial class Program
             c[(int)ImGuiCol.ChildBg] = V(0, 0);
             c[(int)ImGuiCol.PopupBg] = V(TipBg);
             c[(int)ImGuiCol.Border] = V(Ink);
-            c[(int)ImGuiCol.Separator] = V(Shade);
-            c[(int)ImGuiCol.ScrollbarBg] = V(Light);
-            c[(int)ImGuiCol.ScrollbarGrab] = V(Face);
-            c[(int)ImGuiCol.ScrollbarGrabHovered] = V(0xd0d0d0);
-            c[(int)ImGuiCol.ScrollbarGrabActive] = V(Shade);
+            c[(int)ImGuiCol.Separator] = V(Etch);
+            c[(int)ImGuiCol.ScrollbarBg] = V(0xf4f3ee);
+            c[(int)ImGuiCol.ScrollbarGrab] = V(0xc1d3fb);
+            c[(int)ImGuiCol.ScrollbarGrabHovered] = V(0xd6e3ff);
+            c[(int)ImGuiCol.ScrollbarGrabActive] = V(0x9db8f0);
         }
     }
 }

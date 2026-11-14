@@ -78,6 +78,7 @@ partial class Sim
 
     void GoTo(Walker w, int x2, int y2, Goal goal, int dest)
     {
+        if (w.InLine >= 0) LeaveLine(w);
         w.Path = Route(w.X, w.Y, x2, y2, w.Lane);
         w.Goal = goal;
         w.Dest = dest;
@@ -109,8 +110,19 @@ partial class Sim
         var social = new List<int>();
         // Beating a fire: stay at the blaze while it burns.
         if (w.Goal == Goal.Fight && w.Dest >= 0 && Burning(w.Dest)) { w.Until = TickNo + 20; return; }
-        if (w.Sick) { GoHome(w); return; } // the sick go home to bed
+        // Still in a queue when patience ran out: give up on that counter for a while.
+        if (w.InLine >= 0) { LeaveLine(w); w.NoFoodUntil = TickNo + Secs(15, 30); lastQueueTick = TickNo; CountTurned(); }
+        // Their time has come: home to die there (or here, if this is home or there is none).
+        if (w.Fading != "") { int h = HomeOf(w); if (h < 0 || w.At == h || Burning(h)) PassAway(w, w.Fading); else GoHome(w); return; }
+        if (w.Sick || w.Hurt) { GoHome(w); return; } // the sick and the wounded go home to bed
+        if (w.Bag > 0) { GoHome(w); return; }        // a hoarder takes the shopping straight home
+        // A carrier with a full sack finishes the delivery; one whose trip was interrupted gives the job up.
+        if (w.Good >= 0) { if (w.Load > 0) { Deliver(w); return; } if (w.Goal != Goal.Haul) EndJob(w); }
+        bool curfew = G.Curfew;
+        bool dark = d < 0.25 || (curfew && d < 0.4);
+        if (GoEat(w, dark)) return; // the hungry look for food before anything else
         if (Festival && Chance() < 0.75) { JoinFestival(w); return; }
+        if (w.Kid != 0 && JoinBrigade(w, d)) return;
         bool storm = Stormy;
         for (int i = 0; i < v; i++)
         {
@@ -120,14 +132,15 @@ partial class Sim
             if (Content.Social.Contains(Built[i])) social.Add(i);
         }
         // At night owls may go out where there is company; everyone else goes home.
-        bool curfew = G.Curfew;
-        if (d < 0.25 || (curfew && d < 0.4))
+        if (dark)
         {
             if (!curfew && w.Owl && social.Count > 0 && Chance() < 0.5) { Visit(w, Pick(social)); return; }
             GoHome(w);
             return;
         }
         if (storm && Chance() < 0.35) { GoHome(w); return; }
+        // Work first: carry food along the chain if something needs carrying (not in a storm).
+        if (!storm && Chance() < 0.6 && TakeJob(w)) return;
         double r = Chance();
         if (r < 0.7 && places.Count > 0) { Visit(w, Pick(places)); return; }
         if (r < 0.85 && v > 1)
@@ -146,9 +159,14 @@ partial class Sim
         double linger = Stormy ? 1.8 : 1; // bad weather keeps people indoors longer
         // A building that caught fire on the way is not entered.
         if ((w.Goal == Goal.Home || w.Goal == Goal.Visit) && w.Dest >= 0 && Burning(w.Dest)) { w.At = -1; w.Mode = Mode.Wait; w.Until = TickNo + Secs(1, 3); return; }
+        if (w.Goal == Goal.Haul) { ArriveHaul(w); return; }
+        if (w.Goal == Goal.Eat) { ArriveEat(w); return; }
         if (w.Goal == Goal.Home)
         {
             w.At = w.Dest;
+            w.Bag = 0;
+            if (w.Fading != "") { PassAway(w, w.Fading); return; }
+            SupperAtHome(w, w.Dest);
             w.Mode = Mode.Inside;
             w.Sleep = d < 0.25;
             w.Until = TickNo + Round(Secs(2, 8) * linger);
@@ -203,7 +221,7 @@ partial class Sim
 
     void StepWalker(Walker w, double d)
     {
-        if (w.Gone) return;
+        if (w.Gone || w.Follow != null) return;   // a child in the youth brigade is moved by StepBrigade
         if (w.Mode == Mode.Inside)
         {
             if (w.Sleep)
@@ -211,7 +229,7 @@ partial class Sim
                 if (d > 0.32) { w.Sleep = false; w.Until = TickNo + RandInt(0, 300); }
                 return;
             }
-            if (w.Sick && w.At == HomeOf(w)) return; // in bed until better
+            if ((w.Sick || w.Hurt) && w.At == HomeOf(w)) return; // in bed until better
             if (TickNo >= w.Until)
             {
                 if (w.At >= 0 && w.At < Lots.Count) (w.X, w.Y) = DoorOf(w.At);
@@ -225,7 +243,7 @@ partial class Sim
             if (TickNo >= w.Until) Decide(w, d);
             return;
         }
-        if (TickNo % w.Period != 0) return;
+        if (TickNo % (w.Food < WeakAt ? w.Period + 1 : w.Period) != 0) return; // the starving walk slowly
         if (WalkStep(w)) Arrive(w, d);
     }
 }

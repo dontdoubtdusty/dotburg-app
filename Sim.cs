@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Dotburg;
 
 enum Mode { Walk, Wait, Inside }
-enum Goal { Home, Visit, Stroll, Fest, Leave, Taken, Fight }
+enum Goal { Home, Visit, Stroll, Fest, Leave, Taken, Fight, Haul, Eat }
 
 // One dot-man (or, later, a visitor). Positions are in town pixels and always sit on a road.
 class Walker
@@ -25,6 +25,7 @@ class Walker
     public bool Lead;             // the town's leader (later stage)
     public bool Gone;             // left town or died; removed after this tick
     public bool Sick;             // showing illness: goes home to bed (set once incubation ends)
+    public bool Hurt;             // someone who matters is wounded or poisoned and keeps to bed (Health.cs)
     public int Dis = -1;          // index into Diseases while infected, else -1
     public long Incub;            // tick the illness shows
     public double Sev, Imm;       // severity and immunity, 0..1: whichever reaches 1 first decides
@@ -35,6 +36,19 @@ class Walker
     public string To = "";        // for Goal.Leave: the sister town they are moving to, "" for nowhere
     public string Kind = "";      // "" for a citizen; visitors: envoy, team, spy, refugee, cart
     public long Stay;             // visitors: tick they head home
+    public Walker? Follow;        // a child marching behind this guard (youth brigade); not saved
+    public int PX, PY;            // guards: where they stood before their last step, so a child can walk in their tracks
+    public double Food = 0.8;     // how full they are, 0..1 (Food.cs); saved
+    public double Starve;         // days spent with an empty stomach; saved
+    public int Good = -1;         // carrying: the good (a Good), or -1
+    public double Load;           // ...how much of it is in the sack
+    public int Src = -1, Dst = -1;   // ...from which store (-1: the barn at the fields) to which
+    public long NoFoodUntil;      // found nothing to eat: does not look again until this tick
+    public double Born = double.NaN;   // town clock at birth (Lives.cs); NaN until given an age; saved as years
+    public string Fading = "";    // dying of an ordinary cause: they go home and die there (Lives.cs); not saved
+    public int InLine = -1;       // standing in the queue at this counter, or -1; not saved
+    public int Bag;               // meals bought to hoard, carried home in their arms; not saved
+    public List<Bond> Bonds = new();   // grudges and friendships, at most three (Bonds.cs); saved
 }
 
 // Scaffolding over a lot while something is built or upgraded. Up is the old type for an upgrade.
@@ -160,9 +174,10 @@ partial class Sim
     public int DayNumber => (int)Math.Floor(Age / DayMs) + 1;
 
     // ---------- the crier and the chronicle ----------
-    // A line counts as major if it matches this (tier changes, charters, rule changes,
-    // leader deaths, wars, plagues, harvests, burn-downs, absorptions and collapses).
-    static readonly Regex Major = new(@"\b(is now an? (hamlet|village|town|city)|chartered|founded|overthr|revolution|coup|assassinat|takes the throne|crowned|dies|died|plague|famine|harvest fails|bumper|great fire|burns down|perishes in the fire|lives? (is|are) lost|war|defeats|election day|re-elected|steps down|takes power|absorbs|collapses|chooses|stabbing|saboteur|taken away|outbreak|life (is|was) lost|victory|defeat)\b", RegexOptions.IgnoreCase);
+    // A line counts as major if it matches this (tier changes, charters, rule changes, leader deaths, wars, plagues,
+    // every harvest, burn-downs, absorptions and collapses, and since 0.66 the good news too: trade agreements, aid
+    // sent, tribute paid). First buildings of each kind are noted directly (Growth.cs).
+    static readonly Regex Major = new(@"\b(is now an? (hamlet|village|town|city)|chartered|founded|overthr\w*|revolution|coup|assassin\w*|takes the throne|crowned|dies|died|plague|famine|harvest fails|harvest is in|bumper|great fire|burns down|perishes in the fire|lives? (is|are) lost|war|defeats|election day|re-elected|steps down|takes power|absorbs|collapses|chooses|settles on|stabbing|saboteur|taken away|outbreak|life (is|was) lost|victory|defeat|trade agreement|sends aid|pays tribute)\b", RegexOptions.IgnoreCase);
     readonly List<string> recentNotes = new();
     public readonly List<string> ChronicleQueue = new();   // lines waiting to be written to the chronicle file
 
@@ -171,16 +186,18 @@ partial class Sim
         if (Quiet || recentNotes.Contains(text)) return;
         recentNotes.Insert(0, text);
         if (recentNotes.Count > 12) recentNotes.RemoveAt(recentNotes.Count - 1);
-        var d = DateTime.Now;
-        ChronicleQueue.Add($"- {d:yyyy-MM-dd HH:mm} | {Name}, day {DayNumber}, {SeasonNow.Name} | {text}");
+        // Written by the chronicler (Chronicler.cs): in their voice, signed, or left out if they would rather not.
+        EnsureChronicler();
+        if (Pen(text) is { } penned) Write(penned);
     }
 
     // Put a line on the town crier.
-    public void Say(string text)
+    public void Say(string text, bool note = true)
     {
         if (Quiet) return;
         SayLog?.Add(text);
-        if (Major.IsMatch(text)) Note(text);
+        if (note && Major.IsMatch(text)) Note(text);
+        else MaybeChronicle(text);   // the chronicler may write it down anyway, if it is the kind of thing they care about
         Crier = text;
         Pop("", text, "", false, true);
         chatterDue = TickNo + Secs(ChatterMs[0] / 1000, ChatterMs[1] / 1000);
@@ -208,9 +225,9 @@ partial class Sim
         if (Has("park") && night && SeasonNo == 1 && Weather != Wx.Rain && Weather != Wx.Snow) o.Add("Fireflies over the park.");
         if (cat != null) { o.Add("The cat naps on a doorstep."); o.Add("The cat stalks a moth."); }
         if (Weather == Wx.Rain || Weather == Wx.Storm) { o.Add("Puddles on every road."); o.Add("Umbrellas out."); }
-        if (Weather == Wx.Storm) { o.Add("Shutters bang in the wind."); o.Add("Children count between the flash and the thunder."); }
+        if (Weather == Wx.Storm) { o.Add("Shutters bang in the wind."); o.Add("Dotlets count between the flash and the thunder."); }
         if (Weather == Wx.Fog) o.Add("Lamps glow dimly in the fog.");
-        if (Weather == Wx.Snow) o.Add("Children build a snowman.");
+        if (Weather == Wx.Snow) o.Add("Dotlets build a snowman.");
         int se = SeasonNo;
         if (se == 0) { o.Add("Lambs in the fields."); o.Add("Blossom on the hedges."); }
         if (se == 1 && !night) o.Add("A hot afternoon; dogs lie in the shade.");
@@ -247,11 +264,15 @@ partial class Sim
         StepLife(d, dtMs);
         StepFires(dtMs);
         UpdateMood(dtMs);
+        StepFood();
         if (TickNo % DisEvery == 0) StepDisease();
+        if (TickNo % HealthEvery == 0) StepHealth();
         polClock += dtMs;
         if (polClock >= PolStepMs) { polClock -= PolStepMs; Politics(); Events(); }
         StepGuards();
+        StepBrigade(Daylight());
         StepVisitors();
+        if (TickNo % 27 == 0) StepPals();   // the leader's own contacts and the chronicler's pen, every 3 s or so
         double p = Phase;
         if (lastPhase >= 0 && lastPhase < 0.25 && p >= 0.25) Say($"Day {DayNumber} dawns over {Name}.");
         lastPhase = p;
@@ -273,7 +294,7 @@ partial class Sim
     public void FreshRegion()
     {
         Founded = 1;
-        Scheme = 0;
+        Scheme = Rng.Next(Content.Schemes.Length);   // a new region starts in any landscape, so the first dot-men are any colour
         Name = Content.TownName(Rng, new HashSet<string>(), Founded);
         Tier = 1;
         Built = new() { "house" };
@@ -293,5 +314,6 @@ partial class Sim
         Age = 0.3 * DayMs;
         Build();
         ResetGov();
+        InitFood();
     }
 }

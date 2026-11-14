@@ -20,6 +20,18 @@ partial class Sim
         return !(q >= bed && q < wake);
     }
 
+    byte[] lampNow = Array.Empty<byte>();
+
+    // Is street lamp n lit at day phase p? On from dusk; most go out around midnight, the ones by an
+    // all-night building or the seat burn till morning.
+    bool LampOn(int n, double p)
+    {
+        if (LampLate[n]) return true;
+        double q = (p + 0.5) % 1; // 0 at noon, 0.5 at midnight
+        double outAt = 0.46 + Hash(n + 11, 5) / 97.0 * 0.1;
+        return !(q >= outAt && q < 0.75);
+    }
+
     // The scenery as lit and weathered now: snow, puddles, night, grey sky, fog, lights.
     void ComposeBase(double nq, double warm, double gq, double fq, double wq, double cq)
     {
@@ -42,8 +54,8 @@ partial class Sim
                 int r = WinRank[i];
                 if (r >= 0 && litNow[r] != 0) c = Mix(c, 0xffd770, nq);
             }
-            else if (f == 2) c = Mix(c, 0xffe8a0, nq * 0.95);
-            else if (f == 3) c = Mix(c, 0xffcf80, nq * 0.28);
+            else if (f == 2 && lampNow[LampNo[i]] != 0) c = Mix(c, 0xffe8a0, nq * 0.95);
+            else if (f == 3 && lampNow[LampNo[i]] != 0) c = Mix(c, 0xffcf80, nq * 0.28);
             baseImg[i] = c;
         }
     }
@@ -67,6 +79,64 @@ partial class Sim
         if (cap >= 0 && y > 0) Out[(y - 1) * W + x] = cap;
     }
 
+    // Food you can see: goods in the shop and bakery windows (dark when bare), sacks stacked by the mill and at the
+    // field gate as the stores rise and fall, and under a rationing rule a guard at every counter while people panic.
+    void DrawFoodSigns(int v, double d, double nq, double warm)
+    {
+        int bread = GoodColors[(int)Good.Bread], greens = GoodColors[(int)Good.Greens], grain = GoodColors[(int)Good.Grain];
+        int bare = 0x3a3632;
+        bool day = d > 0.25;
+        var works = new HashSet<int>(WorksList.Select(w => w.Rank));
+        int pileN = 0;
+        for (int r = 0; r < v; r++)
+        {
+            if (works.Contains(r) || Burning(r)) continue;
+            string t = Built[r];
+            int bx = Ox + Lots[r].tx * TileW + 2, by = Oy + Lots[r].ty * TileH + 2;
+            void Px(int sx, int sy, int c) => Blend(bx + sx, by + sy, Tint(c, nq, warm), 1);
+            if (day && litNow[r] == 0)
+            {
+                if (IsSeller(t))
+                {
+                    // Left window bread (or porridge grain before the mill), right window greens.
+                    double loaf = Stock[r, (int)Good.Bread] + Stock[r, (int)Good.Grain];
+                    Px(1, 4, loaf >= 1 ? (Stock[r, (int)Good.Bread] >= 1 ? bread : grain) : bare);
+                    Px(5, 4, Stock[r, (int)Good.Greens] >= 1 ? greens : bare);
+                    if (t == "market")
+                    {
+                        Px(1, 3, loaf >= 10 ? bread : bare);
+                        Px(5, 3, Stock[r, (int)Good.Greens] >= 10 ? greens : bare);
+                    }
+                }
+                else if (t == "bakery")
+                {
+                    Px(2, 4, Stock[r, (int)Good.Bread] >= 1 ? bread : bare);
+                    Px(4, 4, Stock[r, (int)Good.Bread] >= 12 ? bread : bare);
+                }
+            }
+            // The mill's granary spills over into sacks either side of the door.
+            if (t == "mill" && pileN++ == 0)
+            {
+                int n = (int)Math.Min(6, Math.Ceiling(Stock[r, (int)Good.Grain] / 60));
+                (int, int)[] spots = { (0, 5), (6, 5), (0, 4), (6, 4), (0, 3), (6, 3) };
+                for (int k = 0; k < n; k++) Px(spots[k].Item1, spots[k].Item2, k % 2 == 0 ? grain : Mix(grain, 0x8a6a20, 0.3));
+            }
+            // A guard at the counter door while food is rationed.
+            if (day && Panic > 0.5 && FoodRule.hoard == 0 && G.Guards > 0 && SellsFood(r))
+            {
+                var (dx, dy) = DoorOf(r);
+                Dot(dx + 1, dy, Tint(0x2a2e36, nq * 0.5, 0), Tint(G.Banner, nq * 0.7, 0));
+            }
+        }
+        // The barn at the fields: stooks and sacks by the west gate, a green crate when there are greens.
+        var (ex, ey) = Entrance();
+        int gx = Ox + ex, gy = Oy + ey;
+        int sacks = (int)Math.Min(6, Math.Ceiling(Barn[(int)Good.Grain] / 80));
+        (int, int)[] gate = { (-1, -1), (-2, -1), (-1, 1), (-2, 1), (-2, -2), (-1, 2) };
+        for (int k = 0; k < sacks; k++) Blend(gx + gate[k].Item1, gy + gate[k].Item2, Tint(k % 2 == 0 ? grain : Mix(grain, 0x8a6a20, 0.3), nq, warm), 1);
+        if (Barn[(int)Good.Greens] >= 3) Blend(gx - 3, gy - 1, Tint(greens, nq, warm), 1);
+    }
+
     // Compose a frame of pixels into Out.
     public void Frame()
     {
@@ -82,9 +152,16 @@ partial class Sim
             litNow[r] = (byte)(nq > 0 && LightsOn(r, p) ? 1 : 0);
             litKey[r] = litNow[r] == 1 ? '1' : '0';
         }
+        if (lampNow.Length != LampLate.Count) lampNow = new byte[LampLate.Count];
+        var lampKey = new char[LampLate.Count];
+        for (int k = 0; k < lampNow.Length; k++)
+        {
+            lampNow[k] = (byte)(nq > 0 && LampOn(k, p) ? 1 : 0);
+            lampKey[k] = lampNow[k] == 1 ? '1' : '0';
+        }
         double gq = Math.Round(gloom * 10) / 10, fq = Math.Round(fogAmt * 8) / 8;
         double wq = Math.Round(wet * 6) / 6, cq = Math.Round(cover * 8) / 8;
-        string key = $"{StaticVer}|{nq}|{warm}|{gq}|{fq}|{wq}|{cq}|{new string(litKey)}";
+        string key = $"{StaticVer}|{nq}|{warm}|{gq}|{fq}|{wq}|{cq}|{new string(litKey)}|{new string(lampKey)}";
         if (key != baseKey)
         {
             baseKey = key;
@@ -178,6 +255,8 @@ partial class Sim
             if (((TickNo >> 1) % 4) == 0) Blend(bx, by - 1, 0xfff4c0, 0.5); // a hammer glint
         }
 
+        DrawFoodSigns(v, d, nq, warm);
+
         // Dot-men, each with a shadow; at a festival they dance a little.
         for (int j = 0; j < Walkers.Count; j++)
         {
@@ -187,9 +266,14 @@ partial class Sim
             int c = Content.DotColors[w.C];
             if (w.Sick) c = Mix(c, SickTint(w), 0.5);
             else if (w.Kid != 0) c = Mix(c, 0xffffff, 0.4);
+            if (w.Food < WeakAt) c = Mix(c, 0xc8c0b0, 0.45); // the starving look washed out
             Dot(w.X + dx, w.Y, Tint(c, nq, warm), w.Lead ? Tint(0xf2d050, nq * 0.5, 0) : -1);
+            // A carrier has a sack beside them in the colour of what is in it (grain gold, flour cream, bread brown, greens green).
+            if (w.Good >= 0 && w.Load > 0) Blend(Ox + w.X + dx + 1, Oy + w.Y, Tint(GoodColors[w.Good], nq, warm), 1);
+            // A hoarder walks home with an armful of bread.
+            else if (w.Bag > 0 && w.Mode == Mode.Walk) Blend(Ox + w.X + dx + 1, Oy + w.Y, Tint(GoodColors[(int)Good.Bread], nq, warm), 1);
             // Someone beating a fire carries a bucket: a blue pixel that splashes.
-            if (w.Goal == Goal.Fight && w.Mode != Mode.Inside) Blend(w.X + dx + 1, w.Y - 1, (TickNo >> 1) % 2 == 0 ? 0x78b8ff : 0xc8e4ff, 1);
+            if (w.Goal == Goal.Fight && w.Mode != Mode.Inside) Blend(Ox + w.X + dx + 1, Oy + w.Y - 1, (TickNo >> 1) % 2 == 0 ? 0x78b8ff : 0xc8e4ff, 1);
         }
         // Guards: dark with a cap in the rule's banner colour.
         int capCol = Tint(G.Banner, nq * 0.7, 0);
@@ -205,7 +289,8 @@ partial class Sim
                 Blend(Ox + vi.X, Oy + vi.Y + 1, 0x000000, 0.2);
                 Blend(Ox + vi.X - dir, Oy + vi.Y + 1, 0x000000, 0.2);
                 Blend(Ox + vi.X, Oy + vi.Y, Tint(0x6a4a2a, nq, warm), 1);       // horse
-                Blend(Ox + vi.X - dir, Oy + vi.Y, Tint(0xc8a46a, nq, warm), 1); // wagon
+                Blend(Ox + vi.X - dir, Oy + vi.Y, Tint(vi.Good >= 0 ? GoodColors[vi.Good] : 0xc8a46a, nq, warm), 1); // wagon
+                if (vi.Good >= 0) Blend(Ox + vi.X - dir, Oy + vi.Y - 1, Tint(GoodColors[vi.Good], nq, warm), 1); // piled with grain sacks
                 continue;
             }
             int vc = vi.Kind is "envoy" or "team" or "refugee" ? Content.DotColors[vi.C]

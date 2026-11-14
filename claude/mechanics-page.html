@@ -1,9 +1,267 @@
 <title>Mechanic Intersectionality Tool</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="mechanics-kit" content="1.0.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+
+<!-- MECHANICS DATA START: everything between the START and END lines belongs to the project. The rest of the file is the shared kit page (claude/kit/mechanics in the GitHub root); replace it to upgrade, keep this block. -->
+<script type="application/json" id="mechanics-data">
+{
+  "project": "Dotburg",
+  "eyebrow": "Dotburg design tool",
+  "accent": { "light": "#3a63b8", "dark": "#8fb0f0" },
+  "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then republish the page (claude/mechanics-page.html). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Checked against CLAUDE.md and the code notes Nov 11 (0.45), not yet line by line.",
+  "updated": "2026-11-13",
+  "version": "0.76.0",
+  "levels": [
+    { "level": 0, "name": "None", "percent": 0 },
+    { "level": 1, "name": "Flavor", "percent": 33 },
+    { "level": 2, "name": "Nudge", "percent": 66 },
+    { "level": 3, "name": "Drives", "percent": 100 }
+  ],
+  "groups": [
+    { "id": "town", "name": "Town and people" },
+    { "id": "world", "name": "Time and sky" },
+    { "id": "rule", "name": "Rule and politics" },
+    { "id": "region", "name": "Region" },
+    { "id": "events", "name": "Events" }
+  ],
+  "mechanics": [
+    { "id": "growth", "name": "Growth", "group": "town", "summary": "Own clock gives one unit per 20 s; units become newcomers, buildings, upgrades and tiers up to City." },
+    { "id": "construction", "name": "Construction", "group": "town", "summary": "Scaffolding and builders over a lot while something is built or upgraded." },
+    { "id": "walkers", "name": "Dot-men", "group": "town", "summary": "Homes, visits, night owls, stable ids and habits; the people the rest acts on." },
+    { "id": "crier", "name": "Crier and chronicle", "group": "town", "summary": "The news, as toasts over the town picture (0.52; the crier box is gone), and the file of major events." },
+    { "id": "daynight", "name": "Day and night", "group": "world", "summary": "Six-minute day: lights, sleep, curfew hours, the clock politics and events roll on." },
+    { "id": "seasons", "name": "Seasons", "group": "world", "summary": "Four seasons of four days; palettes, mood drift, illness timing." },
+    { "id": "weather", "name": "Weather", "group": "world", "summary": "Markov sky by scheme and season: clouds, rain, snow cover, fog, storms, lightning flash." },
+    { "id": "wildlife", "name": "Small life", "group": "world", "summary": "Smoke, cat, ducks, fireflies, birds, aurora. Cosmetic." },
+    { "id": "gov", "name": "Rule", "group": "rule", "summary": "A new settlement has no rule and no leader (0.73) until it has 5 grown dot-men; then it settles on one of four hamlet rules (elders, headman, founding family, shrine keepers), weighted by who they are: the old, strong wills, the pious, friendships. It outgrows it on becoming a Village, choosing one of nine rules by its scheme and by the hamlet rule it grew up under (a headman leans to crown or junta, shrine keepers to a theocracy or commune, a founding family to crown or guild, elders to a council). Costs, home bonus, curfew, guards, banner. Hover the rule name for what it means in play (0.68.1, built from the rule's numbers)." },
+    { "id": "leader", "name": "Leader and traits", "group": "rule", "summary": "A leader dot-man with two of eight traits, epithets, heirs, statues." },
+    { "id": "health", "name": "Leader health", "group": "rule", "summary": "RimWorld-style body for every leader and former leader in town: age (a year per town day), wounds on body parts that bleed until tended, infection, poison, weak heart, growths, strokes, frailty, falls, scars and lost parts. Every death has a named cause (\"dies of an infected stab wound in the left leg, 2 days after an attempt on their life\"). Shown beside the traits, chart on hover, and on the home's hover tip." },
+    { "id": "mood", "name": "Mood", "group": "rule", "summary": "The town's mood bar: a target summed from standing reasons (rule, weather, season, crowding, leader traits, sickness, quarantine, war, hunger, ruins) that the mood drifts toward, plus events that move it at once. Hover it for every reason with its number and what lately moved it (0.72)." },
+    { "id": "politics", "name": "Politics", "group": "rule", "summary": "Every quarter day: revolution, coup, assassination, elections, reforms, emigration, arrests." },
+    { "id": "guards", "name": "Guards and curfew", "group": "rule", "summary": "Patrols, escorts, curfew, rallies under harsh rule." },
+    { "id": "festivals", "name": "Festivals", "group": "events", "summary": "Bunting and dancing after a finished public building or a tier-up." },
+    { "id": "illness", "name": "Illness", "group": "events", "summary": "Five illnesses, spread by shared building, severity racing immunity, care and quarantine." },
+    { "id": "births", "name": "Weddings and births", "group": "events", "summary": "Weddings owe a baby; children drawn lighter for a day, extra to the cap." },
+    { "id": "fires", "name": "Fires", "group": "events", "summary": "RimWorld-style: a fire has a size that grows on fuel and shrinks under rain, water and fighters; it eats the building, may jump to flammable neighbours, and leaves a ruin rebuilt after a day or two." },
+    { "id": "treasury", "name": "Treasury", "group": "region", "summary": "Gold from caravans and aid; paid out in pleas, pacts and tribute." },
+    { "id": "sisters", "name": "Sister towns", "group": "region", "summary": "Charter, relations, envoys, letters, aid, pacts, quarrels, absorption and collapse. A sister's regard drifts toward a base (goodwill, rule gap, same rule, her ruler's traits) and events move it at once; hover a sister for every reason with its number (0.72)." },
+    { "id": "migration", "name": "Migration", "group": "region", "summary": "Newcomers and emigrants carry a colour to and from named sisters; refugees, exiles." },
+    { "id": "visitors", "name": "Visitors", "group": "region", "summary": "Envoys, trade teams, spies, caravans: not citizens, not saved." },
+    { "id": "war", "name": "War", "group": "events", "summary": "This town and a sister fight for one to three days: soldiers march out of the west gate, news comes from the front, raiders may set a building alight; the harsher, bigger side usually wins. Two sisters can also fight (news only)." },
+    { "id": "blight", "name": "Plague and famine", "group": "events", "summary": "One plague or famine at a time starts in a random town of the region and creeps from town to town for three to six days. Sisters lose people; here plague becomes the grey plague outbreak and famine thins the greens and the growing crop and rots the stores (Food), so the hunger that follows is real, and everything costs a third more." },
+    { "id": "food", "name": "Food and hunger", "group": "town", "summary": "Songs of Syx style supply and access. Fields off the map (a share of the able adults, more in a hamlet) give greens all year and grain at the autumn reaping; seed corn is set aside at harvest and sown in spring. Grain goes from the barn at the west gate to the mill (granary, flour), flour to the bakery (bread, baked to demand), bread and greens to the shop and market, carried by ordinary dot-men with a coloured sack. Every dot-man has a stomach: below 0.6 they walk to the nearest counter or their pantry, below 0.45 they are hungry, below 0.15 weak and slow, and two days empty kills. Everything rots (bread fastest, grain in an open barn in the rain). Hunger slows work, carrying and reaping, so shortages feed themselves; low stores bring panic buying (hoarding) or rationing by rule. Each rule holds back days of grain beyond the next harvest and sells the rest; gentle rules open the granary to the hungry. Saved: stores, stomachs, fields, seed. 0.64: food on the picture: goods in shop windows (dark when bare), sacks by the mill and the west gate, bread lines at busy or bare counters, hoarders carrying bread home, ration guards at counters, caravans loaded with grain." },
+    { "id": "messenger", "name": "Messenger", "group": "region", "summary": "MSN-style panel in place of the chronicle: our leader as \"me\", sisters, group chats between sisters and notables (captain, physician, warden, ringleader, steward) as contacts with status and personal messages; read only, 66 emoticons (40 classics and 26 picked from the owner's MSN sheet), typing delay, nudge on urgent news. Last 40 lines per chat saved. Plays the MSN message and nudge sounds, a sign-in chime and the XP ding for chronicle events (mutable). Each writer has their own font and colour (leader by trait, sister by rule, notable by job) and people have display pictures (an icon or a varied pixel portrait). 0.69: the Messenger is the leader's account: strong friendships with the leader appear under Friends (they chat in their own font about their lives and the town's troubles, and the leader answers by their own voice), deep grudges either way under Blocked, and the leader before them while they live in town. A new leader signs in to their own list; the public contacts (chronicle, notables, sisters, group chats) stay. Half of all leaders use a personal message of their own. 0.75: display pictures are mostly real photos (58 of 64, some with a 2005 look) and a few kept cartoons. 0.76: everyone types in their own 2006 hand (lowercase, no stops, trailing dots, !!!, text speak, typos, xx and lol, ~*~ frames, SHOUTING, aLtErNaTiNg caps, l33t, short bursts); quirks fall away in grave news." },
+    { "id": "bonds", "name": "Character and bonds", "group": "town", "summary": "0.68: every dot-man has three traits (heart, work, spirit; 9 each) and 1 in 16 a rare wildcard (firebug, vengeful, doomsayer, light-fingered, charmer). Sharing a room, traits decide what happens: bullying, theft, quarrels, envy, cheating, friendship. Up to 3 grudges or friendships each, with the origin and day, saved." },
+    { "id": "chronicler", "name": "Chronicler", "group": "town", "summary": "0.69: a dot-man of the town keeps the chronicle. Their spirit trait is their voice (a remark after a line: gloomy, cheerful, pious, cynical, curious, hot-headed, calm, brave, craven, or doomsayer) and their font and colour; they also write down crier lines that interest them (burials for the gloomy, weddings for the cheerful, strangers for the curious). A friend of the leader flatters and leaves out arrests; an enemy sneers. When they die, leave or are raised to lead, the pen passes with a line, so the chronicle changes hands and looks." }
+  ],
+  "links": [
+    { "from": "growth", "to": "walkers", "level": 3, "why": "Units become newcomers who walk in at the west gate and take the emptiest home." },
+    { "from": "growth", "to": "construction", "level": 3, "why": "Each building or upgrade starts scaffolding on its lot." },
+    { "from": "growth", "to": "gov", "level": 3, "why": "Becoming a Village makes the town choose its rule." },
+    { "from": "growth", "to": "gov", "level": 3, "why": "0.73: a settlement forms its first rule once 5 grown dot-men live there; until then no leader and no politics." },
+    { "from": "bonds", "to": "gov", "level": 2, "why": "0.73: the settlers' traits, ages and friendships weight which hamlet rule they settle on (old heads: elders; strong wills: headman; pious: shrine keepers; friendships: founding family)." },
+    { "from": "gov", "to": "growth", "level": 2, "why": "Rule cost multiplier and home bonus change unit cost and population cap." },
+    { "from": "growth", "to": "festivals", "level": 3, "why": "A finished public building or a tier-up triggers a festival." },
+    { "from": "growth", "to": "sisters", "level": 3, "why": "A finished City is chartered as a sister and a new hamlet is founded." },
+    { "from": "growth", "to": "mood", "level": 1, "why": "A town at its population cap is a little less content." },
+    { "from": "growth", "to": "illness", "level": 2, "why": "Crowding raises the odds of an outbreak." },
+    { "from": "illness", "to": "growth", "level": 2, "why": "Deaths and leavers open places, so newcomers fill them again." },
+    { "from": "construction", "to": "walkers", "level": 1, "why": "Builders appear on scaffolding." },
+    { "from": "daynight", "to": "walkers", "level": 3, "why": "Dot-men sleep at night; night owls and curfew change who is out." },
+    { "from": "daynight", "to": "politics", "level": 3, "why": "Politics and events roll once per quarter day." },
+    { "from": "daynight", "to": "wildlife", "level": 1, "why": "Fireflies and the aurora come out at night." },
+    { "from": "daynight", "to": "illness", "level": 2, "why": "Incubation, severity and immunity run in days." },
+    { "from": "seasons", "to": "weather", "level": 3, "why": "Sky odds and snow cover depend on the season." },
+    { "from": "seasons", "to": "mood", "level": 1, "why": "Each season nudges mood up or down." },
+    { "from": "seasons", "to": "illness", "level": 2, "why": "Each illness has the seasons it favours." },
+    { "from": "seasons", "to": "wildlife", "level": 1, "why": "Snow, ducks and birds follow the season." },
+    { "from": "weather", "to": "walkers", "level": 2, "why": "Storms keep people indoors; nobody sits in the park in the rain." },
+    { "from": "weather", "to": "wildlife", "level": 1, "why": "Rain, snow and fog change what the small life does." },
+    { "from": "weather", "to": "crier", "level": 1, "why": "Weather changes are announced." },
+    { "from": "gov", "to": "leader", "level": 3, "why": "The rule sets the title, term, succession and which traits are likely." },
+    { "from": "gov", "to": "mood", "level": 3, "why": "Each rule has its own baseline mood." },
+    { "from": "gov", "to": "guards", "level": 3, "why": "Harsh rules have curfew, guards and rallies." },
+    { "from": "gov", "to": "politics", "level": 3, "why": "Harshness sets the odds of revolt, coup, arrest and emigration." },
+    { "from": "gov", "to": "illness", "level": 2, "why": "Harsh rule seals sick houses: less spread, lower mood." },
+    { "from": "gov", "to": "festivals", "level": 1, "why": "The festival line and look follow the rule." },
+    { "from": "gov", "to": "sisters", "level": 2, "why": "Rules that differ in harshness quarrel; similar ones sign agreements." },
+    { "from": "leader", "to": "mood", "level": 2, "why": "Traits move the mood level." },
+    { "from": "leader", "to": "politics", "level": 3, "why": "Traits change assassination, revolt, coup, arrest, scandal and emigration odds." },
+    { "from": "leader", "to": "illness", "level": 2, "why": "Merciful and able leaders raise care for the sick; a Cruel one seals houses." },
+    { "from": "leader", "to": "treasury", "level": 2, "why": "Traits change income." },
+    { "from": "leader", "to": "walkers", "level": 1, "why": "The leader lives at the seat and wears a gold pixel; proud leaders get statues." },
+    { "from": "mood", "to": "politics", "level": 3, "why": "Anger makes revolt possible; unrest drives emigration." },
+    { "from": "mood", "to": "walkers", "level": 2, "why": "Unhappy dot-men leave town." },
+    { "from": "mood", "to": "births", "level": 2, "why": "Content towns marry more." },
+    { "from": "politics", "to": "gov", "level": 3, "why": "Revolutions, coups and reforms change the rule." },
+    { "from": "politics", "to": "leader", "level": 3, "why": "Deaths, elections, step downs and coups change who leads." },
+    { "from": "politics", "to": "mood", "level": 2, "why": "Events dip or lift mood." },
+    { "from": "politics", "to": "walkers", "level": 3, "why": "Arrests, exiles and emigrants leave; escorts walk." },
+    { "from": "politics", "to": "migration", "level": 3, "why": "Emigrants and exiles join a named sister." },
+    { "from": "politics", "to": "crier", "level": 1, "why": "Each turn of events is announced and the big ones chronicled." },
+    { "from": "guards", "to": "mood", "level": 2, "why": "Curfew and rallies press on mood." },
+    { "from": "guards", "to": "walkers", "level": 2, "why": "Curfew sends people home early; guards patrol the roads." },
+    { "from": "festivals", "to": "walkers", "level": 3, "why": "Dot-men join the dancing under bunting." },
+    { "from": "festivals", "to": "mood", "level": 2, "why": "A festival lifts spirits." },
+    { "from": "illness", "to": "walkers", "level": 3, "why": "The sick go home to bed, tinted by the illness; some die." },
+    { "from": "illness", "to": "mood", "level": 2, "why": "Sickness drags mood down." },
+    { "from": "illness", "to": "leader", "level": 2, "why": "A leader can die of it." },
+    { "from": "illness", "to": "crier", "level": 1, "why": "The first visible case is announced and the toll chronicled." },
+    { "from": "walkers", "to": "illness", "level": 3, "why": "Illness spreads between dot-men who share a building." },
+    { "from": "walkers", "to": "births", "level": 3, "why": "Adults marry and are the parents of children." },
+    { "from": "births", "to": "walkers", "level": 3, "why": "A baby is a new dot-man, lighter until grown, extra to the cap." },
+    { "from": "sisters", "to": "births", "level": 1, "why": "A letter from a friendly sister can propose a wedding." },
+    { "from": "treasury", "to": "sisters", "level": 2, "why": "Gold buys aid, pacts and tribute, and moves relations." },
+    { "from": "treasury", "to": "visitors", "level": 2, "why": "A fuller treasury draws more caravans." },
+    { "from": "sisters", "to": "visitors", "level": 3, "why": "Envoys, teams, spies and caravans come from sisters, drawn by attitude." },
+    { "from": "visitors", "to": "treasury", "level": 2, "why": "Caravans and fairs earn gold." },
+    { "from": "sisters", "to": "migration", "level": 3, "why": "Newcomers arrive from, and leavers settle in, named sisters." },
+    { "from": "migration", "to": "walkers", "level": 3, "why": "Migrants and refugees change the town colours and headcount." },
+    { "from": "sisters", "to": "crier", "level": 1, "why": "Letters, pacts and quarrels are announced." },
+    { "from": "weather", "to": "fires", "level": 3, "why": "Rain cuts a fire down and puts it out in seconds; snow cover and a dry spell change how likely and how fierce." },
+    { "from": "seasons", "to": "fires", "level": 2, "why": "Summer and dry spells raise the odds of a kitchen fire; winter hearths a little." },
+    { "from": "fires", "to": "walkers", "level": 3, "why": "Dot-men run out, rush to the blaze with buckets (a blue pixel), and sleepers may be caught inside." },
+    { "from": "walkers", "to": "fires", "level": 3, "why": "More dot-men at the blaze means more water on it; a small town has too few and loses the building." },
+    { "from": "fires", "to": "construction", "level": 3, "why": "A burnt lot becomes a ruin, then is rebuilt through scaffolding." },
+    { "from": "growth", "to": "fires", "level": 2, "why": "A Town gets a fire brigade; wells and fountains next door help; bigger towns have more neighbours to catch fire." },
+    { "from": "fires", "to": "mood", "level": 2, "why": "Live fires and ruins weigh on mood; a burn-down dips it." },
+    { "from": "fires", "to": "treasury", "level": 2, "why": "A building lost costs gold; a rich town rebuilds faster, a poor one slower." },
+    { "from": "gov", "to": "fires", "level": 2, "why": "Harsh rule blames a saboteur and arrests; commune and council take a collection; a guild rebuilds in half the time." },
+    { "from": "fires", "to": "politics", "level": 1, "why": "A harsh state turns a fire into an arrest." },
+    { "from": "fires", "to": "leader", "level": 1, "why": "A leader can perish in a fire." },
+    { "from": "fires", "to": "crier", "level": 1, "why": "Alarm, spread, rain, bucket line and burn-down lines; burn-downs are chronicled." },
+    { "from": "fires", "to": "sisters", "level": 1, "why": "A saboteur from a sister can start one." },
+    { "from": "sisters", "to": "fires", "level": 2, "why": "Spies sent by a sister may turn out to be saboteurs." },
+    { "from": "growth", "to": "daynight", "level": 1, "why": "Street lamps grow with the tier (0.70): none in a hamlet, the seat's corners in a village, the middle and the church or market in a town, most crossings in a city. Most go out around midnight; lamps by an inn, hall or tower burn till dawn." },
+    { "from": "daynight", "to": "fires", "level": 1, "why": "Flames glow brighter at night, and fewer people are awake to fight them." },
+    { "from": "gov", "to": "war", "level": 2, "why": "The harsher the rule (and the harsher its neighbours), the likelier it picks a fight." },
+    { "from": "sisters", "to": "war", "level": 3, "why": "Every war is against a named sister; the war moves her relation, and she shrinks when she loses." },
+    { "from": "war", "to": "sisters", "level": 3, "why": "A beaten sister loses a fifth of her people and may change rule; relations fall; struck sisters lose gold and may be sent aid. 0.58: the crier says how many the beaten sister buries, and a ruler at war may fall in battle." },
+    { "from": "war", "to": "walkers", "level": 3, "why": "Soldiers march out of the west gate; some never come home, the rest walk back in." },
+    { "from": "war", "to": "mood", "level": 2, "why": "War presses on mood, except under harsh rule that thrives on it; victory lifts it, defeat sinks it." },
+    { "from": "war", "to": "treasury", "level": 2, "why": "A war costs gold every quarter day; victory brings plunder, defeat a bill." },
+    { "from": "war", "to": "fires", "level": 3, "why": "Raiders from the foe set a building alight." },
+    { "from": "war", "to": "politics", "level": 3, "why": "A lost war can topple a harsh ruler by revolution, or hand a gentle town to its army." },
+    { "from": "war", "to": "festivals", "level": 2, "why": "Victory is celebrated with a festival." },
+    { "from": "war", "to": "visitors", "level": 2, "why": "No envoys, teams or caravans come while the war lasts." },
+    { "from": "war", "to": "migration", "level": 2, "why": "When one sister overruns another, refugees reach the gate: taken in or turned back." },
+    { "from": "war", "to": "crier", "level": 1, "why": "Marches, black-edged letters, victory and defeat are announced and chronicled." },
+    { "from": "blight", "to": "illness", "level": 3, "why": "Plague reaching the town starts the grey plague outbreak." },
+    { "from": "blight", "to": "walkers", "level": 3, "why": "Famine kills by hunger and sends people away." },
+    { "from": "blight", "to": "growth", "level": 2, "why": "In a famine everything costs a third more." },
+    { "from": "blight", "to": "sisters", "level": 3, "why": "Stricken sisters lose people and gold, may need aid, and the weakest can collapse. 0.58: when it ends the crier lists how many each sister buried; a ruler in a stricken town may die of it." },
+    { "from": "blight", "to": "visitors", "level": 2, "why": "Caravans come only from sisters outside the plague or famine, half as often while it lasts (0.63; before, none at all)." },
+    { "from": "blight", "to": "crier", "level": 1, "why": "Each new town it reaches is announced." },
+    { "from": "seasons", "to": "blight", "level": 2, "why": "Plague favours winter; famine favours hard winters and dry spells." },
+    { "from": "weather", "to": "blight", "level": 2, "why": "A wet sky raises the odds of plague; a long dry spell raises the odds of famine." },
+    { "from": "sisters", "to": "blight", "level": 3, "why": "It starts in any town of the region and spreads from sister to sister, so it can reach us from outside." },
+    { "from": "weather", "to": "festivals", "level": 3, "why": "Rain or snow puts a festival off until the sky clears and breaks up one already under way; a ruler's rally goes ahead regardless." },
+    { "from": "sisters", "to": "messenger", "level": 3, "why": "Each sister is a contact: her status comes from relations, war and blight (Busy, Away, Blocked), and she writes about envoys, letters, fairs, spies, caravans, wars and her own revolutions; she signs in when founded and off when absorbed or collapsed. 0.58: a sister signs as her ruler, \"mayor.ada@oakford\", so a new rule or a new ruler shows on the list and old lines keep the old name; a dead ruler's successor writes about the funeral; the tooltip shows the ruler's age, traits and time in office." },
+    { "from": "war", "to": "messenger", "level": 2, "why": "The captain reports from the front; a declared war nudges the panel; sisters at war show Busy and quarrel in group chats." },
+    { "from": "illness", "to": "messenger", "level": 2, "why": "The physician writes when an outbreak starts and when it passes; plague nudges the panel; our status turns Busy." },
+    { "from": "fires", "to": "messenger", "level": 2, "why": "The warden writes at each fire, put-out, burn-down and death; a great fire nudges the panel." },
+    { "from": "blight", "to": "messenger", "level": 1, "why": "A sister in a blight shows Away and writes about plague or famine." },
+    { "from": "gov", "to": "messenger", "level": 1, "why": "Our leader answers gently or harshly by the rule (0.6 and up is harsh); each rule has a motto as a personal message." },
+    { "from": "politics", "to": "messenger", "level": 1, "why": "Under harsh rule a ringleader contact grumbles, mourns arrests and cheers a revolution, then retires." },
+    { "from": "leader", "to": "messenger", "level": 1, "why": "The leader is the signed-in \"me\": name, display picture and the reply voice. Their first trait also picks their chat font and colour, and each leader has their own display picture." },
+    { "from": "growth", "to": "messenger", "level": 1, "why": "A friendly sister congratulates us on each new tier." },
+    { "from": "crier", "to": "messenger", "level": 1, "why": "Crier lines pop up as toasts; a chat line in the same moment replaces the crier toast; the Chronicle is a contact." },
+    { "from": "health", "to": "leader", "level": 3, "why": "Natural death now comes from the body: heart attacks, strokes and growths end reigns, with the cause named; a leader appointed at 50 lives about 15 days, at 70 about 6." },
+    { "from": "politics", "to": "health", "level": 3, "why": "An assassination is an attempt: knife, crossbow, club or poison. About 40% kill on the spot, 15% kill later (blood loss, infection, poison) and 45% are survived with wounds and scars." },
+    { "from": "health", "to": "politics", "level": 2, "why": "An ailing elected leader steps down about every 6 days instead of 17; a leader killed later by an assassin's wounds still triggers the crackdown or army takeover." },
+    { "from": "gov", "to": "health", "level": 2, "why": "The rule sets a new leader's age (elders 58 to 76, a founding family 45 to 70, shrine keepers 40 to 70, a crown's heir 18 to 45) and the assassin's weapon (poison at court, crossbows under harsh rule)." },
+    { "from": "health", "to": "illness", "level": 2, "why": "Age, frailty, a weak heart and blood loss slow a leader's immunity, so the old and the wounded die of illness more often." },
+    { "from": "illness", "to": "health", "level": 2, "why": "Care (church, commune or council, traits) slows bleeding, infection, poison and growths, and lets the physician cut a growth out." },
+    { "from": "fires", "to": "health", "level": 2, "why": "A leader or former leader trapped in a fire is pulled out with burns that may fester, instead of dying on the spot." },
+    { "from": "health", "to": "walkers", "level": 1, "why": "The wounded leader keeps to bed; a limp, bad back, lost leg or stroke slows their walk." },
+    { "from": "health", "to": "messenger", "level": 1, "why": "The physician writes to the leader about wounds, heart attacks, strokes, growths, surgery and falls." },
+    { "from": "war", "to": "health", "level": 1, "why": "Former leaders are never sent to war, so their bodies stay in town." },
+    { "from": "guards", "to": "births", "level": 2, "why": "Curfew babies: a curfew town marries half again as often, and the crier says so." },
+    { "from": "births", "to": "guards", "level": 1, "why": "Youth brigade: under a junta or party state children march behind the patrols, and a guard walks them home at curfew." },
+    { "from": "leader", "to": "sisters", "level": 2, "why": "0.58: every sister has a ruler, a lighter version of our leader (name, age, two of the eight traits, epithet, regnal number under a crown). Merciful, Tolerant and Honest rulers warm relations; Cruel, Proud and Cunning ones cool them. Trait gold changes her treasury; trait revolt odds change how often a harsh sister falls. Our leader stays on as the old town's ruler after a charter." },
+    { "from": "health", "to": "sisters", "level": 2, "why": "0.58: sister rulers age a year per day on the same kind of curve as ours (no bodies) and die of old age, fever, falls, battle, plague, famine or the knife under harsh rule; a successor takes over, a crown's heir keeps the number and often a trait. The crier gives the news, not the chronicle." },
+    { "from": "seasons", "to": "food", "level": 3, "why": "0.61: spring sows, summer grows, autumn is the reaping, winter takes grain left standing; greens follow the season." },
+    { "from": "weather", "to": "food", "level": 2, "why": "0.61: rain slows the reaping and rots grain in the open barn; a dry spell thins the crop; snow stops the greens." },
+    { "from": "blight", "to": "food", "level": 3, "why": "0.61: a famine here thins the greens and the growing crop and triples rot in the stores. 0.63: famine news (here or in a sister) is rumour that raises panic before the stores fall; a region in blight or war makes caravan grain scarcer and dearer, and harsh or guild sisters keep theirs at home." },
+    { "from": "food", "to": "walkers", "level": 3, "why": "0.61: hungry dot-men walk to a counter or home to the pantry; carriers walk sacks along the chain; the weak walk slowly and look pale." },
+    { "from": "food", "to": "mood", "level": 3, "why": "0.61: the hungry, the starving and the bread queues pull mood down." },
+    { "from": "food", "to": "growth", "level": 3, "why": "0.61: settlers only come when the stores can feed one more mouth until the next harvest; growth waits otherwise. Each newcomer brings about ten days of grain." },
+    { "from": "food", "to": "births", "level": 2, "why": "0.61: weddings are rarer when there are under three days of food." },
+    { "from": "food", "to": "illness", "level": 2, "why": "0.61: a hungry body fights off illness 30% slower." },
+    { "from": "food", "to": "migration", "level": 2, "why": "0.61: hungry families leave for a sister town that is not in a famine." },
+    { "from": "food", "to": "treasury", "level": 2, "why": "0.61: grain above the next harvest plus the rule's reserve is sold to the region, a little gold at a time." },
+    { "from": "food", "to": "health", "level": 1, "why": "0.61: a leader or former leader who starves dies of hunger by name; the seat eats first, so it is rare." },
+    { "from": "food", "to": "messenger", "level": 2, "why": "0.61: Steward (a notable) writes about the harvest, failed crops, seed corn, low stores, queues, rationing, hunger, deaths, grain sold and grain caravans. 0.65: a morning report from the steward with yesterday's numbers; a baker and a grocer post sell-outs, restocks, lines at the door, hoarders, the first greens and small talk." },
+    { "from": "food", "to": "festivals", "level": 1, "why": "0.61: a bumper harvest brings a harvest-home festival." },
+    { "from": "gov", "to": "food", "level": 3, "why": "0.61: each rule holds back a number of days of grain (guild 2, party 10), lets people hoard or rations them in a panic, and opens the granary to the hungry or keeps it shut (crown, junta, party, guild, mayor). 0.62: hamlet rules too (elders 8 days, founding family 7 and hoards, shrine keepers 6 and hoards little, headman 5). The ledger tooltip shows the days against the held-back marker." },
+    { "from": "fires", "to": "food", "level": 2, "why": "0.61: a building that burns down loses its stores." },
+    { "from": "visitors", "to": "food", "level": 2, "why": "0.61: a caravan brings grain when stores are under four days. 0.63: less of it and dearer when the region is pressed, never if we cannot pay. 0.64: a grain caravan is drawn with a gold wagon piled with sacks." },
+    { "from": "sisters", "to": "food", "level": 2, "why": "0.61: aid in a famine comes as wagons of grain; answering a sister's plea sends real sacks if we can spare them." },
+    { "from": "war", "to": "food", "level": 2, "why": "0.61: soldiers away are hands lost in the fields and on the roads." },
+    { "from": "leader", "to": "food", "level": 1, "why": "0.61: the seat eats first: a hungry leader is served from any store." },
+    { "from": "food", "to": "walkers", "level": 2, "why": "0.64: dot-men queue on the road at a busy or bare counter and give up when patience runs out; hoarders walk home with an armful of bread." },
+    { "from": "gov", "to": "guards", "level": 1, "why": "0.64: under a rationing rule a guard stands at every counter door while people panic." },
+    { "from": "seasons", "to": "health", "level": 2, "why": "0.67: citizens age a year every 4 days; winter brings chills, the cold, ice slips and the pond; autumn the hayrick falls." },
+    { "from": "health", "to": "crier", "level": 1, "why": "0.67: every 4 days one line names the dead and how they died; the physician writes too, or cheers a week without funerals." },
+    { "from": "walkers", "to": "bonds", "level": 2, "why": "0.68: dot-men in the same building meet about once a day; their traits decide whether it ends in a grudge, a friendship or nothing." },
+    { "from": "bonds", "to": "politics", "level": 3, "why": "0.68: a deep grudge against the leader adds its own assassination odds, even in a hamlet; the assassin is named, the origin told, then seized or fled." },
+    { "from": "politics", "to": "bonds", "level": 2, "why": "0.68: friends of anyone taken away hate the leader (loyal ones more); a cruel leader arrests those who hate them first; a named assassin's friends are rounded up." },
+    { "from": "bonds", "to": "leader", "level": 2, "why": "0.68: leaders are chosen from the townsfolk by their own traits, weighed by the rule; ambitious and charming dot-men rise; heirs who share a parent's trait are likelier. The leader keeps their citizen name and traits." },
+    { "from": "bonds", "to": "crier", "level": 1, "why": "0.68: quarrels, fist fights, \"will never forgive\" with where it began, and the doomsayer in the square." },
+    { "from": "bonds", "to": "fires", "level": 2, "why": "0.68: a firebug sets a fire now and then (seen running 40% of the time); the brave come from further off to fight it, the craven stay away." },
+    { "from": "bonds", "to": "food", "level": 2, "why": "0.68: the greedy hoard half as much again in a panic, the thrifty and generous half; a doomsayer feeds the rumour that drives panic." },
+    { "from": "bonds", "to": "health", "level": 1, "why": "0.68: the reckless have twice the accidents, the careful half." },
+    { "from": "bonds", "to": "chronicler", "level": 2, "why": "The chronicler's friendship or grudge with the leader slants lines about the leader (praise or a sneer), and a friend leaves out arrests; friends and enemies named in a line get a personal remark." },
+    { "from": "crier", "to": "chronicler", "level": 2, "why": "Crier lines that suit the chronicler's voice are written into the chronicle (at most one every half day)." },
+    { "from": "politics", "to": "chronicler", "level": 1, "why": "A chronicler raised to lead lays down the pen and another takes it up." },
+    { "from": "bonds", "to": "messenger", "level": 3, "why": "The leader's strong friendships become Friends contacts who chat, and deep grudges either way become Blocked contacts. 0.76: traits also lean how each dot-man types (hot-headed shout, gloomy trail off, cheerful sign off with xx), though chance decides as often; sister rulers and notables (by job) type the same way." },
+    { "from": "politics", "to": "messenger", "level": 2, "why": "A new leader signs in to a list of their own; the leader before them stays as a contact, friendly or blocked." },
+    { "from": "politics", "to": "bonds", "level": 2, "why": "How a leader leaves becomes a bond with the new one: a coup leaves a deep grudge, a lost vote a grudge or a handshake, a hand-over a friendship." }
+  ],
+  "ideas": [
+    { "from": "festivals", "to": "illness", "level": 2, "fits": "Illness polish", "idea": "A festival crowd is a shared room: it spreads illness; a festival could be called off in an outbreak." },
+    { "from": "births", "to": "gov", "level": 2, "fits": "Births follow-up", "idea": "A monarch heir is a child born in town and takes the throne when grown." },
+    { "from": "births", "to": "growth", "level": 1, "fits": "Births follow-up", "idea": "A school makes children grow up sooner." },
+    { "from": "sisters", "to": "illness", "level": 2, "fits": "Undecided in vision", "idea": "A sick migrant or caravan carries illness to or from a sister." },
+    { "from": "seasons", "to": "growth", "level": 2, "fits": "Floods step", "idea": "Floods hit low lots in spring and a poor harvest slows growth (famine already makes everything dearer)." },
+    { "from": "leader", "to": "crier", "level": 1, "fits": "Undecided in vision", "idea": "Idle crier chatter that reflects the leader traits." },
+    { "from": "fires", "to": "walkers", "level": 2, "fits": "Wanderers step", "idea": "A travelling hero beats back the flames (the mod did this)." },
+    { "from": "fires", "to": "illness", "level": 1, "fits": "Fires follow-up", "idea": "Burnt-out families crowd into other homes, so illness spreads faster after a fire." },
+    { "from": "war", "to": "births", "level": 1, "fits": "War follow-up", "idea": "Soldiers away mean fewer weddings; a victory brings a crop of babies." },
+    { "from": "guards", "to": "war", "level": 2, "fits": "War follow-up", "idea": "A junta or party state sends more soldiers than a council can." },
+    { "from": "blight", "to": "festivals", "level": 2, "fits": "Blight follow-up", "idea": "A festival is called off in a plague or famine; a harvest festival ends one." },
+    { "from": "festivals", "to": "weather", "level": 1, "fits": "Weather follow-up", "idea": "A festival in good weather lasts longer and draws bigger crowds." },
+    { "from": "messenger", "to": "sisters", "level": 2, "fits": "Messenger replies", "idea": "Reply buttons: choose the answer to a plea, tribute demand or wedding offer, changing relations and gold (turned down for 0.52, the owner chose read only)." },
+    { "from": "health", "to": "war", "level": 2, "fits": "Health polish", "idea": "A junta general or a Proud leader rides with the soldiers and can come home wounded or not at all." },
+    { "from": "health", "to": "festivals", "level": 1, "fits": "Health polish", "idea": "A leader who survives an attempt or a heart attack throws a thanksgiving festival." },
+    { "from": "health", "to": "gov", "level": 2, "fits": "Health polish", "idea": "A frail or bedridden monarch rules through a regent; a regent may not give the crown back." },
+    { "from": "food", "to": "politics", "level": 2, "fits": "Food follow-up", "idea": "Bread riots: a hungry crowd at a shut granary under harsh rule storms it or starts a revolution." },
+    { "from": "food", "to": "treasury", "level": 2, "fits": "Food follow-up", "idea": "Prices and wages: dot-men with purses; the poor in row houses buy less, the guild raises prices (Gemini note: purchasing power)." },
+    { "from": "fires", "to": "food", "level": 2, "fits": "Food follow-up", "idea": "Granary fires in summer: the mill full of dry grain is more flammable." },
+    { "from": "food", "to": "construction", "level": 1, "fits": "Food follow-up", "idea": "Fields, a barn and stooks drawn outside the west gate (a wider picture or a strip at the edge)." },
+    { "from": "food", "to": "politics", "level": 3, "fits": "Food and power (0.63 study)", "idea": "Selectorate: each rule has a winning coalition (commune 0.6 of the town, junta 0.03); the leader feeds the coalition and guards first, small-coalition rules let the rest go hungry, and revolt is held back by coercion that collapses when the guards go unfed or unpaid." },
+    { "from": "politics", "to": "food", "level": 2, "fits": "Food and power (0.63 study)", "idea": "Extraction grows with a leader's tenure: aid and caravan grain leak to the court, stores rot faster; a revolution's new rule inherits part of it." },
+    { "from": "war", "to": "gov", "level": 2, "fits": "Food and power (0.63 study)", "idea": "Tilly's ratchet: each war leaves the rule a little harsher and a guard more, and soldiers away eat from the barn." },
+    { "from": "food", "to": "walkers", "level": 2, "fits": "Food and power (0.63 study)", "idea": "A rule may serve its in-group first at a short counter (Sen: hunger beside full stores)." },
+    { "from": "bonds", "to": "births", "level": 2, "fits": "Story core (0.68)", "idea": "Weddings between friends; families inherit a grudge (a feud between two houses)." },
+    { "from": "bonds", "to": "food", "level": 2, "fits": "Positives (next)", "idea": "Friends share a meal with a hungry friend; the generous feed the street in a famine." },
+    { "from": "bonds", "to": "fires", "level": 2, "fits": "Story core (0.68)", "idea": "A vengeful dot-man burns the house of the one they hate." },
+    { "from": "bonds", "to": "politics", "level": 2, "fits": "Pals follow-up", "idea": "A Blocked contact with a deep grudge sends a threat in the Messenger a day before an attempt on the leader's life, a hint the player can read." },
+    { "from": "chronicler", "to": "sisters", "level": 1, "fits": "Chronicler follow-up", "idea": "Sisters quote our chronicle in their chats: a sneering chronicler hurts relations a little, a flattering one is mocked." }
+  ],
+  "onPurpose": [
+    { "id": "wildlife", "why": "Small life stays cosmetic by design: it makes the town look alive and changes nothing." },
+    { "id": "crier", "why": "The crier is a mirror of what happened, not a mechanic that acts." }
+  ]
+}
+</script>
+<!-- MECHANICS DATA END -->
+
 <style>
-/* Layout: a control-deck page. Ranked list and matrix on the left, a sticky readout panel on the right; stacks on phones. */
+/* Layout: a control-deck page. Ranked list and matrix on the left, a sticky readout panel on the right; stacks on phones.
+   The accent comes from the data block (accent.light / accent.dark); the link-level shades are mixed from it. */
 :root {
   --bg: #eef2f1;
   --panel: #ffffff;
@@ -11,24 +269,27 @@
   --muted: #5b6a66;
   --line: #d3dcd9;
   --brass: #94712c;
-  --holo: #1f8f86;
-  --l1: #c9e9e5;
-  --l2: #6cc3b9;
-  --l3: #1f8f86;
+  --holo: var(--accent-light, #1f8f86);
+  --l1: color-mix(in srgb, var(--holo) 25%, var(--panel));
+  --l2: color-mix(in srgb, var(--holo) 62%, var(--panel));
+  --l3: var(--holo);
   --idea: #b8862f;
+  --err: #b23b2e;
   --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0e1617; --panel: #152022; --ink: #e2ece9; --muted: #8fa29d; --line: #26383a;
-    --brass: #d2a95a; --holo: #5fe0d2; --l1: #1d4440; --l2: #2f8a80; --l3: #5fe0d2; --idea: #d9a64a;
+    --brass: #d2a95a; --holo: var(--accent-dark, #5fe0d2); --idea: #d9a64a; --err: #f08a7c;
+    --l1: color-mix(in srgb, var(--holo) 28%, var(--panel)); --l2: color-mix(in srgb, var(--holo) 58%, var(--panel));
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0e1617; --panel: #152022; --ink: #e2ece9; --muted: #8fa29d; --line: #26383a;
-  --brass: #d2a95a; --holo: #5fe0d2; --l1: #1d4440; --l2: #2f8a80; --l3: #5fe0d2; --idea: #d9a64a;
+  --brass: #d2a95a; --holo: var(--accent-dark, #5fe0d2); --idea: #d9a64a; --err: #f08a7c;
+  --l1: color-mix(in srgb, var(--holo) 28%, var(--panel)); --l2: color-mix(in srgb, var(--holo) 58%, var(--panel));
   color-scheme: dark;
 }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; }
@@ -44,8 +305,15 @@ header { display: grid; gap: 4px; }
 .stats div { display: grid; }
 .stats b { font-family: var(--font-display); font-size: 20px; font-weight: 600; }
 .stats span { font-size: 12px; color: var(--muted); }
-.controls { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
-.controls label { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.controls { display: grid; gap: 10px; }
+.crow { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.crow label { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+.clabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.gchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gchip { font: inherit; font-size: 12.5px; padding: 3px 10px 3px 8px; border-radius: 99px; border: 1px solid var(--holo); background: color-mix(in srgb, var(--holo) 14%, transparent); color: var(--ink); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.gchip svg { width: 12px; height: 12px; }
+.gchip[aria-pressed="false"] { border-color: var(--line); background: none; color: var(--muted); text-decoration: line-through; }
+.gchip[aria-pressed="false"] svg { visibility: hidden; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; align-items: center; }
 .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--line); }
 .main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
@@ -107,27 +375,27 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .empty { color: var(--muted); font-style: italic; }
 .ideas { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .ideas .lk { align-content: start; }
-.err { color: #b23b2e; }
+.err { color: var(--err); }
 .linkbtn { background: none; border: none; padding: 0; color: var(--holo); font: inherit; cursor: pointer; text-decoration: underline; }
-@media (prefers-reduced-motion: no-preference) { .rrow, td.c { transition: background-color 0.12s, opacity 0.12s; } }
+@media (prefers-reduced-motion: no-preference) { .rrow, td.c, .gchip { transition: background-color 0.12s, opacity 0.12s; } }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Dotburg design tool</div>
+    <div class="eyebrow" id="eyebrow">Design tool</div>
     <h1>Mechanic Intersectionality Tool</h1>
     <p class="sub">How strongly each mechanic visibly changes the others. A link counts only when the player can see A change B; code links with no visible effect don't. Percent is the average strength across every other mechanic, so 100% would mean it drives everything.</p>
     <div class="stats" id="stats"></div>
   </header>
 
   <div class="controls">
-    <label><input type="checkbox" id="optRoom"> Leave out room and tools (radio, TV, Designer, watching)</label>
-    <label><input type="checkbox" id="optIdeas"> Count ideas as if built</label>
-    <div class="legend">
-      <span><i class="sw" style="background:var(--l1)"></i>Flavor 33%</span>
-      <span><i class="sw" style="background:var(--l2)"></i>Nudge 66%</span>
-      <span><i class="sw" style="background:var(--l3)"></i>Drives 100%</span>
-      <span><i class="sw" style="box-shadow:inset 0 0 0 2px var(--idea)"></i>Idea</span>
+    <div class="crow">
+      <span class="clabel">Groups in play</span>
+      <div class="gchips" id="groupChips"></div>
+    </div>
+    <div class="crow">
+      <label><input type="checkbox" id="optIdeas"> Count ideas as if built</label>
+      <div class="legend" id="legend"></div>
     </div>
   </div>
 
@@ -165,28 +433,43 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 </div>
 
 <script>
-// Loads the data file, scores every mechanic and draws the ranked list, matrix, readout and ideas.
+// Reads the data block at the top of this file, scores every mechanic and draws the ranked list, matrix, readout and ideas.
 (function () {
-  const ROOM = new Set(["radio", "tv", "designer", "watching"]);
-  const state = { data: null, sel: null, cell: null, noRoom: false, withIdeas: false };
+  const state = { data: null, sel: null, cell: null, offGroups: new Set(), withIdeas: false, key: "mit" };
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const CHECK = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-  // Reads a remembered toggle, ignoring storage errors.
-  function remembered(key) { try { return localStorage.getItem(key) === "1"; } catch (e) { return false; } }
-  function remember(key, on) { try { localStorage.setItem(key, on ? "1" : "0"); } catch (e) {} }
+  // Reads and writes remembered toggles, ignoring storage errors.
+  function recall(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : v; } catch (e) { return fallback; } }
+  function remember(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
 
-  // Builds lookups: link level per pair, idea per pair, mechanic by id.
+  // Builds lookups: link level per pair, idea per pair, mechanic by id, group by id.
   function index(d) {
     d.byId = Object.fromEntries(d.mechanics.map(m => [m.id, m]));
+    d.groupById = Object.fromEntries(d.groups.map(g => [g.id, g]));
     d.link = {}; d.idea = {};
     d.links.forEach(l => d.link[l.from + ">" + l.to] = l);
-    d.ideas.forEach(i => { if (!d.idea[i.from + ">" + i.to]) d.idea[i.from + ">" + i.to] = i; });
+    (d.ideas || []).forEach(i => { if (!d.idea[i.from + ">" + i.to]) d.idea[i.from + ">" + i.to] = i; });
+    d.ideas = d.ideas || [];
     d.purpose = Object.fromEntries((d.onPurpose || []).map(p => [p.id, p.why]));
   }
 
-  // The mechanics in play under the current toggles.
-  function active() { return state.data.mechanics.filter(m => !(state.noRoom && ROOM.has(m.id))); }
+  // Applies the project's name and accent color from the data.
+  function brand(d) {
+    const name = d.project || "Project";
+    $("eyebrow").textContent = d.eyebrow || name + " design tool";
+    document.title = name + " mechanics";
+    const a = d.accent;
+    const light = typeof a === "string" ? a : a && a.light, dark = typeof a === "string" ? a : a && (a.dark || a.light);
+    if (light) document.documentElement.style.setProperty("--accent-light", light);
+    if (dark) document.documentElement.style.setProperty("--accent-dark", dark);
+  }
+
+  const isOff = m => state.offGroups.has(m.group);
+
+  // The mechanics in play under the current group chips.
+  function active() { return state.data.mechanics.filter(m => !isOff(m)); }
 
   // Level for a pair, optionally lifted by an idea.
   function level(a, b, withIdeas) {
@@ -197,7 +480,7 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 
   // Out, In and touch count for each mechanic, now and with ideas.
   function scores() {
-    const ms = active(), n = ms.length - 1;
+    const ms = active(), n = Math.max(1, ms.length - 1);
     return ms.map(m => {
       let out = 0, inn = 0, outI = 0, inI = 0, touch = 0;
       ms.forEach(o => {
@@ -219,11 +502,24 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
     const ideas = state.data.ideas.filter(l => ids.has(l.from) && ids.has(l.to)).length;
     const pairs = ms.length * (ms.length - 1);
     const lonely = sc.filter(s => s.total < 8).length;
-    const mean = Math.round(sc.reduce((a, s) => a + (state.withIdeas ? s.totalI : s.total), 0) / sc.length);
+    const mean = sc.length ? Math.round(sc.reduce((a, s) => a + (state.withIdeas ? s.totalI : s.total), 0) / sc.length) : 0;
     $("stats").innerHTML = [
       [ms.length, "mechanics"], [links + " of " + pairs, "pairs linked"], [mean + "%", "average connection"],
       [lonely, "nearly isolated (under 8%)"], [ideas, "ideas proposed"], ["v" + esc(state.data.version), "checked " + esc(state.data.updated)]
     ].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+  }
+
+  // One on/off chip per group, plus the level legend.
+  function drawControls() {
+    const d = state.data;
+    $("groupChips").innerHTML = d.groups.map(g => {
+      const count = d.mechanics.filter(m => m.group === g.id).length;
+      return `<button class="gchip" type="button" data-g="${esc(g.id)}" aria-pressed="${!state.offGroups.has(g.id)}" title="${state.offGroups.has(g.id) ? "Left out. Click to count it." : "Counted. Click to leave it out."}">${CHECK}${esc(g.name)} <span class="pct">${count}</span></button>`;
+    }).join("");
+    $("groupChips").querySelectorAll("[data-g]").forEach(b => b.onclick = () => toggleGroup(b.dataset.g));
+    const shade = ["", "var(--l1)", "var(--l2)", "var(--l3)"];
+    $("legend").innerHTML = d.levels.filter(l => l.level > 0).map(l => `<span><i class="sw" style="background:${shade[l.level] || "var(--l3)"}"></i>${esc(l.name)} ${esc(l.percent)}%</span>`).join("") +
+      `<span><i class="sw" style="box-shadow:inset 0 0 0 2px var(--idea)"></i>Idea</span>`;
   }
 
   // Ranked list, most isolated first.
@@ -232,21 +528,20 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
     const rows = [...sc].sort((a, b) => a[key] - b[key]);
     const bar = (now, withI) => `<div class="barcell"><div class="bar">${state.withIdeas && withI > now ? `<i class="plus" style="width:${withI}%"></i>` : ""}<i style="width:${now}%"></i></div><span class="pct">${state.withIdeas ? withI : now}%</span></div>`;
     $("rank").innerHTML = `<div class="rrow head"><span></span><span>Mechanic</span><span>Out</span><span>In</span><span class="tc num">Touches</span></div>` +
-      rows.map((s, i) => `<button class="rrow${state.sel === s.m.id ? " sel" : ""}${state.data.purpose[s.m.id] ? " dim" : ""}" data-id="${s.m.id}" type="button">
+      (rows.length ? rows.map((s, i) => `<button class="rrow${state.sel === s.m.id ? " sel" : ""}${state.data.purpose[s.m.id] ? " dim" : ""}" data-id="${esc(s.m.id)}" type="button">
         <span class="num">${i + 1}</span><span class="nm" title="${esc(s.m.summary)}">${esc(s.m.name)}</span>
-        ${bar(s.out, s.outI)}${bar(s.inn, s.inI)}<span class="tc num">${s.touch}/${s.n}</span></button>`).join("");
+        ${bar(s.out, s.outI)}${bar(s.inn, s.inI)}<span class="tc num">${s.touch}/${s.n}</span></button>`).join("") : `<p class="empty">Every group is switched off.</p>`);
     $("rank").querySelectorAll("button.rrow").forEach(b => b.onclick = () => select(b.dataset.id));
   }
 
-  // The matrix, grouped by mechanic group.
+  // The matrix, grouped by mechanic group in data order.
   function drawMatrix() {
     const ms = state.data.mechanics, sel = state.sel;
-    const off = m => state.noRoom && ROOM.has(m.id);
-    let firstOfGroup = new Set(); let g = null;
+    const firstOfGroup = new Set(); let g = null;
     ms.forEach(m => { if (m.group !== g) { firstOfGroup.add(m.id); g = m.group; } });
-    let h = `<thead><tr><th></th>${ms.map(m => `<th class="${sel === m.id ? "hl" : ""}${off(m) ? " off" : ""}"><div>${esc(m.name)}</div></th>`).join("")}</tr></thead><tbody>`;
+    let h = `<thead><tr><th></th>${ms.map(m => `<th class="${sel === m.id ? "hl" : ""}${isOff(m) ? " off" : ""}"><div>${esc(m.name)}</div></th>`).join("")}</tr></thead><tbody>`;
     ms.forEach(r => {
-      h += `<tr><th class="${firstOfGroup.has(r.id) ? "grp " : ""}${sel === r.id ? "hl" : ""}${off(r) ? " off" : ""}">${esc(r.name)}</th>`;
+      h += `<tr><th class="${firstOfGroup.has(r.id) ? "grp " : ""}${sel === r.id ? "hl" : ""}${isOff(r) ? " off" : ""}">${esc(r.name)}</th>`;
       ms.forEach(c => {
         if (r.id === c.id) { h += `<td class="c self"></td>`; return; }
         const l = state.data.link[r.id + ">" + c.id], i = state.data.idea[r.id + ">" + c.id];
@@ -255,9 +550,9 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
         if (i) cls += " idea" + (l ? "" : " only");
         if (sel && (r.id === sel || c.id === sel)) cls += " cross";
         if (state.cell === r.id + ">" + c.id) cls += " pick";
-        if (off(r) || off(c)) cls += " off";
-        const tip = state.data.byId[r.id].name + " → " + state.data.byId[c.id].name + (l ? ": " + l.why : i ? ": idea" : ": none");
-        h += `<td class="${cls}" data-p="${r.id}>${c.id}" tabindex="0" title="${esc(tip)}"></td>`;
+        if (isOff(r) || isOff(c)) cls += " off";
+        const tip = r.name + " → " + c.name + (l ? ": " + l.why : i ? ": idea" : ": none");
+        h += `<td class="${cls}" data-p="${esc(r.id)}>${esc(c.id)}" tabindex="0" title="${esc(tip)}"></td>`;
       });
       h += `</tr>`;
     });
@@ -268,10 +563,10 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
     });
   }
 
-  const lvName = lv => state.data.levels[lv].name;
+  const lvName = lv => (state.data.levels.find(l => l.level === lv) || { name: "Level " + lv }).name;
   const linkCard = (l, idea) => {
     const a = state.data.byId[l.from].name, b = state.data.byId[l.to].name;
-    return `<div class="lk${idea ? " idea" : ""}"><span class="t">${esc(a)} → ${esc(b)} <span class="chip lv${l.level}">${lvName(l.level)}</span>${idea ? ` <span class="chip fit">${esc(l.fits)}</span>` : ""}</span><span class="w">${esc(idea ? l.idea : l.why)}</span></div>`;
+    return `<div class="lk${idea ? " idea" : ""}"><span class="t">${esc(a)} → ${esc(b)} <span class="chip lv${l.level}">${esc(lvName(l.level))}</span>${idea && l.fits ? ` <span class="chip fit">${esc(l.fits)}</span>` : ""}</span><span class="w">${esc(idea ? l.idea : l.why)}</span></div>`;
   };
 
   // Right-hand readout: a picked cell, a picked mechanic, or the starting hint.
@@ -286,16 +581,16 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
         <h3>The other way</h3>
         ${back ? linkCard(back) : `<p class="empty">${esc(d.byId[b].name)} does not visibly change ${esc(d.byId[a].name)}.</p>`}
         ${backI ? linkCard(backI, true) : ""}
-        <p><button class="linkbtn" type="button" data-go="${a}">Show ${esc(d.byId[a].name)}</button> · <button class="linkbtn" type="button" data-go="${b}">Show ${esc(d.byId[b].name)}</button></p>`;
+        <p><button class="linkbtn" type="button" data-go="${esc(a)}">Show ${esc(d.byId[a].name)}</button> · <button class="linkbtn" type="button" data-go="${esc(b)}">Show ${esc(d.byId[b].name)}</button></p>`;
     } else if (state.sel) {
       const m = d.byId[state.sel], s = sc.find(x => x.m.id === m.id);
       const outs = d.links.filter(l => l.from === m.id).sort((x, y) => y.level - x.level);
       const ins = d.links.filter(l => l.to === m.id).sort((x, y) => y.level - x.level);
-      const ids = new Set(active().map(x => x.id));
       const none = active().filter(o => o.id !== m.id && !d.link[m.id + ">" + o.id] && !d.link[o.id + ">" + m.id]).map(o => o.name);
-      box.innerHTML = `<div class="eyebrow">${esc(d.groups.find(g => g.id === m.group).name)}</div><h2>${esc(m.name)}</h2>
+      const group = d.groupById[m.group];
+      box.innerHTML = `<div class="eyebrow">${esc(group ? group.name : m.group)}</div><h2>${esc(m.name)}</h2>
         <p class="hint">${esc(m.summary)}</p>
-        ${s ? `<p class="pct">Out ${s.out}% · In ${s.inn}% · touches ${s.touch} of ${s.n}${state.withIdeas ? ` · with ideas: out ${s.outI}%, in ${s.inI}%` : ""}</p>` : `<p class="note">Left out by the room toggle.</p>`}
+        ${s ? `<p class="pct">Out ${s.out}% · In ${s.inn}% · touches ${s.touch} of ${s.n}${state.withIdeas ? ` · with ideas: out ${s.outI}%, in ${s.inI}%` : ""}</p>` : `<p class="note">Left out: its group is switched off.</p>`}
         ${d.purpose[m.id] ? `<p class="note">Apart on purpose: ${esc(d.purpose[m.id])}</p>` : ""}
         <h3>Changes</h3><div class="list">${outs.length ? outs.map(l => linkCard(l)).join("") : `<p class="empty">Nothing yet.</p>`}</div>
         <h3>Changed by</h3><div class="list">${ins.length ? ins.map(l => linkCard(l)).join("") : `<p class="empty">Nothing yet.</p>`}</div>
@@ -303,9 +598,9 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
     } else {
       const worst = [...sc].filter(s => !d.purpose[s.m.id]).sort((a, b) => a.total - b.total).slice(0, 3);
       box.innerHTML = `<div class="eyebrow">Readout</div><h2>Pick a mechanic or a cell</h2>
-        <p class="hint">The weakest garden mechanics right now:</p>
-        <div class="list">${worst.map(s => `<button class="linkbtn" type="button" data-go="${s.m.id}">${esc(s.m.name)}</button>`).join("")}</div>
-        <p class="note">The goal is not 100%. A link should change what the player sees or decides; forcing every pair makes the garden busy. Use the low end of the list as a to-do list, and the ideas as the first candidates.</p>`;
+        <p class="hint">The weakest mechanics in play right now:</p>
+        <div class="list">${worst.length ? worst.map(s => `<button class="linkbtn" type="button" data-go="${esc(s.m.id)}">${esc(s.m.name)}</button>`).join("") : `<p class="empty">None in play.</p>`}</div>
+        <p class="note">The goal is not 100%. A link should change what the player sees or decides; forcing every pair makes the game busy. Use the low end of the list as a to-do list, and the ideas as the first candidates.</p>`;
     }
     box.querySelectorAll("[data-go]").forEach(b => b.onclick = () => select(b.dataset.go));
   }
@@ -315,24 +610,34 @@ aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
     const d = state.data, sel = state.sel;
     const list = d.ideas.filter(i => !sel || i.from === sel || i.to === sel);
     $("ideasTitle").textContent = sel ? `Ideas touching ${d.byId[sel].name}` : "Ideas";
-    $("ideas").innerHTML = list.length ? list.map(i => linkCard(i, true)).join("") : `<p class="empty">No ideas involve this mechanic yet.</p>`;
+    $("ideas").innerHTML = list.length ? list.map(i => linkCard(i, true)).join("") : `<p class="empty">${sel ? "No ideas involve this mechanic yet." : "No ideas yet."}</p>`;
   }
 
   function render() {
     const sc = scores();
-    drawStats(sc); drawRank(sc); drawMatrix(); drawReadout(sc); drawIdeas();
+    drawStats(sc); drawControls(); drawRank(sc); drawMatrix(); drawReadout(sc); drawIdeas();
   }
   function select(id) { state.sel = state.sel === id && !state.cell ? null : id; state.cell = null; render(); }
   function pickCell(p) { state.cell = state.cell === p ? null : p; state.sel = p.split(">")[0]; render(); }
+  function toggleGroup(id) {
+    state.offGroups.has(id) ? state.offGroups.delete(id) : state.offGroups.add(id);
+    remember(state.key + "-off", [...state.offGroups].join(","));
+    render();
+  }
 
-  // Wires the toggles and loads the data file published beside the page.
-  $("optRoom").checked = state.noRoom = remembered("mit-room");
-  $("optIdeas").checked = state.withIdeas = remembered("mit-ideas");
-  $("optRoom").onchange = e => { state.noRoom = e.target.checked; remember("mit-room", state.noRoom); render(); };
-  $("optIdeas").onchange = e => { state.withIdeas = e.target.checked; remember("mit-ideas", state.withIdeas); render(); };
-  fetch("mechanics.json", { cache: "no-store" })
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(d => { state.data = d; index(d); render(); })
-    .catch(e => { $("readout").innerHTML = `<p class="err">Could not load mechanics.json (${esc(e.message)}). Publish it next to this page.</p>`; });
+  // Parses the data block, restores this project's toggles and draws the page.
+  try {
+    const d = JSON.parse($("mechanics-data").textContent);
+    state.data = d; index(d); brand(d);
+    state.key = "mit-" + String(d.project || "project").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const ids = new Set(d.groups.map(g => g.id));
+    state.offGroups = new Set(recall(state.key + "-off", "").split(",").filter(g => ids.has(g)));
+    state.withIdeas = recall(state.key + "-ideas", "0") === "1";
+    $("optIdeas").checked = state.withIdeas;
+    $("optIdeas").onchange = e => { state.withIdeas = e.target.checked; remember(state.key + "-ideas", state.withIdeas ? "1" : "0"); render(); };
+    render();
+  } catch (e) {
+    $("readout").innerHTML = `<p class="err">The data block at the top of this file could not be read (${esc(e.message)}). Check it is valid JSON: no trailing commas, every string in double quotes.</p>`;
+  }
 })();
 </script>

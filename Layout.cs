@@ -128,22 +128,59 @@ partial class Sim
             Put(r, 5, 4, 0x7a7a74);
             n++;
         }
-        // A street lamp at every crossing, lit at night; a City adds one mid-block.
-        void Lamp(int x, int y)
+        // Street lamps grow with the town: none in a hamlet, the seat's corners in a village, the middle and the
+        // public buildings in a town, most crossings in a city (a few always stay dark). Lamps by an all-night
+        // building (inn, hall, tower...) burn till dawn; the rest go out around midnight (LampsOn).
+        Array.Fill(LampNo, (short)-1);
+        LampLate.Clear();
+        void Lamp(int x, int y, bool late)
         {
-            if (x < 0 || y < 0 || x >= W || y >= H) return;
-            Flags[y * W + x] = 2;
+            if (x < 0 || y < 0 || x >= W || y >= H || Flags[y * W + x] == 2) return;
+            short no = (short)LampLate.Count;
+            LampLate.Add(late);
+            Flags[y * W + x] = 2; LampNo[y * W + x] = no;
             foreach (var (dx, dy) in new[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
             {
                 int nx = x + dx, ny = y + dy;
-                if (nx >= 0 && ny >= 0 && nx < W && ny < H && Flags[ny * W + nx] == 0) Flags[ny * W + nx] = 3;
+                if (nx >= 0 && ny >= 0 && nx < W && ny < H && Flags[ny * W + nx] == 0) { Flags[ny * W + nx] = 3; LampNo[ny * W + nx] = no; }
             }
         }
-        for (int j = 0; j <= RowsT; j++)
-            for (int i = 0; i <= Cols; i++)
-            {
-                Lamp(Ox + i * TileW + 1, Oy + j * TileH + 1);
-                if (Tier >= 4 && i < Cols) Lamp(Ox + i * TileW + 5, Oy + j * TileH + 1);
-            }
+        // The building on tile (tx, ty), or null when off the grid, empty or under scaffolding.
+        string? At(int tx, int ty)
+        {
+            if (tx < 0 || ty < 0 || tx >= Cols || ty >= RowsT) return null;
+            int r = rankAt[ty * Cols + tx];
+            return r < v && !scaffolded.Contains(r) ? Built[r] : null;
+        }
+        bool Public(string? t) => t != null && t is not ("house" or "house2" or "row" or "ruin") && !Content.Outdoor.Contains(t);
+        int seatR = SeatRank() >= 0 ? SeatRank() : 0;
+        (int tx, int ty) seatT = v > 0 ? Lots[seatR] : (0, 0);
+        if (Tier >= 2)
+            for (int j = 0; j <= RowsT; j++)
+                for (int i = 0; i <= Cols; i++)
+                {
+                    var near = new[] { At(i - 1, j - 1), At(i, j - 1), At(i - 1, j), At(i, j) };
+                    if (near.All(t => t == null)) continue;
+                    bool bySeat = (i == seatT.tx || i == seatT.tx + 1) && (j == seatT.ty || j == seatT.ty + 1);
+                    bool late = near.Any(t => t != null && Content.AllNight.Contains(t));
+                    bool pub = near.Any(Public);
+                    bool great = near.Any(t => t is "market" or "church" or "cathedral" or "school");
+                    double ci = i - Cols / 2.0, cj = j - RowsT / 2.0;
+                    bool middle = Math.Abs(ci) <= 1.5 && Math.Abs(cj) <= 1.5;
+                    int h = Hash(i + 31, j + 17); // 0..96, fixed per crossing
+                    bool on = Tier switch
+                    {
+                        2 => bySeat || (late && near.Any(t => t == "inn")),
+                        3 => bySeat || late || (middle && h < 40) || (great && h < 30),
+                        _ => bySeat || late || (middle && h < 75) || (pub && h < 55) || h < 25,
+                    };
+                    if (on) Lamp(Ox + i * TileW + 1, Oy + j * TileH + 1, late || bySeat);
+                    // A city also lights the road in front of its public buildings mid-block.
+                    if (Tier >= 4 && i < Cols && (Public(At(i, j - 1)) || Public(At(i, j))))
+                        Lamp(Ox + i * TileW + 5, Oy + j * TileH + 1, late);
+                }
     }
+
+    public short[] LampNo = new short[W * H];   // the lamp a lamp or glow pixel belongs to
+    readonly List<bool> LampLate = new();       // per lamp: burns all night
 }

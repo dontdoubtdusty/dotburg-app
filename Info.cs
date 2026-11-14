@@ -45,10 +45,13 @@ partial class Sim
         if (inside > 0) lines.Add($"{inside} dot-men inside now ({Walkers.Count(w => !w.Gone && w.Mode == Mode.Inside && w.At == rank && w.Sleep)} asleep).");
         int outside = Walkers.Count(w => !w.Gone && w.Mode != Mode.Inside && w.At == rank);
         if (outside > 0) lines.Add($"{outside} standing outside.");
+        lines.AddRange(PeopleAt(rank));
 
         if (rank == SeatRank()) lines.Add($"Seat of government: {G.Name}, led by {LeaderTitle}.");
         else if (Leader != null && LeaderWalker != null && HomeOf(LeaderWalker) == rank) lines.Add($"Home of {LeaderTitle}.");
         if (Leader != null && LeaderWalker != null && HomeOf(LeaderWalker) == rank && TraitWords != "") lines.Add($"{TraitWords}: {TraitBlurb}.");
+        lines.AddRange(HealthAt(rank));
+        lines.AddRange(StoreLines(rank));
         int ill = Walkers.Count(w => !w.Gone && w.Sick && HomeOf(w) == rank);
         if (ill > 0) lines.Add(ill == 1 ? "Someone is ill in bed here." : $"{ill} are ill in bed here.");
 

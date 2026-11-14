@@ -294,8 +294,8 @@ partial class Sim
         bool fresh = TickNo >= festUntil;
         festUntil = Math.Max(festUntil, TickNo + Round(FestMs * Math.Max(0.4, g.Fest) / TickMs));
         Rally = rally;
-        festColors = colors ?? (rally ? new[] { g.Banner, 0x1e1e1e, g.Banner, 0x1e1e1e } : GovKey == "elders" ? Bunting : new[] { g.Banner, Bunting[1], Bunting[2], Bunting[3] });
-        Nudge(rally ? 0.02 : 0.08 * g.Fest);
+        festColors = colors ?? (rally ? new[] { g.Banner, 0x1e1e1e, g.Banner, 0x1e1e1e } : Govs.IsHamlet(GovKey) ? Bunting : new[] { g.Banner, Bunting[1], Bunting[2], Bunting[3] });
+        Nudge(rally ? 0.02 : 0.08 * g.Fest, rally ? "a rally" : "a festival");
         if (fresh) Say(line ?? Pick(Govs.FestSay[GovKey]));
         foreach (var w in Walkers)
         {
@@ -325,7 +325,7 @@ partial class Sim
         if (Festival && !Rally && Stormy)
         {
             festUntil = TickNo;
-            Nudge(-0.02);
+            Nudge(-0.02, "a festival rained off");
             Say($"{(snowAmt > 0.5 ? "Snow" : "Rain")} breaks up the festival; the bunting drips over an empty square.");
         }
     }

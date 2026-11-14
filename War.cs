@@ -22,6 +22,7 @@ class Blight
     public string Kind = "plague";  // "plague" or "famine"
     public List<string> Towns = new();
     public double Until;
+    public Dictionary<string, int> Dead = new();   // people each sister has buried in it
 }
 
 // Stage 5 (part): war and blight. Events in progress are not saved; the soldiers away are saved as if home.
@@ -76,7 +77,7 @@ partial class Sim
         if (WarOn != null || Sisters.Count == 0) return;
         var foe = Weighted(Sisters, s => 0.2 + Math.Abs(Govs.Get(s.Gov).Harsh - G.Harsh) + Govs.Get(s.Gov).Harsh);
         bool we = G.Harsh >= Govs.Get(foe.Gov).Harsh;
-        var ps = Walkers.Where(w => !w.Gone && !w.Lead && w.Kid == 0 && !w.Sick && w.Goal != Goal.Leave && w.Goal != Goal.Taken && w.Goal != Goal.Fight).ToList();
+        var ps = Walkers.Where(w => !w.Gone && !w.Lead && BodyOf(w) == null && w.Kid == 0 && !w.Sick && w.Goal != Goal.Leave && w.Goal != Goal.Taken && w.Goal != Goal.Fight).ToList();
         int n = Math.Max(0, Math.Min(6, Math.Min((int)Math.Floor(ps.Count * 0.12), Headcount - MinPop)));
         var war = new WarState { Foe = foe.Name, Until = EvClock + DayMs * (1 + 2 * Chance()) };
         for (int i = 0; i < n; i++)
@@ -86,9 +87,9 @@ partial class Sim
             SendAway(w, Goal.Leave, "#war");
             war.Away.Add(new Soldier { W = w, C = w.C });
         }
-        Bump(foe, -0.4);
+        Bump(foe, -0.4, "war between us");
         WarOn = war;
-        Nudge(G.Harsh >= 0.8 ? 0.05 : -0.08);
+        Nudge(G.Harsh >= 0.8 ? 0.05 : -0.08, "war declared");
         Say(we ? $"{Name} marches to war against {foe.Name}." : $"{foe.Name} declares war on {Name}.");
         Tell(foe, we ? "warwe" : "warthey", !we);
         Npc("captain", we ? "warwe" : "warthey", !we, foe.Name);
@@ -145,10 +146,10 @@ partial class Sim
         warEnded = EvClock;
         if (won)
         {
-            for (int i = (int)Math.Ceiling(foe.Total * 0.2); i > 0 && foe.Total > 2; i--) TakeFrom(foe);
+            int fell = Bury(foe, (int)Math.Ceiling(foe.Total * 0.2), 2);
             Pay(5);
-            Nudge(0.1);
-            StartFestival($"Victory over {foe.Name}!{(lost > 0 ? $" {lost} did not come home." : "")}");
+            Nudge(0.1, "victory in war");
+            StartFestival($"Victory over {foe.Name}!{(lost > 0 ? $" {lost} did not come home." : "")}{(fell > 0 ? $" {foe.Name} buries {fell}." : "")}");
             Npc("captain", "won");
             Tell(foe, "warwon");
             if (Chance() < 0.4) SisterChange(foe);
@@ -156,7 +157,7 @@ partial class Sim
         }
         Pool = 0;
         Pay(-6);
-        Nudge(-0.15);
+        Nudge(-0.15, "defeat in war");
         Say($"Defeat: {foe.Name} wins the war{(lost > 0 ? $", and {lost} did not come home" : "")}.");
         Npc("captain", "lost");
         Tell(foe, "warlost");
@@ -179,8 +180,8 @@ partial class Sim
             SisterWarOn = null;
             if (a == null || b == null) return;
             var (win, lose) = Chance() < 0.5 + (Govs.Get(a.Gov).Harsh - Govs.Get(b.Gov).Harsh) * 0.2 ? (a, b) : (b, a);
-            for (int i = (int)Math.Ceiling(lose.Total * 0.2); i > 0 && lose.Total > 2; i--) TakeFrom(lose);
-            Say($"News: {win.Name} defeats {lose.Name}.");
+            int fell = Bury(lose, (int)Math.Ceiling(lose.Total * 0.2), 2);
+            Say($"News: {win.Name} defeats {lose.Name}{(fell > 0 ? $"; {lose.Name} buries {fell}" : "")}.");
             Gossip(win, lose, "warend");
             if (FateReady && lose.Total < win.Total && Chance() < 0.1) Absorb(win, lose);
             else
@@ -221,14 +222,15 @@ partial class Sim
             BlightOn = new Blight { Kind = kind, Towns = new() { start }, Until = EvClock + DayMs * (3 + 3 * Chance()) };
             lastDisaster = EvClock;
             if (start == Name && kind == "plague") CatchPlague(false);
-            else if (start == Name) { Say($"Famine in {Name}."); AskAid(false); }
-            else { Say(kind == "plague" ? $"Plague breaks out in {start}." : $"Famine in {start}."); Tell(SisterNamed(start), kind); }
+            else if (start == Name) { Say($"Famine in {Name}."); Hear(0.3); if (AskAid(false)) AidGrain(); }
+            else { Say(kind == "plague" ? $"Plague breaks out in {start}." : $"Famine in {start}."); if (kind == "famine") Hear(0.1); Tell(SisterNamed(start), kind); }
             return;
         }
         var b = BlightOn;
         if (EvClock >= b.Until)
         {
-            Say(b.Kind == "plague" ? "The plague burns itself out across the region." : "The famine eases; carts of grain reach every town.");
+            string toll = Buried(b.Dead);
+            Say((b.Kind == "plague" ? "The plague burns itself out across the region." : "The famine eases; carts of grain reach every town.") + (toll.Length > 0 ? $" {toll}." : ""));
             BlightOn = null;
             return;
         }
@@ -239,21 +241,13 @@ partial class Sim
             string t = Pick(clean);
             b.Towns.Add(t);
             if (t == Name && b.Kind == "plague") CatchPlague(true);
-            else if (t == Name) { Say($"Famine spreads to {Name}."); AskAid(false); }
-            else { Say(b.Kind == "plague" ? $"The plague reaches {t}." : $"Famine spreads to {t}."); Tell(SisterNamed(t), b.Kind); }
+            else if (t == Name) { Say($"Famine spreads to {Name}."); Hear(0.3); if (AskAid(false)) AidGrain(); }
+            else { Say(b.Kind == "plague" ? $"The plague reaches {t}." : $"Famine spreads to {t}."); if (b.Kind == "famine") Hear(0.1); Tell(SisterNamed(t), b.Kind); }
         }
-        // Sister towns lose people; here plague runs through the sickness and famine through hunger.
+        // Sister towns lose people. Here plague runs through the sickness, and famine through the fields: it thins
+        // the greens and the growing crop (Food.cs), and the hunger that follows is real.
         foreach (var s in Sisters)
-            if (b.Towns.Contains(s.Name) && s.Total > 3 && Odds(b.Kind == "plague" ? 2 : 1.2)) TakeFrom(s);
-        if (b.Towns.Contains(Name) && b.Kind == "famine")
-        {
-            if (Odds(0.6))
-            {
-                var ps = Walkers.Where(w => !w.Gone && !w.Lead && w.Goal != Goal.Leave && w.Goal != Goal.Taken).ToList();
-                if (ps.Count > MinPop) { Pick(ps).Gone = true; Nudge(-0.03); Say("Someone dies of hunger."); }
-            }
-            else if (Odds(0.4) && Walkers.Count(w => !w.Gone) > MinPop) Emigrate();
-        }
+            if (b.Towns.Contains(s.Name) && s.Total > 3 && Odds(b.Kind == "plague" ? 2 : 1.2)) b.Dead[s.Name] = b.Dead.GetValueOrDefault(s.Name) + Bury(s, 1, 3);
     }
 
     // The plague reaches this town: the grey sickness takes hold (unless another illness already holds it).

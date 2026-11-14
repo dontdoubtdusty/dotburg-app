@@ -11,14 +11,8 @@ public partial class Program
 {
     partial class App
     {
-        // The 40 codes in the order of the emoticon sheet (10 across, 4 down, 24 px cells).
-        static readonly string[] EmoCodes =
-        {
-            ":)", ":D", ";)", ":-O", ":P", "(H)", ":@", ":S", ":$", ":(",
-            ":'(", ":|", "(A)", "8o|", "8-|", "+o(", "<:o)", "|-)", "*-)", ":-#",
-            ":-*", "^o)", "8-)", "(L)", "(U)", "(M)", "(@)", "(&)", "(sn)", "(bah)",
-            "(S)", "(*)", "(#)", "(R)", "({)", "(})", "(K)", "(F)", "(W)", "(O)",
-        };
+        // The emoticon codes live in Sim.EmoCodes (Hands.cs), so chat styling can leave them alone.
+        static readonly string[] EmoCodes = Sim.EmoCodes;
         static readonly Dictionary<string, int> Emo = EmoCodes.Select((c, i) => (c, i)).ToDictionary(p => p.c, p => p.i);
         Texture2D emoTex;
 
@@ -45,16 +39,20 @@ public partial class Program
 
         // ---------- text with emoticons ----------
         // Draws text word by word, wrapping at wrapW (no wrapping if 0), with emoticon codes as pictures.
-        // Returns the height used. With draw false it only measures.
-        float Rich(ImDrawListPtr dl, Vector2 at, float wrapW, string text, int col, bool draw = true, bool bold = false, float alpha = 1)
+        // Returns the height used. With draw false it only measures. face picks one of the chat fonts (null: the main font).
+        float Rich(ImDrawListPtr dl, Vector2 at, float wrapW, string text, int col, bool draw = true, bool bold = false, float alpha = 1, string? face = null)
         {
-            float line = ImGui.GetTextLineHeight(), space = ImGui.CalcTextSize(" ").X, emo = line + 2;
+            ImFontPtr font = default;
+            bool own = face != null && chatFonts.TryGetValue(face, out font);
+            float fs = ImGui.GetFontSize();
+            float Width(string s) => own ? font.CalcTextSizeA(fs, float.MaxValue, 0, s).X : ImGui.CalcTextSize(s).X;
+            float line = ImGui.GetTextLineHeight(), space = Width(" "), emo = line + 2;
             float x = 0, y = 0;
             foreach (var word in text.Split(' '))
             {
                 if (word.Length == 0) { x += space; continue; }
                 bool isEmo = emoTex.Id != 0 && Emo.ContainsKey(word);
-                float w = isEmo ? emo : ImGui.CalcTextSize(word).X + (bold ? 1 : 0);
+                float w = isEmo ? emo : bold ? BoldW(word) : Width(word);
                 if (wrapW > 0 && x > 0 && x + w > wrapW) { x = 0; y += line + 2; }
                 if (draw)
                 {
@@ -65,11 +63,9 @@ public partial class Program
                         float u = (i % 10) * 24f / emoTex.Width, v = (i / 10) * 24f / emoTex.Height, du = 23f / emoTex.Width, dv = 23f / emoTex.Height;
                         dl.AddImage((IntPtr)emoTex.Id, p + new Vector2(0, -1), p + new Vector2(emo, emo - 1), new Vector2(u, v), new Vector2(u + du, v + dv), U(0xffffff, alpha));
                     }
-                    else
-                    {
-                        dl.AddText(p, U(col, alpha), word);
-                        if (bold) dl.AddText(p + new Vector2(1, 0), U(col, alpha), word);
-                    }
+                    else if (bold) BoldText(dl, p, col, word, alpha);
+                    else if (own) dl.AddText(font, fs, p, U(col, alpha), word);
+                    else dl.AddText(p, U(col, alpha), word);
                 }
                 x += w + space;
             }
@@ -77,11 +73,11 @@ public partial class Program
         }
 
         // Rich text as an ImGui item in the current window, wrapped to the space left on the line.
-        void RichItem(string text, int col, float indent = 0, bool bold = false)
+        void RichItem(string text, int col, float indent = 0, bool bold = false, string? face = null)
         {
             var p = ImGui.GetCursorScreenPos() + new Vector2(indent, 0);
             float w = ImGui.GetContentRegionAvail().X - indent;
-            float h = Rich(ImGui.GetWindowDrawList(), p, w, text, col, true, bold);
+            float h = Rich(ImGui.GetWindowDrawList(), p, w, text, col, true, bold, 1, face);
             ImGui.Dummy(new Vector2(w + indent, h));
         }
 
@@ -122,15 +118,27 @@ public partial class Program
         // A contact's display picture in a sunken frame: a sister's house, a notable or our leader, the chronicle scroll.
         void DisplayPic(ImDrawListPtr dl, Vector2 a, float size, string key)
         {
-            Sunken(dl, a, a + new Vector2(size, size), Paper);
+            Sunken(dl, a, a + new Vector2(size, size), Paper, 3);
             float px = MathF.Floor((size - 4) / 12);
             var at = Px(a.X + (size - px * 12) / 2, a.Y + (size - px * 12) / 2);
+            if (key.StartsWith("pal:"))
+            {
+                // A friend or enemy: the same picture they would have as leader (hashed from their id), no prop.
+                int id = int.TryParse(key.Split(':').Last(), out var pid) ? pid : 0;
+                var pw = sim.Walkers.FirstOrDefault(x => x.Id == id);
+                uint ph = PicHash(id * 31 + 7);
+                if (IconPic(dl, at, px * 12, ph)) return;
+                Portrait(dl, at, px, ph, 0xe4ecf4, Darken(pw != null ? Content.DotColors[pw.C] : 0x909090, 0.8f), Array.Empty<string>(), 0);
+                return;
+            }
             if (key == "me")
             {
                 int dot = sim.LeaderWalker is { } lw ? Content.DotColors[lw.C] : 0xd9a441;
-                dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(Lighten(sim.G.Banner & 0xffffff, 0.6f)));
-                Art(dl, at, px, Person, c => c == 'h' ? Lighten(dot, 0.25f) : Darken(dot, 0.8f));
-                Art(dl, at, px, new[] { "....y.y.y...", "....yyyyy..." }, _ => 0xf2c14e);
+                uint h = PicHash((sim.LeaderWalker?.Id ?? 0) * 31 + 7);
+                if (IconPic(dl, at, px * 12, h)) return;
+                // A crown for a monarch; anyone else wears the chain of office.
+                var prop = sim.GovKey == "crown" ? new[] { "....y.y.y...", "....yyyyy..." } : new[] { "", "", "", "", "", "", "...y....y...", "....yyyy...." };
+                Portrait(dl, at, px, h, Lighten(sim.G.Banner & 0xffffff, 0.6f), Darken(dot, 0.8f), prop, 0xf2c14e);
                 return;
             }
             if (key == "bot")
@@ -168,11 +176,79 @@ public partial class Program
                 "captain" => (0xe0b080, 0x5a6a3a, 0xd8d8c0, new[] { "...gggggg...", "..gggggggg.." }, 0x707a80),
                 "physician" => (0xe0b080, 0xf4f4f4, 0xc8e4f0, new[] { "", "", "", "", "", "", "", ".....xx.....", "....xxxx....", ".....xx....." }, 0xd02020),
                 "warden" => (0xe0b080, 0x2f62c9, 0xf0d8c0, new[] { "", "", "", "", "", "", "", "", "", "........kkk.", "........kkk." }, 0x3a8ad8),
+                "steward" => (0xe0b080, 0x8a6a3a, 0xf0e6c0, new[] { "", "", "", "", "", "", "", "", "........y.y.", ".........y..", ".........y.." }, 0xd8b040),
+                "baker" => (0xe0b080, 0xf4f0e8, 0xf0d8b0, new[] { "....xxxx....", "...xxxxxx..." }, 0xffffff),   // a white cap
+                "grocer" => (0xe0b080, 0x3a7a3a, 0xd8f0c8, new[] { "", "", "", "", "", "", "", "", "........g.g.", ".........g.." }, 0x5aa040),   // greens in hand
                 _ => (0x404040, 0x202020, 0xe8c8c8, new[] { "", "", "", "...mmmmmm..." }, 0xc02020),
             };
+            uint nh = PicHash(Array.IndexOf(Sim.NpcRoles, role) * 977 + sim.Founded * 131 + 3);
+            if (IconPic(dl, at, px * 12, nh)) return;
+            if (role == "ringleader")
+            {
+                // The ringleader never shows a face: a hood and a mask.
+                dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(bg));
+                Art(dl, at, px, Person, c => c == 'h' ? head : body);
+                Art(dl, at, px, extra, _ => ec);
+                return;
+            }
+            Portrait(dl, at, px, nh, bg, body, extra, ec);
+        }
+
+        // ---------- display pictures ----------
+        // About two in three people use a picture from resources/avatars.png (8 across, 96 px cells, 64 of them: 58 real
+        // photos with 2005-style treatments and 6 kept cartoons, built by make-photo-avatars.ps1), the rest a pixel
+        // portrait. Both are chosen from a hash of who they are, so a person keeps their picture.
+        Texture2D avatarTex;
+        const int AvatarCell = 96, AvatarAcross = 8;
+        static readonly int[] Pastels = { 0xcfe3f7, 0xd8f0d0, 0xf7e3c8, 0xf2d4e4, 0xe4dcf4, 0xf4f0c8, 0xd4ecec, 0xe8e8e8 };
+        static readonly int[] Skins = { 0xf1c8a0, 0xe0b080, 0xc68a5a, 0x8d5a3a };
+        static readonly int[] Hairs = { 0x2a1a10, 0x6a4020, 0xc89040, 0xa03a20, 0xb8b8b8 };
+        static readonly string[][] HairCuts =
+        {
+            new[] { "", "....HHHH....", "...HHHHHH..." },                                                                // short
+            new[] { "", "....HHHH....", "...HHHHHH...", "...H....H...", "...H....H...", "...H....H...", "..HH....HH.." },  // long
+            new[] { "", "", "...H....H..." },                                                                           // balding
+        };
+
+        void LoadAvatars()
+        {
+            string p = Path.Combine(AppContext.BaseDirectory, "resources", "avatars.png");
+            if (!File.Exists(p)) return;
+            avatarTex = Raylib.LoadTexture(p);
+            Raylib.SetTextureFilter(avatarTex, TextureFilter.Bilinear);
+        }
+
+        // Spreads a number into a well-mixed hash (so neighbouring ids get unrelated pictures).
+        static uint PicHash(int seed)
+        {
+            uint x = unchecked((uint)seed * 0x9E3779B1u);
+            x ^= x >> 15; x = unchecked(x * 0x85EBCA77u); x ^= x >> 13; x = unchecked(x * 0xC2B2AE3Du); x ^= x >> 16;
+            return x;
+        }
+
+        // Draws an icon on a pastel square if this person picked one; false if they use a portrait.
+        bool IconPic(ImDrawListPtr dl, Vector2 at, float side, uint h)
+        {
+            int count = avatarTex.Id == 0 ? 0 : (avatarTex.Width / AvatarCell) * (avatarTex.Height / AvatarCell);
+            if (count == 0 || h % 100 < 35) return false;
+            int i = (int)((h >> 8) % (uint)count);
+            dl.AddRectFilled(at, at + new Vector2(side, side), U(Pastels[(h >> 20) % (uint)Pastels.Length]));
+            float cw = AvatarCell / (float)avatarTex.Width, ch = AvatarCell / (float)avatarTex.Height;
+            float u = (i % AvatarAcross) * cw, v = (i / AvatarAcross) * ch;
+            dl.AddImage((IntPtr)avatarTex.Id, at, at + new Vector2(side, side), new Vector2(u, v), new Vector2(u + cw, v + ch));
+            return true;
+        }
+
+        // A pixel portrait: skin, hair colour and cut from the hash, eyes, the body in the job's colour, then the prop
+        // (crown, helmet, red cross) on top.
+        static void Portrait(ImDrawListPtr dl, Vector2 at, float px, uint h, int bg, int body, string[] prop, int propCol)
+        {
+            int skin = Skins[(h >> 4) % (uint)Skins.Length], hair = Hairs[(h >> 12) % (uint)Hairs.Length];
             dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(bg));
-            Art(dl, at, px, Person, c => c == 'h' ? head : body);
-            Art(dl, at, px, extra, _ => ec);
+            Art(dl, at, px, Person, c => c == 'h' ? skin : body);
+            Art(dl, at, px, new[] { "", "", "", "....e..e...." }, _ => 0x2a1a10);
+            Art(dl, at, px, HairCuts[(h >> 16) % (uint)HairCuts.Length], _ => hair);
+            Art(dl, at, px, prop, _ => propCol);
         }
 
         static int Lighten(int rgb, float k) =>
@@ -193,7 +269,8 @@ public partial class Program
         }
 
         // ---------- contacts ----------
-        record Row(string Key, string Title, Presence P, string Msg, int Unread, string Group);
+        // Head: the name in the conversation header when it differs from the list name (a sister's town). Info: an extra tooltip line.
+        record Row(string Key, string Title, Presence P, string Msg, int Unread, string Group, string Head = "", string Info = "");
 
         static int Visible(Convo c, long tick) => c.Lines.Count(l => l.Due <= tick);
 
@@ -202,18 +279,21 @@ public partial class Program
         {
             var rows = new List<Row>();
             int botNew = selKey == "bot" ? 0 : Math.Max(0, chronicleView.Count - botSeen);
-            rows.Add(new Row("bot", "Chronicle", Presence.Online, "Major events, kept forever (*)", botNew, sim.Name));
+            rows.Add(new Row("bot", "Chronicle", Presence.Online, sim.Chronicler != null ? $"kept by {sim.ChroniclerName} (*)" : "Major events, kept forever (*)", botNew, sim.Name, "", sim.ChroniclerLine()));
             foreach (var c in sim.Convos.Where(c => c.Kind == "npc" && !c.Gone).OrderByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), sim.Name));
+            // The leader's own people: friends, then those blocked for bad blood (0.69).
+            foreach (var c in sim.Convos.Where(c => c.Kind == "pal" && !c.Gone).OrderBy(c => c.Role == "foe").ThenByDescending(c => c.Last))
+                rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), c.Role == "foe" ? "Blocked" : "Friends", "", sim.PalInfo(c)));
             foreach (var s in sim.Sisters)
             {
                 var c = sim.Convos.FirstOrDefault(x => x.Key == "sis:" + s.Name);
-                rows.Add(new Row("sis:" + s.Name, s.Name, sim.SisterPresence(s), sim.SisterMessage(s), c != null ? Unread(c) : 0, "Sisters"));
+                rows.Add(new Row("sis:" + s.Name, sim.HandleOf(s), sim.SisterPresence(s), sim.SisterMessage(s), c != null ? Unread(c) : 0, "Sisters", s.Name, sim.RulerLine(s)));
             }
             foreach (var c in sim.Convos.Where(c => c.Kind == "gossip").OrderByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), "Group chats"));
             foreach (var c in sim.Convos.Where(c => c.Gone && c.Kind != "gossip").OrderByDescending(c => c.Last))
-                rows.Add(new Row(c.Key, c.Title, Presence.Offline, sim.MessageOf(c), Unread(c), "Offline"));
+                rows.Add(new Row(c.Key, c.Title, Presence.Offline, sim.MessageOf(c), Unread(c), "Offline", c.Key.StartsWith("sis:") ? c.Key[4..] : ""));
             return rows;
         }
 
@@ -235,22 +315,32 @@ public partial class Program
             double t = Raylib.GetTime() - nudgeAt;
             if (t < 0.6) { var d = new Vector2(MathF.Round(MathF.Sin((float)t * 70) * 5 * (1 - (float)t / 0.6f)), 0); a += d; b += d; }
 
-            float row = ImGui.GetFrameHeight(), line = ImGui.GetTextLineHeight();
-            Raised(bg, a, b);
-            var tA = a + new Vector2(Bd, Bd);
-            var tB = new Vector2(b.X - Bd, tA.Y + row);
-            TitleBar(bg, tA, tB, $"{sim.Name} Messenger", true);
+            float line = ImGui.GetTextLineHeight();
+            float spk = TitleH - 6;
+            XpWindow(bg, a, b, TitleH, $"{sim.Name} Messenger", true, audioOn ? spk + 4 : 0);
+            if (audioOn) SpeakerButton(bg, Px(b.X - Bd - spk - 2, a.Y + (Bd + TitleH - spk) / 2), spk);
+            float top = a.Y + Bd + TitleH;
             float x0 = a.X + Bd + Pad, x1 = b.X - Bd - Pad;
-            float y = tB.Y + Pad;
+            float y = top + Pad;
 
-            // Me: our leader's picture, name and status, and personal message.
+            // At launch, MSN's "Signing in..." page for a moment (with the start-up sound), then the contact list.
+            if (signInOn)
+            {
+                double nowT = Raylib.GetTime();
+                if (signInUntil == 0) { signInUntil = nowT + 2.6; Play(Sfx.Startup); }
+                if (nowT < signInUntil) { SigningIn(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, b.Y - Bd), nowT); return; }
+                if (signInUntil > 0) { signInUntil = -1; Play(Sfx.Online); }
+            }
+
+            // Me: our leader's picture, name and status, and personal message, on MSN 7's pale blue band.
             float pic = MathF.Max(48, line * 2 + 12);
+            Grad(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, y + pic + Pad), 0xd3e1fa, Face);
             DisplayPic(bg, new Vector2(x0, y), pic, "me");
             var me = sim.MePresence;
             float tx = x0 + pic + 8;
             bg.PushClipRect(new Vector2(tx, y), new Vector2(x1, y + pic), true);
             BoldText(bg, Px(tx, y + 2), Ink, sim.MeName);
-            float nw = ImGui.CalcTextSize(sim.MeName).X + 1;
+            float nw = BoldW(sim.MeName);
             bg.AddText(Px(tx + nw + 6, y + 2), U(Shade), $"({PresenceWord(me)})");
             Rich(bg, new Vector2(tx, y + line + 6), 0, sim.MeMessage(), Navy);
             bg.PopClipRect();
@@ -273,20 +363,20 @@ public partial class Program
             ImGui.End();
             y = lB.Y + Gap;
 
-            // The conversation header: picture, "To:" with a made-up address, and their personal message.
+            // The conversation header, as in MSN 7.5: "To:" with a made-up address, and their personal message.
+            // The display pictures sit in the column on the right (below).
             var sel = rows.FirstOrDefault(r => r.Key == selKey) ?? rows[0];
             if (sel.Key != selKey) selKey = sel.Key;
-            float hp = MathF.Max(40, line * 2 + 6);
-            DisplayPic(bg, new Vector2(x0, y), hp, sel.Key);
-            tx = x0 + hp + 8;
-            bg.PushClipRect(new Vector2(tx, y), new Vector2(x1, y + hp), true);
-            bg.AddText(Px(tx, y + 1), U(Shade), "To:");
+            float hh = line * 2 + 6;
+            bg.PushClipRect(new Vector2(x0, y), new Vector2(x1, y + hh), true);
+            bg.AddText(Px(x0, y + 1), U(Shade), "To:");
             float toW = ImGui.CalcTextSize("To: ").X;
-            BoldText(bg, Px(tx + toW, y + 1), Ink, sel.Title);
-            bg.AddText(Px(tx + toW + ImGui.CalcTextSize(sel.Title).X + 8, y + 1), U(Shade), Address(sel));
-            Rich(bg, new Vector2(tx, y + line + 4), 0, sel.Msg, Shade);
+            string head = sel.Head.Length > 0 ? sel.Head : sel.Title;
+            BoldText(bg, Px(x0 + toW, y + 1), Ink, head);
+            bg.AddText(Px(x0 + toW + BoldW(head) + 8, y + 1), U(Shade), Address(sel));
+            Rich(bg, new Vector2(x0, y + line + 4), 0, sel.Msg, Shade);
             bg.PopClipRect();
-            y += hp + 4;
+            y += hh + 2;
 
             // A notice bar in pale yellow when the contact is not online, as MSN did.
             if (sel.P != Presence.Online && sel.Key != "bot")
@@ -294,7 +384,7 @@ public partial class Program
                 string note = sel.P switch
                 {
                     Presence.Offline => $"{sel.Title} is offline. Old messages are kept.",
-                    Presence.Blocked => $"{sel.Title} is blocked: relations are hostile.",
+                    Presence.Blocked => sel.Key.StartsWith("pal:") ? $"{sel.Title} is blocked: there is bad blood between you." : $"{sel.Title} is blocked: relations are hostile.",
                     _ => $"{sel.Title} may not reply because their status is set to {PresenceWord(sel.P)}.",
                 };
                 var nA = new Vector2(x0, y);
@@ -309,29 +399,119 @@ public partial class Program
                 y = nB.Y + 4;
             }
 
-            // The conversation, then the status line under it.
+            // MSN 7.5's conversation: the history on the left with the formatting toolbar and the typing box under
+            // it; on the right their display picture at the top and ours at the bottom, in glossy rounded frames.
             float footH = line + 8;
+            float bottom = b.Y - Bd - Pad - footH;
+            float frame = MathF.Floor(Math.Clamp((x1 - x0) * 0.24f, 72, 104));
+            float picCol = frame + 8;
+            float boxH = MathF.Max(frame, line * 3 + 30);           // toolbar plus typing box, as tall as our picture
+            float tbH = line + 8;
             var cA = new Vector2(x0, y);
-            var cB = new Vector2(x1, b.Y - Bd - Pad - footH);
+            var cB = new Vector2(x1 - picCol, bottom - boxH - 6);
             Sunken(bg, cA, cB, Paper);
             Area("convo", cA + new Vector2(2, 2), cB - new Vector2(2, 2));
             string foot = Conversation(sel);
             ImGui.End();
-            bg.PushClipRect(new Vector2(x0, cB.Y), new Vector2(x1, b.Y - Bd), true);
-            Rich(bg, new Vector2(x0 + 2, cB.Y + 5), 0, foot, Shade);
+            PicFrame(bg, new Vector2(x1 - frame, y), frame, sel.Key, sel.P);
+            PicFrame(bg, new Vector2(x1 - frame, bottom - frame), frame, "me", me);
+            ComposeBox(bg, new Vector2(x0, bottom - boxH), new Vector2(x1 - picCol, bottom), tbH);
+            bg.PushClipRect(new Vector2(x0, bottom), new Vector2(x1, b.Y - Bd), true);
+            Rich(bg, new Vector2(x0 + 2, bottom + 5), 0, foot, Shade);
             bg.PopClipRect();
+        }
+
+        // A display picture in MSN 7's frame: a rounded, glossy pale-blue bezel with a status-coloured rim
+        // (green online, orange away, red busy or blocked, grey offline) round the picture.
+        void PicFrame(ImDrawListPtr dl, Vector2 a, float size, string key, Presence p)
+        {
+            var b = a + new Vector2(size, size);
+            float r = MathF.Floor(size * 0.12f);
+            int rim = p == Presence.Blocked ? Busy : PresenceCol(p);
+            dl.AddRectFilled(a, b, U(Darken(rim, 0.9f)), r);
+            dl.AddRectFilled(a + new Vector2(2, 2), b - new Vector2(2, 2), U(Lighten(rim, 0.55f)), r - 1);
+            dl.AddRectFilled(a + new Vector2(4, 4), b - new Vector2(4, 4), U(0xf4f8ff), r - 2);
+            // The gloss: a white sheen over the top half of the bezel.
+            dl.AddRectFilledMultiColor(a + new Vector2(3, 3), new Vector2(b.X - 3, a.Y + size * 0.45f), U(Hi, 0.55f), U(Hi, 0.55f), U(Hi, 0f), U(Hi, 0f));
+            DisplayPic(dl, a + new Vector2(6, 6), size - 12, key);
+            dl.AddRect(a, b, U(Darken(rim, 0.7f)), r, ImDrawFlags.None, 1);
+        }
+
+        // The bottom of an MSN 7.5 conversation: the formatting toolbar (font, emoticons, winks, nudge) and the
+        // typing box with its Send button, shown read only: the leader answers for the town; we read along.
+        void ComposeBox(ImDrawListPtr dl, Vector2 a, Vector2 b, float tbH)
+        {
+            float line = ImGui.GetTextLineHeight();
+            // Toolbar: a pale band with small buttons, each a picture and a drop-down arrow.
+            Grad(dl, a, new Vector2(b.X, a.Y + tbH), 0xf6f9ff, 0xdde7f8);
+            dl.AddRect(a, new Vector2(b.X, a.Y + tbH), U(0xa8bede));
+            float x = a.X + 6, cy = a.Y + tbH / 2;
+            void Arrow() { dl.AddTriangleFilled(new Vector2(x, cy - 1), new Vector2(x + 6, cy - 1), new Vector2(x + 3, cy + 2), U(0x404040)); x += 14; }
+            BoldText(dl, Px(x, cy - line / 2), 0x1f4fa0, "A");
+            dl.AddRectFilled(new Vector2(x, cy + line / 2 - 2), new Vector2(x + BoldW("A"), cy + line / 2), U(0xd02020));
+            x += BoldW("A") + 3; Arrow();
+            foreach (var code in new[] { ":)", ";)" }) { Rich(dl, new Vector2(x, cy - line / 2), 0, code, Ink); x += line + 5; Arrow(); }
+            // Nudge: a little window with shake lines.
+            var na = Px(x, cy - line * 0.35f);
+            dl.AddRectFilled(na, na + new Vector2(line * 0.8f, line * 0.7f), U(Frame), 2);
+            dl.AddRectFilled(na + new Vector2(2, 4), na + new Vector2(line * 0.8f - 2, line * 0.7f - 2), U(Paper));
+            dl.AddLine(na + new Vector2(-4, 2), na + new Vector2(-4, line * 0.6f), U(0x4060a0), 1);
+            dl.AddLine(na + new Vector2(line * 0.8f + 3, 2), na + new Vector2(line * 0.8f + 3, line * 0.6f), U(0x4060a0), 1);
+            bool toolHot = ImGui.IsMouseHoveringRect(a, new Vector2(b.X, a.Y + tbH));
+
+            // The typing box (white, sunken) and the Send button beside it, greyed out.
+            float sendW = MathF.Max(64, ImGui.CalcTextSize("Send").X + 24);
+            var ia = new Vector2(a.X, a.Y + tbH + 4);
+            var ib = new Vector2(b.X - sendW - 6, b.Y);
+            Sunken(dl, ia, ib, Paper);
+            dl.PushClipRect(ia, ib, true);
+            Rich(dl, ia + new Vector2(6, 4), ib.X - ia.X - 12, "Reading along: the leader answers for the town.", 0xa0a0a0);
+            dl.PopClipRect();
+            var sa = new Vector2(b.X - sendW, ia.Y);
+            var sb = new Vector2(b.X, b.Y);
+            Grad(dl, sa, sb, 0xf8f8f4, 0xe6e3d6);
+            dl.AddRect(sa, sb, U(0x9aa8c0), 3);
+            var ts = ImGui.CalcTextSize("Send");
+            dl.AddText(Px(sa.X + (sendW - ts.X) / 2, sa.Y + (sb.Y - sa.Y - ts.Y) / 2), U(0xa0a0a0), "Send");
+            if (!modal && (toolHot || ImGui.IsMouseHoveringRect(ia, sb)))
+                Tip("Read only: the leader writes for the town. You read along.");
+        }
+
+        // MSN's sign-in page: the green and blue buddies chasing each other round in a circle, "Signing in..."
+        // and our address under it, on a white-to-blue page.
+        void SigningIn(ImDrawListPtr dl, Vector2 a, Vector2 b, double now)
+        {
+            Grad(dl, a, b, Paper, 0xc9daf5);
+            float line = ImGui.GetTextLineHeight();
+            var c = new Vector2(MathF.Floor((a.X + b.X) / 2), MathF.Floor(a.Y + (b.Y - a.Y) * 0.38f));
+            float px = MathF.Max(4, MathF.Floor((b.X - a.X) / 70));
+            float rad = px * 7;
+            double ang = now * 4.2;
+            for (int i = 0; i < 2; i++)
+            {
+                double t = ang + i * Math.PI;
+                var at = Px(c.X + (float)Math.Cos(t) * rad - px * 3.5f, c.Y + (float)Math.Sin(t) * rad * 0.55f - px * 4);
+                BuddyIcon(dl, at, px, i == 0 ? Presence.Online : Presence.Offline);
+                if (i == 1) Art(dl, at, px, Buddy, ch => ch == 'h' ? 0x8fb4ee : 0x2a5fc8);   // MSN's blue buddy
+            }
+            string s = "Signing in...";
+            BoldText(dl, Px(c.X - BoldW(s) / 2, c.Y + rad + px * 6), Navy, s);
+            string who = $"{sim.MeName} <{Sim.Slug(sim.Name)}@{Sim.Slug(sim.Name)}.town>";
+            var ws = ImGui.CalcTextSize(who);
+            dl.AddText(Px(c.X - ws.X / 2, c.Y + rad + px * 6 + line + 6), U(Shade), who);
         }
 
         // A made-up address for the To: line, like <crown@ashford.town>.
         string Address(Row r)
         {
-            static string Slug(string s) => new string(s.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+            static string Slug(string s) => Sim.Slug(s);
             string home = Slug(sim.Name) + ".town";
             if (r.Key == "bot") return $"<chronicle@{home}>";
             if (r.Key.StartsWith("npc:")) return $"<{r.Key.Split(':')[1]}@{home}>";
+            if (r.Key.StartsWith("pal:")) return $"<{Slug(r.Title)}@{home}>";
             if (r.Key.StartsWith("gos:")) return "<group chat>";
-            var s = sim.Sisters.FirstOrDefault(x => x.Name == r.Title);
-            return $"<{(s != null ? s.Gov : "nobody")}@{Slug(r.Title)}.town>";
+            var s = r.Key.StartsWith("sis:") ? sim.Sisters.FirstOrDefault(x => "sis:" + x.Name == r.Key) : null;
+            return s != null ? $"<{sim.HandleOf(s)}.town>" : r.Title.Contains('@') ? $"<{r.Title}.town>" : $"<{Slug(r.Head.Length > 0 ? r.Head : r.Title)}.town>";
         }
 
         // The contact list: group headers that fold, then one row per contact. Click a row to open it.
@@ -365,15 +545,15 @@ public partial class Program
                     bool hot = ImGui.IsItemHovered();
                     var ra = p;
                     var rb = p + new Vector2(w, rowH);
-                    if (selRow) dl.AddRectFilled(ra, rb, U(Navy));
-                    else if (hot) dl.AddRectFilled(ra, rb, U(0xe4ecf8));
+                    if (selRow) dl.AddRectFilled(ra, rb, U(Select), 2);
+                    else if (hot) dl.AddRectFilled(ra, rb, U(0xdfe8f8), 2);
                     BuddyIcon(dl, Px(p.X + 18, p.Y + (rowH - 8 * bpx) / 2), bpx, r.P);
                     float tx = p.X + 18 + 7 * bpx + 6, ty = p.Y + (rowH - line) / 2;
                     dl.PushClipRect(ra, rb, true);
-                    int ink = selRow ? Hi : Ink, grey = selRow ? 0xc8d0e8 : Shade;
+                    int ink = selRow ? Hi : Ink, grey = selRow ? 0xd8e2f6 : Shade;
                     string name = r.Unread > 0 ? $"{r.Title} ({r.Unread})" : r.Title;
                     if (r.Unread > 0) BoldText(dl, Px(tx, ty), ink, name); else dl.AddText(Px(tx, ty), U(r.P == Presence.Offline ? grey : ink), name);
-                    tx += ImGui.CalcTextSize(name).X + (r.Unread > 0 ? 1 : 0);
+                    tx += r.Unread > 0 ? BoldW(name) : ImGui.CalcTextSize(name).X;
                     if (r.P != Presence.Online) { string st = $" ({PresenceWord(r.P)})"; dl.AddText(Px(tx, ty), U(grey), st); tx += ImGui.CalcTextSize(st).X; }
                     if (r.Msg.Length > 0)
                     {
@@ -381,7 +561,9 @@ public partial class Program
                         Rich(dl, new Vector2(tx + ImGui.CalcTextSize(" - ").X, ty), 0, r.Msg, grey);
                     }
                     dl.PopClipRect();
-                    if (hot) Tip($"{r.Title} ({PresenceWord(r.P)})\n{r.Msg}");
+                    // A sister town gets the full "why she feels this way" tip; everyone else the short one.
+                    if (hot && r.Key.StartsWith("sis:") && sim.Sisters.FirstOrDefault(x => "sis:" + x.Name == r.Key) is { } hs) SisterTip(hs);
+                    else if (hot) Tip($"{r.Title} ({PresenceWord(r.P)})\n{(r.Info.Length > 0 ? r.Info + "\n" : "")}{r.Msg}");
                 }
             }
             ImGui.EndChild();
@@ -401,14 +583,25 @@ public partial class Program
                 string last = "";
                 foreach (var l in chronicleView)
                 {
-                    // "- date | town, day N, season | text": the middle part heads each new day.
-                    var parts = l.Split(" | ");
-                    string head = parts.Length >= 3 ? parts[1] : "";
-                    string text = parts.Length >= 3 ? string.Join(" | ", parts[2..]) : l;
-                    if (head != last) { if (last != "") ImGui.Spacing(); RichItem($"Chronicle says ({head}):", Shade); last = head; }
-                    RichItem(text, Ink, 12);
+                    // "- date | town, day N, season | text | ~Writer (Trait)": the middle part and the writer head each
+                    // new day or new hand; the line is drawn in the writer's font (lines from before 0.69 are unsigned).
+                    var parts = l.Split(" | ").ToList();
+                    string writer = "", voice = "";
+                    if (parts.Count >= 4 && parts[^1].StartsWith('~') && parts[^1].EndsWith(')') && parts[^1].LastIndexOf(" (") is int op and > 0)
+                    {
+                        writer = parts[^1][1..op];
+                        voice = parts[^1][(op + 2)..^1];
+                        parts.RemoveAt(parts.Count - 1);
+                    }
+                    string head = parts.Count >= 3 ? parts[1] : "";
+                    string text = parts.Count >= 3 ? string.Join(" | ", parts.Skip(2)) : l;
+                    string top = $"{(writer != "" ? writer + " writes" : "Chronicle says")} ({head}):";
+                    if (top != last) { if (last != "") ImGui.Spacing(); RichItem(top, Shade); last = top; }
+                    var tr = voice == "" ? null : Traits.All.FirstOrDefault(t => t.Name == voice);
+                    var st = tr == null ? null : Sim.ChatStyles.GetValueOrDefault("t:" + tr.Key);
+                    RichItem(text, st?.Col ?? Ink, 12, false, st?.Face);
                 }
-                foot = "Also written to chronicle.txt (*)";
+                foot = sim.Chronicler != null ? $"Written by {sim.ChroniclerName}. Also saved to chronicle.txt (*)" : "Also written to chronicle.txt (*)";
             }
             else
             {
@@ -429,12 +622,15 @@ public partial class Program
                         day = l.Day;
                         from = "";
                     }
-                    if (l.From != from) { RichItem($"{l.From} says:", Shade); from = l.From; }
-                    RichItem(l.Text, l.Ours ? Navy : Ink, 12);
+                    // MSN with timestamps on: "X says (2:14 PM):"; lines from before 0.74 have no time.
+                    if (l.From != from) { RichItem(l.H >= 0 ? $"{l.From} says ({Sim.ClockText(l.H)}):" : $"{l.From} says:", Shade); from = l.From; }
+                    // Each line in its writer's own font and colour; lines from before 0.57 have none.
+                    var st = Sim.ChatStyles.GetValueOrDefault(l.S);
+                    RichItem(l.Text, st?.Col ?? (l.Ours ? Navy : Ink), 12, false, st?.Face);
                 }
                 var typing = c?.Lines.FirstOrDefault(l => l.Due > sim.TickNo);
                 foot = typing != null ? $"{typing.From} is typing a message..."
-                    : lines.Count > 0 ? $"Last message received on day {lines[^1].Day}."
+                    : lines.LastOrDefault(l => !l.Ours) is { } got ? (got.H >= 0 ? $"Last message received at {Sim.ClockText(got.H)} on day {got.Day}." : $"Last message received on day {got.Day}.")
                     : sel.Key.StartsWith("gos:") ? "Group chat. They can't see you ;)" : $"{sim.MeName} answers for {sim.Name}.";
             }
             if (scrollToEnd || ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 4) ImGui.SetScrollHereY(1f);
@@ -468,24 +664,29 @@ public partial class Program
             for (int i = toasts.Count - 1; i >= 0; i--)
             {
                 var s = toasts[i];
-                float bodyH = line + 4 + Rich(dl, Vector2.Zero, bodyW, s.T.Text, Ink, false);
+                // A chat toast shows the sender's display picture on the left, as MSN 7's did; crier toasts have none.
+                float pic = !s.T.Crier && s.T.Key.Length > 0 ? MathF.Floor(line * 2 + 8) : 0;
+                float textW = pic > 0 ? bodyW - pic - 8 : bodyW;
+                float head = s.T.Title.Length > 0 ? line + 4 : 0;
+                float bodyH = MathF.Max(pic, head + Rich(dl, Vector2.Zero, textW, s.T.Text, Ink, false));
                 float h = Bd + line + 4 + 6 + bodyH + 6 + Bd;
                 // Slide: in from below over 0.25 s, out downward over 0.3 s.
                 float k = s.Dying >= 0 ? 1 - (float)Math.Clamp((now - s.Dying) / 0.3, 0, 1) : (float)Math.Clamp((now - s.Born) / 0.25, 0, 1);
                 float off = (1 - k) * (h + 8);
                 var a = Px(areaB.X - 8 - w, bottom - h + off);
                 var b = a + new Vector2(w, h);
-                Raised(dl, a, b);
+                // An MSN 7 toast: a small Luna window, white body fading to pale blue.
+                XpWindow(dl, a, b, line + 4, s.T.Crier ? $"{sim.Name} crier" : $"{sim.Name} Messenger", false);
                 var tA = a + new Vector2(Bd, Bd);
                 var tB = new Vector2(b.X - Bd, tA.Y + line + 4);
-                dl.AddRectFilledMultiColor(tA, tB, U(Navy), U(Sky), U(Sky), U(Navy));
-                BoldText(dl, Px(tA.X + 4, tA.Y + 2), Hi, s.T.Crier ? $"{sim.Name} crier" : $"{sim.Name} Messenger");
+                Grad(dl, new Vector2(tA.X, tB.Y), b - new Vector2(Bd, Bd), Paper, 0xd6e4fb);
                 var p = new Vector2(tA.X + 8, tB.Y + 6);
+                if (pic > 0) { DisplayPic(dl, Px(p.X, p.Y), pic, s.T.Key); p.X += pic + 8; }
                 if (s.T.Title.Length > 0) BoldText(dl, Px(p.X, p.Y), s.T.Urgent ? 0xa00000 : Navy, s.T.Title);
-                Rich(dl, new Vector2(p.X, p.Y + line + 4), bodyW, s.T.Text, Ink);
+                Rich(dl, new Vector2(p.X, p.Y + head), textW, s.T.Text, Ink);
                 if (s.Dying < 0 && ImGui.IsMouseHoveringRect(a, b) && !ImGui.IsAnyItemHovered())
                 {
-                    dl.AddRect(a, b, U(Navy), 0, ImDrawFlags.None, 2);
+                    dl.AddRect(a, b, U(0xffcc33), Corner, ImDrawFlags.RoundCornersTop, 2);
                     if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                     {
                         if (s.T.Key.Length > 0) Open(s.T.Key);

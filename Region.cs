@@ -10,6 +10,8 @@ class Sister
     public string Gov = "council";
     public double? Rel;                                        // -1..1 toward this town; null until first looked at
     public double? Gold;                                       // treasury 0..100; null until first looked at
+    public Leader? Lord;                                       // the ruler (Rulers.cs)
+    public readonly List<(string Why, double D, double At)> RelEvents = new();   // recent changes in her regard (EvClock), not saved
     public int Total => Counts.Sum();
 }
 
@@ -47,16 +49,37 @@ partial class Sim
 
     // ---------- small helpers ----------
     public static string WealthWord(double g) => g < 8 ? "broke" : g < 25 ? "modest" : g < 60 ? "well-off" : "rich";
-    double BaseRel(Sister s) => Clamp(0.4 - 0.8 * Math.Abs(Govs.Get(s.Gov).Harsh - G.Harsh) + (s.Gov == GovKey ? 0.15 : 0), -1, 1);
+    double BaseRel(Sister s) => Clamp(RelParts(s).Sum(p => p.D), -1, 1);
+
+    // The standing reasons for how a sister regards us, with amounts (-1..1 scale): her relation drifts toward their
+    // sum. BaseRel and the sister tooltip both read this, so the tooltip shows the real numbers.
+    public List<(string Why, double D)> RelParts(Sister s)
+    {
+        var l = new List<(string, double)> { ("Neighbourly goodwill", 0.4) };
+        var them = Govs.Get(s.Gov);
+        double gap = Math.Abs(them.Harsh - G.Harsh);
+        if (gap > 0.005) l.Add(($"Their {them.Name.ToLowerInvariant()} is {(them.Harsh > G.Harsh ? "harsher" : "gentler")} than our {G.Name.ToLowerInvariant()}", -0.8 * gap));
+        if (s.Gov == GovKey) l.Add(("We live under the same rule", 0.15));
+        foreach (var t in s.Lord?.Traits ?? Array.Empty<string>())
+            if (Warmth.GetValueOrDefault(t) is var w && w != 0) l.Add(($"Their ruler is {(Traits.Exists(t) ? Traits.Get(t).Name : t).ToLowerInvariant()}", w));
+        return l;
+    }
     public double RelOf(Sister s) { s.Rel ??= BaseRel(s); return s.Rel.Value; }
     double RelPeek(Sister s) => s.Rel ?? BaseRel(s);   // the same, without fixing it (the Messenger must not change the sim)
     public double GoldOf(Sister s) { s.Gold ??= 15; return s.Gold.Value; }
-    void Bump(Sister s, double d) => s.Rel = Clamp(RelOf(s) + d, -1, 1);
+    // Something changes how a sister regards us at once; why is kept for her tooltip (the last 8 days, at most 12).
+    void Bump(Sister s, double d, string why)
+    {
+        s.Rel = Clamp(RelOf(s) + d, -1, 1);
+        s.RelEvents.Add((why, d, EvClock));
+        s.RelEvents.RemoveAll(e => EvClock - e.At > 8 * DayMs);
+        if (s.RelEvents.Count > 12) s.RelEvents.RemoveAt(0);
+    }
     void Purse(Sister s, double d) => s.Gold = Clamp(GoldOf(s) + d, 0, 100);
     void Pay(double d) => Gold = Clamp(Gold + d, 0, 100);
     int DotOf(Sister s) => Content.Schemes[s.Scheme].Dot;
     Sister? SisterNamed(string name) => Sisters.FirstOrDefault(s => s.Name == name);
-    string RandomSisterGov() => Weighted(Govs.All.Where(g => g.Key != "elders").ToList(), g => g.Lean).Key;
+    string RandomSisterGov() => Weighted(Govs.All.Where(g => !Govs.IsHamlet(g.Key)).ToList(), g => g.Lean).Key;
 
     // How a sister town regards this one, as a word and a colour for the legend.
     public (string word, int col) Attitude(Sister s)
@@ -96,18 +119,21 @@ partial class Sim
     }
 
     // Rebuild a sister from a save, clamping anything odd.
-    public Sister SisterFromSave(string name, int scheme, int[] counts, int cap, string gov, double? rel, double? gold)
+    public Sister SisterFromSave(string name, int scheme, int[] counts, int cap, string gov, double? rel, double? gold, Leader? lord = null)
     {
         var s = new Sister
         {
             Name = string.IsNullOrEmpty(name) ? "Old town" : name,
             Scheme = Clamp(scheme, 0, Content.Schemes.Length - 1),
             Cap = Math.Max(0, cap),
-            Gov = Govs.Exists(gov) && gov != "elders" ? gov : RandomSisterGov(),
+            Gov = Govs.Exists(gov) && !Govs.IsHamlet(gov) ? gov : RandomSisterGov(),
             Rel = rel.HasValue ? Clamp(rel.Value, -1, 1) : null,
             Gold = gold.HasValue ? Clamp(gold.Value, 0, 100) : null,
         };
         for (int c = 0; c < s.Counts.Length; c++) s.Counts[c] = c < counts.Length ? Math.Max(0, counts[c]) : 0;
+        // A save from before 0.57.1 has no ruler: one is chosen now.
+        if (lord != null && !string.IsNullOrEmpty(lord.Name)) { lord.Traits = lord.Traits.Where(Traits.Exists).ToArray(); s.Lord = lord; }
+        else NewRuler(s);
         return s;
     }
 
@@ -117,11 +143,19 @@ partial class Sim
     {
         var counts = new int[Content.DotColors.Length];
         foreach (var w in Walkers) if (!w.Gone) counts[w.C]++;
-        Sisters.Add(new Sister { Name = Name, Scheme = Scheme, Counts = counts, Cap = Walkers.Count, Gov = GovKey, Gold = Gold });
+        Sisters.Add(new Sister { Name = Name, Scheme = Scheme, Counts = counts, Cap = Walkers.Count, Gov = Govs.IsHamlet(GovKey) ? RandomSisterGov() : GovKey, Gold = Gold });   // a sister always has a full rule
+        // Our leader stays on as the old town's ruler, at the same age.
+        if (Leader != null)
+        {
+            var lb = LeaderBody;
+            Sisters[^1].Lord = new Leader { Name = Leader.Name, Gen = Leader.Gen, Traits = Leader.Traits, Since = EvClock - (Age - Leader.Since),
+                Born = EvClock - (lb != null ? YearsOf(lb) : StartAge(GovKey, false)) * YearMs };
+        }
+        else NewRuler(Sisters[^1]);
         Gold = 10;
         string old = Name;
         Founded++;
-        Scheme = (Founded - 1) % Content.Schemes.Length;
+        Scheme = (Scheme + 1) % Content.Schemes.Length;   // the next landscape on from wherever the region began
         Name = Content.TownName(Rng, Sisters.Select(s => s.Name).Append(old).ToHashSet(), Founded);
         Tier = 1;
         Built = new() { "house" };
@@ -137,6 +171,7 @@ partial class Sim
         Ill = null; // the old town keeps its sickness
         WarOn = null; // and its soldiers
         ResetGov();
+        InitFood();   // the old town keeps its stores; settlers bring seed and a few sacks
         PlaceAll();
         StaticDirty = true;
         Say($"{old} is chartered. {Name} is founded.");
@@ -206,9 +241,10 @@ partial class Sim
     // A sister town changes how it is ruled (rare, rolled with politics).
     void SisterChange(Sister s)
     {
-        var k = Weighted(Govs.All.Where(g => g.Key != "elders" && g.Key != s.Gov).ToList(), g => g.Lean);
+        var k = Weighted(Govs.All.Where(g => !Govs.IsHamlet(g.Key) && g.Key != s.Gov).ToList(), g => g.Lean);
         s.Gov = k.Key;
-        Say($"News from {s.Name}: {An(k.Lower)} takes power.");
+        NewRuler(s);
+        Say($"News from {s.Name}: {An(k.Lower)} takes power; {RulerTitle(s)} rules.");
         Tell(s, "rule");
     }
 
@@ -284,7 +320,7 @@ partial class Sim
         var s = Weighted(givers, g => RelOf(g) + 0.5);
         Purse(s, -8);
         Pay(8);
-        Bump(s, 0.05);
+        Bump(s, 0.05, "they sent us aid");
         Say(Pick(new[] { $"{s.Name} sends grain and timber.", $"Wagons of aid arrive from {s.Name}." }));
         Tell(s, "aid");
         return true;
@@ -299,27 +335,27 @@ partial class Sim
         {
             Say($"Envoys from {s.Name} bring gifts.");
             Tell(s, "gifts");
-            Pay(4); Purse(s, -2); Bump(s, 0.04);
+            Pay(4); Purse(s, -2); Bump(s, 0.04, "their envoys brought gifts");
         }
         else if (r > -0.1)
         {
             Say($"Envoys from {s.Name} come to talk trade.");
             Tell(s, "trade");
-            Pay(2); Purse(s, 1); Bump(s, 0.03);
+            Pay(2); Purse(s, 1); Bump(s, 0.03, "their envoys came to trade");
         }
         else if (G.Harsh >= 0.6 && r < -0.45)
         {
             foreach (var v in vs) v.Stay = TickNo + Secs(3, 6);
             Say($"Guards turn {s.Name}'s envoys away at the gate.");
             Tell(s, "turned");
-            Bump(s, -0.08);
+            Bump(s, -0.08, "we turned their envoys away");
         }
         else
         {
             Say($"Envoys from {s.Name} deliver a stiff note.");
             Tell(s, "note");
-            Nudge(-0.01);
-            Bump(s, -0.02);
+            Nudge(-0.01, "a stiff note from a sister");
+            Bump(s, -0.02, "their envoys delivered a stiff note");
         }
     }
 
@@ -332,19 +368,20 @@ partial class Sim
             Say($"A letter from {s.Name} proposes a wedding between the towns.");
             Tell(s, "wedding");
             Weddings = Math.Min(3, Weddings + 1);
-            Bump(s, 0.03);
+            Bump(s, 0.03, "a wedding between the towns");
         }
         else if (r > -0.1 && GoldOf(s) < 10)
         {
             if (Gold >= 15)
             {
-                Pay(-8); Purse(s, 8); Bump(s, 0.1);
+                Pay(-8); Purse(s, 8); Bump(s, 0.1, "we sent grain when they begged");
+                TakeGrain(Math.Min(20, Math.Max(0, GrainTotal() - (DaysToHarvest() + FoodRule.reserve) * Eaters * NeedPerDay))); // real sacks, if we can spare them
                 Say($"{Name} answers {s.Name}'s plea with grain.");
                 Tell(s, "plea.yes");
             }
             else
             {
-                Bump(s, -0.03);
+                Bump(s, -0.03, "we could not answer their plea");
                 Say($"A letter from {s.Name} begs for grain; the treasury is bare.");
                 Tell(s, "plea.no");
             }
@@ -353,13 +390,13 @@ partial class Sim
         {
             if (G.Harsh >= Govs.Get(s.Gov).Harsh || Gold < 6)
             {
-                Bump(s, Gold < 6 ? -0.08 : -0.12);
+                Bump(s, Gold < 6 ? -0.08 : -0.12, "we refused them tribute");
                 Say($"{s.Name} demands tribute and is refused.");
                 Tell(s, "tribute.refused");
             }
             else
             {
-                Pay(-6); Purse(s, 6); Bump(s, 0.03); Nudge(-0.02);
+                Pay(-6); Purse(s, 6); Bump(s, 0.03, "we paid them tribute"); Nudge(-0.02, "tribute paid");
                 Say($"The town pays tribute to {s.Name}.");
                 Tell(s, "tribute.paid");
             }
@@ -369,8 +406,9 @@ partial class Sim
     // A harsh sister falls to revolution: its refugees arrive, and are welcomed or turned away.
     void SisterRevolt(Sister s)
     {
-        var k = Weighted(Govs.All.Where(g => g.Key != "elders" && g.Harsh < 0.5).ToList(), g => g.Lean);
+        var k = Weighted(Govs.All.Where(g => !Govs.IsHamlet(g.Key) && g.Harsh < 0.5).ToList(), g => g.Lean);
         s.Gov = k.Key;
+        NewRuler(s);
         Tell(s, "revolution");
         if (!Refugees(s, $"{s.Name} falls to revolution")) Say($"{s.Name} falls to revolution: {An(k.Lower)} takes power.");
     }
@@ -412,19 +450,19 @@ partial class Sim
         Purse(s, 2);
         if (G.Harsh >= 0.7)
         {
-            Bump(s, -0.1);
+            Bump(s, -0.1, "we rigged the match");
             Say($"The match against {s.Name} is rigged; their team goes home bruised.");
             Tell(s, "rigged");
         }
         else if (Chance() < 0.5)
         {
-            Nudge(0.04);
+            Nudge(0.04, "our team won the match");
             Say($"Our team beats {s.Name}'s; the crowd roars.");
             Tell(s, "fairwon");
         }
         else
         {
-            Bump(s, 0.05);
+            Bump(s, 0.05, "their team won the match");
             Say($"{s.Name}'s team wins; the crowd cheers anyway.");
             Tell(s, "fairlost");
         }
@@ -438,15 +476,15 @@ partial class Sim
         if (Chance() < caught)
         {
             foreach (var v in vs) v.Stay = TickNo + Secs(4, 8);
-            Bump(s, -0.1);
-            Nudge(0.01);
+            Bump(s, -0.1, "we caught their spy");
+            Nudge(0.01, "a spy caught");
             Say($"Guards catch a spy from {s.Name}.");
             Tell(s, "spycaught");
         }
         else if (Chance() < 0.5)
         {
             Pay(-3);
-            Bump(s, -0.05);
+            Bump(s, -0.05, "we suspect their spy of theft");
             Say($"Papers go missing; a spy from {s.Name} is suspected.");
             Tell(s, "spypapers");
         }
@@ -454,7 +492,7 @@ partial class Sim
         {
             Arson($"A fire is traced to a saboteur from {s.Name}.");
             Tell(s, "spyfire");
-            Bump(s, -0.05);
+            Bump(s, -0.05, "we blame their saboteur for a fire");
         }
     }
 
@@ -477,6 +515,7 @@ partial class Sim
         var counts = new int[Content.DotColors.Length];
         counts[Content.Schemes[sch].Dot] = 6;
         Sisters.Add(new Sister { Name = nm, Scheme = sch, Counts = counts, Cap = 12, Gov = RandomSisterGov(), Gold = 8 });
+        NewRuler(Sisters[^1]);
         Founded++;
         Say($"A new settlement, {nm}, is founded in the hills.");
         SignIn(Sisters[^1]);
@@ -519,17 +558,18 @@ partial class Sim
         {
             // Note: the gold and relation drifts here are amounts per check (every PolStepMs), not per day.
             double struck = Struck(s);
-            Purse(s, 0.6 - 0.3 - s.Total * 0.012 - struck - Math.Max(0, GoldOf(s) - 40) * 0.04 + (Rnd() - 0.5) * 0.9 + (OncePer(12) ? RandInt(-12, 12) : 0));
+            StepRuler(s);
+            Purse(s, RulerTraits(s).Sum(t => t.Gold) + 0.6 - 0.3 - s.Total * 0.012 - struck - Math.Max(0, GoldOf(s) - 40) * 0.04 + (Rnd() - 0.5) * 0.9 + (OncePer(12) ? RandInt(-12, 12) : 0));
             // This town helps a friendly sister in trouble.
             if (struck > 0 && RelOf(s) >= 0.25 && Gold >= 15 && Odds(1))
             {
-                Pay(-8); Purse(s, 8); Bump(s, 0.12);
+                Pay(-8); Purse(s, 8); Bump(s, 0.12, "we sent aid in their trouble");
                 Say($"{Name} sends aid to {s.Name}.");
                 Tell(s, "thanks");
             }
             s.Rel = RelOf(s) + (BaseRel(s) - RelOf(s)) * 0.03;
             // A harsh sister can fall to revolution.
-            if (Govs.Get(s.Gov).Harsh >= 0.6 && OncePer(60)) SisterRevolt(s);
+            if (Govs.Get(s.Gov).Harsh >= 0.6 && OncePer(60 / RulerTraits(s).Aggregate(1.0, (a, t) => a * t.Revolt))) SisterRevolt(s);
         }
         if (Sisters.Count == 0) return;
         // Per day: envoys about once in 12 days per sister (up to four), letters once in 8, fairs once in 20 per friend.
@@ -564,17 +604,21 @@ partial class Sim
     void Events()
     {
         if (Lots.Count == 0) return;
-        // A caravan from a sister town: a horse and wagon to the market, a little trade.
-        if (Sisters.Count > 0 && WarOn == null && BlightOn == null && Odds(0.048 * Math.Min(4, Sisters.Count) * (0.5 + Math.Min(1.5, Gold / 30))))
+        // A caravan from a sister town: a horse and wagon to the market, a little trade. Only from sisters not in a
+        // blight or a war; in a blight the roads are half as busy.
+        var traders = Sisters.Where(s => Struck(s) == 0).ToList();
+        if (traders.Count > 0 && WarOn == null && Odds(0.048 * Math.Min(4, traders.Count) * (0.5 + Math.Min(1.5, Gold / 30)) * (BlightOn != null ? 0.5 : 1)))
         {
-            var from = Weighted(Sisters, s => Pull(s) * (0.5 + GoldOf(s) / 40));
-            Visitor("cart", Secs(60, 90));
+            var from = Weighted(traders, s => Pull(s) * (0.5 + GoldOf(s) / 40));
+            var cart = Visitor("cart", Secs(60, 90));
             Earn(2);
             Grow();
             Pay(3);
             Purse(from, 1);
-            Bump(from, 0.02);
-            Say($"A caravan from {from.Name} arrives with {Pick(Goods)}.");
+            Bump(from, 0.02, "their caravan traded here");
+            string grain = CaravanFood(from);
+            if (cart != null && grain != "") cart.Good = (int)Good.Grain;   // the wagon is drawn piled with sacks
+            Say($"A caravan from {from.Name} arrives with {(grain != "" ? grain : Pick(Goods))}.");
             Tell(from, "caravan");
         }
         Population();
@@ -585,6 +629,7 @@ partial class Sim
         StepWar();
         StepSisterWar();
         StepBlight();
+        FoodEvents();
         Chatter2();
         Region();
     }

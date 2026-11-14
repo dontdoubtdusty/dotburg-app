@@ -7,6 +7,8 @@ partial class Sim
     public int Cost => Math.Max(1, Round(Costs[Tier - 1] * G.CostMul * (Famine ? FamineCost : 1)));
     int HomeCap(string t) => Content.IsHome(t) ? Content.HomeCap[t] + G.HomeBonus : 0;
     public int Headcount => Walkers.Count(w => w.Kid == 0);
+    // Newcomers only come while the stores can feed one more mouth until the next harvest (Food.cs).
+    public bool FedEnough => Quiet || Walkers.Count(w => !w.Gone && w.Kind == "") < 4 || FoodTotal() >= (Eaters + 1) * NeedPerDay * (DaysToHarvest() + 3);
 
     // How many dot-men the town's homes and its tier allow.
     public int PopCap
@@ -60,7 +62,7 @@ partial class Sim
     // What the next growth step will be, for the legend.
     public string NextThing()
     {
-        if (Headcount < PopCap) return "a newcomer";
+        if (Headcount < PopCap) return FedEnough ? "a newcomer" : "a newcomer, when there is food to spare";
         if (Built.Count < MaxLots) return Content.Label(Content.TypeAt(Built.Count));
         var u = NextUpgrade();
         if (u != null) return $"{Content.Label(Built[u.Value.rank])} to {Content.Label(u.Value.to)}";
@@ -85,7 +87,12 @@ partial class Sim
     // One growth event: a newcomer, a building, an upgrade or a new tier. False if there is nothing left to do.
     bool GrowOnce()
     {
-        if (Headcount < PopCap) { AddDot(); return true; }
+        if (Headcount < PopCap)
+        {
+            if (!FedEnough) return false;   // settlers do not come to a hungry town: growth waits for food
+            AddDot();
+            return true;
+        }
         if (Built.Count < MaxLots)
         {
             string t = Content.TypeAt(Built.Count);
@@ -146,6 +153,7 @@ partial class Sim
         var nc = NewcomerColour();
         Say(nc.from != null ? $"Someone moves in from {nc.from}." : Pick(new[] { "A newcomer walks in.", "A traveller settles down.", "A new face in town." }));
         SettleColour(nc.c);
+        Provisions();
     }
 
     // ---------- scaffolding ----------
@@ -163,6 +171,8 @@ partial class Sim
         WorksList.Remove(w);
         StaticDirty = true;
         Say(BuiltLine(w.To, w.Up));
+        // The first of each kind of public building is a milestone for the chronicle.
+        if (w.Up != "ruin" && !Content.IsHome(w.To) && Built.Count(t => t == w.To) == 1) Note($"{Name} has its first {Content.Label(w.To)}.");
         // A finished public building (not a house) is worth a festival on the square.
         if (!Quiet && w.Up == null && !Content.IsHome(w.To)) StartFestival($"{Name} celebrates its new {Content.Label(w.To)}.");
     }

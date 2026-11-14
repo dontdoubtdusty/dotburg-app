@@ -22,7 +22,14 @@ partial class Sim
     readonly List<Walker> guards = new();           // patrols and escorts: not citizens, not saved
 
     public Gov G => Govs.Get(GovKey);
-    void Nudge(double d) => Mood = Clamp(Mood + d, 0, 1);
+    // An event moves the mood at once; why is kept for the mood tooltip.
+    void Nudge(double d, string why)
+    {
+        Mood = Clamp(Mood + d, 0, 1);
+        MoodEvents.Add((why, d, Age));
+        MoodEvents.RemoveAll(e => Age - e.At > 2 * DayMs);
+        if (MoodEvents.Count > 30) MoodEvents.RemoveAt(0);
+    }
 
     // ---------- odds over time ----------
     // Timed events are written as how often they happen in town days, not as a chance per check, so changing
@@ -40,6 +47,42 @@ partial class Sim
         ? $"{G.Title} {Leader.Name}{(GovKey == "crown" ? " " + Govs.RomanOf(Leader.Gen) : "")}{(Age - Leader.Since >= DayMs && Leader.Traits.Length > 0 && Traits.Exists(Leader.Traits[0]) ? " the " + Traits.Get(Leader.Traits[0]).Name : "")}"
         : "no leader";
 
+    // What the current rule means in play, one line each, read from the rule's numbers and the harshness
+    // thresholds the sim checks (0.5, 0.7, 0.8), for the government tooltip.
+    public List<string> RuleLines()
+    {
+        var g = G;
+        var food = FoodRule;
+        string harsh = g.Harsh < 0.3 ? "gentle" : g.Harsh < 0.5 ? "firm" : g.Harsh < 0.8 ? "harsh" : "iron-fisted";
+        static string Pct(double mul) => $"{Math.Abs(mul - 1) * 100:F0}%";
+        var l = new List<string> { $"{g.Name}: {harsh} rule", Govs.Blurb.TryGetValue(GovKey, out var b) ? b : "", "" };
+
+        l.Add($"Mood settles around {g.Mood * 100:F0}% when nothing else is going on.");
+        if (GovKey == "none") l.Add($"No rule yet: once {RuleAt} grown dot-men live here, they settle on one.");
+        else if (Govs.IsHamlet(GovKey)) l.Add("A hamlet rule: the town picks a new one when it becomes a Village.");
+        if (GovKey == "commune") l.Add($"A new speaker every {g.Term} days.");
+        else if (g.Term > 0) l.Add($"Elections every {g.Term} days. If mood is low, a strongman may win and found a Party state.");
+        else if (GovKey == "crown") l.Add("No elections: the throne passes to an heir.");
+        else if (!Govs.IsHamlet(GovKey)) l.Add("No elections.");
+        if (g.CostMul != 1) l.Add($"Buildings cost {Pct(g.CostMul)} {(g.CostMul < 1 ? "less" : "more")}.");
+        if (g.HomeBonus > 0) l.Add($"Each home holds {g.HomeBonus} more dot-man.");
+        if (g.Welcome != 1) l.Add($"{Pct(g.Welcome)} {(g.Welcome > 1 ? "more" : "fewer")} newcomers from sister towns.");
+        if (g.Fest != 1) l.Add($"Festivals last {(g.Fest > 1 ? "longer" : "shorter")} and cheer {(g.Fest > 1 ? "more" : "less")}.");
+        if (g.Curfew) l.Add("Curfew: everyone is indoors from dusk. More weddings, more babies.");
+        if (g.Guards > 0) l.Add($"{g.Guards} guards patrol the roads; dotlets may tag along.");
+
+        l.Add($"Food: holds back {food.reserve:F0} days of grain{(food.open ? "; the granary opens to the hungry" : "; the granary stays shut, even in famine")}.");
+        l.Add(food.hoard == 0 ? "Panic buying is stopped: food is rationed or shared." : food.hoard > 1 ? "Dot-men hoard hard when food runs short." : food.hoard < 1 ? "Dot-men hoard little when food runs short." : "Dot-men hoard when food runs short.");
+
+        if (!Govs.IsHamlet(GovKey)) l.Add(g.Harsh >= 0.5 ? "Assassination plots grow as mood falls." : "Few plots against the leader.");
+        if (g.Harsh >= 0.5) l.Add("Low mood brings revolts, arrests and dot-men fleeing.");
+        else if (!Govs.IsHamlet(GovKey)) l.Add("Very low mood can bring a coup.");
+        if (g.Harsh >= 0.7) l.Add("Sickness: houses are sealed. Refugees are turned away. Matches are rigged.");
+        if (g.Harsh >= 0.8) l.Add("Festivals become rallies, war lifts spirits, fires are blamed on saboteurs, attacks on the leader end in a crackdown.");
+        l.Add("Sister towns under a rule like this one get on better with us.");
+        return l;
+    }
+
     // ---------- the leader's character ----------
     IEnumerable<Trait> LeaderTraits => Leader == null ? Enumerable.Empty<Trait>() : Leader.Traits.Where(Traits.Exists).Select(Traits.Get);
     double TraitMul(Func<Trait, double> f) => LeaderTraits.Aggregate(1.0, (a, t) => a * f(t));
@@ -48,17 +91,37 @@ partial class Sim
     public string TraitWords => string.Join(", ", LeaderTraits.Select(t => t.Name));
     public string TraitBlurb => string.Join("; ", LeaderTraits.Select(t => t.Blurb));
 
-    public string[] TestAppoint() => RollTraits();
+    // For the soak: the traits of the dot-man who would be chosen from this town now (or a roll if it is empty).
+    public string[] TestAppoint()
+    {
+        var pool = Walkers.Where(w => !w.Gone && w.Kind == "").ToList();
+        return pool.Count == 0 ? RollTraits() : CitizenTraits(Weighted(pool, w => LeaderFit(w, null, false)));
+    }
 
-    // Two traits that do not clash, leaning by how harsh the rule is. An heir often takes after a parent.
-    string[] RollTraits(string[]? parent = null)
+    // How likely this dot-man is to be chosen: their traits under this rule, ambition and charm, an heir who takes
+    // after the parent, and a dotlet hardly ever.
+    double LeaderFit(Walker w, string[]? parent, bool heir)
+    {
+        var tr = CitizenTraits(w);
+        double wt = 1;
+        foreach (var k in tr) wt *= Traits.Weight(Traits.Get(k), G.Harsh);
+        if (tr.Contains("ambitious")) wt *= 2.5;
+        if (tr.Contains("charmer")) wt *= 3;
+        if (heir && parent != null && tr.Any(parent.Contains)) wt *= 3;
+        return w.Kid != 0 ? wt * 0.05 : wt;
+    }
+
+    // One trait from each of the three groups (and now and then a wildcard), none clashing, leaning by how harsh
+    // the rule is. An heir often takes after a parent in a group. Used for sister rulers and older saves.
+    string[] RollTraits(string[]? parent = null, double? harsh = null)
     {
         var got = new List<string>();
-        if (parent != null && parent.Length > 0 && Chance() < 0.6) got.Add(Pick(parent));
-        while (got.Count < 2)
+        for (int cat = 0; cat <= 3; cat++)
         {
-            var ok = Traits.All.Where(t => !got.Any(k => Traits.Clashes(k, t.Key))).ToList();
-            got.Add(Weighted(ok, t => Traits.Weight(t, G.Harsh)).Key);
+            if (cat == 3 && Chance() >= Traits.WildChance) break;
+            var ok = Traits.InCat(cat).Where(t => !got.Any(k => Traits.Clashes(k, t.Key))).ToList();
+            var from = parent?.FirstOrDefault(p => ok.Any(t => t.Key == p));
+            got.Add(from != null && Chance() < 0.4 ? from : Weighted(ok, t => Traits.Weight(t, harsh ?? G.Harsh)).Key);
         }
         return got.ToArray();
     }
@@ -80,25 +143,27 @@ partial class Sim
         return t >= 0 && t < v ? t : -1;
     }
 
-    // A new town starts under its elders, led by its first dot-man.
+    // A new town starts with no rule and no leader (0.71): a rule is formed once RuleAt grown dot-men live here.
     public void ResetGov()
     {
-        GovKey = "elders";
+        GovKey = "none";
         Mood = G.Mood;
         Leader = null;
         LastElection = Age;
         Honoured = 0;
         Regnal = new();
         guards.Clear();
+        Bodies.Clear(); // the old town's people of note stay with the old town
         foreach (var w in Walkers) w.Lead = false;
-        Appoint(null);
     }
 
-    // How a town chooses to be ruled, leaning by its scheme.
+    // How a town chooses to be ruled, leaning by its scheme and by the hamlet rule it grew up under.
     string ChooseGov()
     {
         var lean = Govs.Lean[Scheme];
-        return Weighted(Govs.All.Where(g => g.Key != "elders").ToList(), g => g.Lean * (lean.TryGetValue(g.Key, out var m) ? m : 1)).Key;
+        var grows = Govs.Grows.TryGetValue(GovKey, out var gr) ? gr : new();
+        return Weighted(Govs.All.Where(g => !Govs.IsHamlet(g.Key)).ToList(),
+            g => g.Lean * (lean.TryGetValue(g.Key, out var m) ? m : 1) * (grows.TryGetValue(g.Key, out var h) ? h : 1)).Key;
     }
 
     // After a load: keep the saved leader if exactly one dot-man carries the flag, else appoint one.
@@ -106,17 +171,18 @@ partial class Sim
     {
         var leads = Walkers.Where(w => w.Lead).ToList();
         foreach (var w in leads.Skip(1)) w.Lead = false;
+        if (GovKey == "none") { foreach (var w in leads) w.Lead = false; Leader = null; return; }   // settlers: nobody leads yet
         if (leads.Count == 0 || name == "")
         {
             Appoint(null);
-            if (GovKey == "elders" && Tier >= 2) GovKey = ChooseGov();
+            if (Govs.IsHamlet(GovKey) && Tier >= 2) GovKey = ChooseGov();
             return;
         }
         Leader = new Leader { Name = name, Gen = Math.Max(1, gen), Since = since };
         // An older save has no traits: give the sitting leader some now.
-        var kept = (traits ?? Array.Empty<string>()).Where(Traits.Exists).Take(2).ToArray();
-        Leader.Traits = kept.Length == 2 && !Traits.Clashes(kept[0], kept[1]) ? kept : RollTraits();
-        if (GovKey == "elders" && Tier >= 2) { GovKey = ChooseGov(); StaticDirty = true; }
+        var kept = (traits ?? Array.Empty<string>()).Where(Traits.Exists).ToArray();
+        Leader.Traits = kept.Length >= 2 ? kept : RollTraits();
+        if (Govs.IsHamlet(GovKey) && Tier >= 2) { GovKey = ChooseGov(); StaticDirty = true; }
     }
 
     // For screenshot tests: switch to a rule at once.
@@ -129,27 +195,34 @@ partial class Sim
         StaticDirty = true;
     }
 
-    // A village outgrows its elders and chooses how it will be ruled.
+    // A village outgrows its hamlet rule and chooses how it will be ruled.
     void MaybeChooseGov()
     {
-        if (Tier != 2 || GovKey != "elders") return;
+        if (GovKey == "none") FormRule();   // settlers who grew fast form their hamlet rule first
+        if (Tier != 2 || !Govs.IsHamlet(GovKey) || GovKey == "none") return;
         string k = ChooseGov();
         SetGov(k, $"{Name} chooses {An(Govs.Get(k).Lower)}.", false);
     }
 
     // Make a dot-man the leader (a sovereign's heir shares their colour when one can be found); returns the new title.
-    string Appoint(int? prefer, string[]? parent = null)
+    string Appoint(int? prefer, string[]? parent = null, bool heir = false)
     {
+        if (LeaderWalker is { } old) Retire(old); // the outgoing leader stays in town under their old title
         foreach (var w in Walkers) w.Lead = false;
         var pool = Walkers.Where(w => !w.Gone && w.Goal != Goal.Leave && w.Goal != Goal.Taken).ToList();
         if (pool.Count == 0) { Leader = null; return ""; }
         var same = prefer == null ? new List<Walker>() : pool.Where(w => w.C == prefer).ToList();
-        Pick(same.Count > 0 ? same : pool).Lead = true;
-        string nm = Pick(Govs.First);
+        // Harsh rule raises the cruel and proud, gentle rule the merciful and tolerant: the candidates' own traits
+        // are weighed (0.68), an heir who takes after the parent is likelier, and a dotlet hardly ever rules.
+        var chosen = Weighted(same.Count > 0 ? same : pool, w => LeaderFit(w, parent, heir));
+        chosen.Lead = true;
+        // A former leader called back keeps their own name; anyone else rules under the name the town knows them by.
+        string nm = BodyOf(chosen) is { } back ? back.Name : CitizenFirst(chosen);
         int gen = 1;
         if (GovKey == "crown") Regnal[nm] = gen = (Regnal.TryGetValue(nm, out var n) ? n : 0) + 1;
         Leader = new Leader { Name = nm, Gen = gen, Since = Age };
-        Leader.Traits = RollTraits(parent);
+        Leader.Traits = CitizenTraits(chosen);
+        EnsureBody(chosen, nm, heir);
         StaticDirty = true; // the seat's banner follows the leader's home
         return LeaderTitle;
     }
@@ -157,6 +230,7 @@ partial class Sim
     // Change how the town is ruled; keep keeps the leader under a new title.
     void SetGov(string k, string line, bool keep)
     {
+        if (!keep && LeaderWalker is { } old) Retire(old); // under the title they held, before the rule changes
         GovKey = k;
         LastElection = Age;
         if (!keep || LeaderWalker == null) Appoint(null);
@@ -169,6 +243,7 @@ partial class Sim
     // Remove the leader from office (and from town if gone).
     void Unseat(Walker w, bool gone)
     {
+        if (!gone) Retire(w);
         w.Lead = false;
         if (gone) w.Gone = true;
         Leader = null;
@@ -197,21 +272,64 @@ partial class Sim
     }
 
     // Mood settles toward what the rule, the weather, the season and crowding allow.
-    void UpdateMood(double dt)
+    // Drift the mood toward where the town's conditions put it (MoodTarget), half the scale a day.
+    void UpdateMood(double dt) => Mood = Ease(Mood, MoodTarget, dt, DayMs * 2);
+
+    // Where the mood is heading: the sum of the standing reasons, from 0 to 1.
+    public double MoodTarget => Clamp(MoodParts().Sum(p => p.D), 0, 1);
+
+    // Every standing reason for the town's mood with its amount, starting with the rule's base level. The mood step
+    // and the mood tooltip both read this, so the tooltip's numbers are the real ones.
+    public List<(string Why, double D)> MoodParts()
     {
-        double target = G.Mood;
-        if (Stormy) target -= 0.08;
-        else if (Weather == Wx.Clear && Daylight() > 0.3) target += 0.04;
-        if (PopCap > 0 && Headcount >= PopCap) target -= 0.05;
-        target += SeasonMood[SeasonNo];
-        target += TraitSum(t => t.Mood);
+        var l = new List<(string, double)> { (GovKey == "none" ? "No rule yet: settlers getting along" : $"The rule: {G.Name}", G.Mood) };
+        if (Stormy) l.Add(("Stormy weather", -0.08));
+        else if (Weather == Wx.Clear && Daylight() > 0.3) l.Add(("A clear, sunny day", 0.04));
+        if (PopCap > 0 && Headcount >= PopCap) l.Add(("Crowded: every home is full", -0.05));
+        if (SeasonMood[SeasonNo] != 0) l.Add(($"It is {SeasonNow.Name.ToLowerInvariant()}", SeasonMood[SeasonNo]));
+        foreach (var t in LeaderTraits) if (t.Mood != 0) l.Add(($"The leader is {t.Name.ToLowerInvariant()}", t.Mood));
         int sick = Walkers.Count(w => w.Sick && !w.Gone);
-        if (sick > 0) target -= 0.03 + 0.25 * sick / Math.Max(1, Walkers.Count);
-        if (Ill?.Sealed == true) target -= 0.04;
-        if (WarOn != null) target += G.Harsh >= 0.8 ? 0 : -0.06; // only harsh rule thrives on war
-        if (Famine) target -= 0.08;
-        target -= Math.Min(0.1, (Ruins.Count + Fires.Count) * 0.02); // burnt lots and live fires weigh on the town
-        Mood = Ease(Mood, Clamp(target, 0, 1), dt, DayMs * 2);
+        if (sick > 0) l.Add(($"{sick} sick in bed", -(0.03 + 0.25 * sick / Math.Max(1, Walkers.Count))));
+        if (Ill?.Sealed == true) l.Add(("Sick houses sealed by guards", -0.04));
+        if (WarOn != null && G.Harsh < 0.8) l.Add(("At war", -0.06)); // only harsh rule thrives on war
+        l.AddRange(HungerMoodParts()); // the hungry, the starving and the panic (Food.cs)
+        int burnt = Ruins.Count + Fires.Count; // burnt lots and live fires weigh on the town
+        if (burnt > 0) l.Add(($"{(Fires.Count > 0 ? "Fires and ruins" : "Ruins")} ({burnt})", -Math.Min(0.1, burnt * 0.02)));
+        return l;
+    }
+
+    // Recent events that moved the mood at once (Nudge), newest last; the drift then carries it back toward the
+    // target. Kept for two town days for the mood tooltip; not saved.
+    public readonly List<(string Why, double D, double At)> MoodEvents = new();
+
+    public const int RuleAt = 5;   // grown dot-men a settlement needs before it forms a rule
+
+    // Settlers with RuleAt grown dot-men settle on a hamlet rule that fits who they are: many old heads make
+    // elders likelier, strong wills a headman, the pious and the doomsayers shrine keepers, a web of friendships a
+    // founding family. Each starts at 1, so any rule can happen. Then the leader is chosen as usual (Appoint).
+    void FormRule()
+    {
+        var adults = Walkers.Where(w => !w.Gone && w.Kind == "" && w.Kid == 0).ToList();
+        if (adults.Count < RuleAt) return;
+        int Has(params string[] keys) => adults.Count(w => CitizenTraits(w).Any(keys.Contains));
+        var ids = adults.Select(w => w.Id).ToHashSet();
+        int old = adults.Count(w => YearsOfDot(w) >= 50);
+        int strong = Has("ambitious", "brave", "proud", "hotheaded");
+        int pious = Has("pious", "doomsayer");
+        int friends = adults.Sum(w => w.Bonds.Count(b => b.Kind == "friend" && ids.Contains(b.Who))) / 2;
+        var why = new Dictionary<string, (double weight, string reason)>
+        {
+            ["elders"] = (1 + 1.5 * old, old > 1 ? $"{old} of them are past fifty" : "the oldest are listened to"),
+            ["headman"] = (1 + 1.2 * strong, strong > 1 ? $"{strong} strong wills want one voice" : "someone has to decide"),
+            ["shrine"] = (1 + 1.5 * pious, pious > 0 ? $"{pious} keep the old prayers" : "the shrine draws them together"),
+            ["founders"] = (1 + 1.2 * friends, friends > 1 ? $"{friends} friendships bind the first households" : "the first family knows the place best"),
+        };
+        GovKey = Weighted(why.Keys.ToList(), k => why[k].weight);
+        Mood = Clamp(Mood + (G.Mood - 0.6), 0, 1);
+        LastElection = Age;
+        StaticDirty = true;
+        string t = Appoint(null);
+        Say($"With {adults.Count} grown dot-men, {Name} settles on {An(G.Lower)}: {why[GovKey].reason}. {t} leads.");
     }
 
     // Roll the dice of politics, once every PolStepMs: at most one big event.
@@ -219,6 +337,7 @@ partial class Sim
     {
         if (Lots.Count == 0 || Walkers.Count == 0) return;
         foreach (var sis in Sisters.ToList()) if (OncePer(25)) SisterChange(sis);
+        if (GovKey == "none") { FormRule(); return; }   // no leader and no politics until a rule is formed
         var g = G;
         var lw = LeaderWalker;
         if (lw == null || Leader == null)
@@ -235,14 +354,19 @@ partial class Sim
         // Rates are per day: a gentle leader in a content town is assassinated about once in 60 days, a long-reigning
         // one dies more often each day they hold on (up to about one death every 2 days).
         if (g.Harsh >= 0.5 && Mood < RevoltAt && Odds(RevoltPerDay * (1 - g.Harsh * Fear) * revolt)) { Revolution(lw); return; }
-        if (g.Harsh < 0.8 && GovKey != "elders" && Mood < 0.3 && Odds(0.2 * revolt)) { Coup(lw); return; }
-        if (GovKey != "elders" && many && Odds((0.016 + 0.12 * g.Harsh * (1 - Mood)) * TraitMul(t => t.Kill))) { Assassination(lw); return; }
-        if (many && Odds(Math.Min(0.48, 0.032 + 0.024 * tenure))) { Death(lw, tenure); return; }
+        if (g.Harsh < 0.8 && !Govs.IsHamlet(GovKey) && Mood < 0.3 && Odds(0.2 * revolt)) { Coup(lw); return; }
+        // A dot-man with a deep grudge against the leader adds their own reason (0.68), even in a hamlet.
+        var (foe, motive) = MotiveAgainstLeader();
+        double grudge = motive != null && motive.Str >= GrudgeAt ? MotiveK * motive.Str : 0;
+        double plots = Govs.IsHamlet(GovKey) ? 0 : (0.016 + 0.12 * g.Harsh * (1 - Mood)) * TraitMul(t => t.Kill);
+        if (many && Odds(plots + grudge)) { Assassination(lw, motive != null && motive.Str >= 0.3 ? foe : null, motive); return; }
+        // Natural death now comes from the leader's body (Health.cs); poor health makes an elected leader step down sooner.
         if (g.Term > 0 && Age - LastElection >= g.Term * DayMs) { Election(); return; }
-        if (elected && OncePer(17)) { StepDown(lw, tenure); return; }
+        bool ailing = LeaderBody is { } lb && HealthWord(lb) != "in good health";
+        if (elected && OncePer(ailing ? 6 : 17)) { StepDown(lw, tenure); return; }
         if (elected && Odds(0.04 * TraitMul(t => t.Scandal)))
         {
-            Nudge(-0.15);
+            Nudge(-0.15, "a scandal at the hall");
             Say(Pick(new[] { "A scandal at the hall.", "Bribes are found in the ledgers.", "The treasury comes up short." }));
             return;
         }
@@ -254,36 +378,68 @@ partial class Sim
         else if (GovKey != "party" && g.Harsh >= 0.5 && HasTrait("cruel") && many && OncePer(12)) Arrest(); // a cruel ruler finds enemies anywhere
     }
 
-    void Death(Walker lw, double tenure)
+    // The leader dies of a named cause (line says so); murdered means an assassin's wounds did it, maybe days later.
+    void Death(Walker lw, string line0, bool murdered)
     {
+        if (murdered) { Murdered(lw, line0); return; }
+        double tenure = Leader != null ? (Age - Leader.Since) / DayMs : 0;
         string t = LeaderTitle;
         int c = lw.C;
         var parent = Leader?.Traits;
         bool proud = HasTrait("proud");
         Unseat(lw, true);
-        Nudge(-0.03);
+        Nudge(-0.03, "the leader died");
         if (GovKey != "party" && GovKey != "junta" && (GovKey == "crown" || tenure >= 2 || proud)) Honour(); // the proud see to their own statue
         if (GovKey == "party" && Chance() < Collapse)
         {
-            SetGov(Chance() < 0.5 ? "council" : "commune", $"{t} is dead, and the Party state collapses.", false);
+            SetGov(Chance() < 0.5 ? "council" : "commune", $"{line0} The Party state collapses.", false);
             return;
         }
-        string n = Appoint(GovKey == "crown" ? c : null, GovKey == "crown" ? parent : null);
+        string n = Appoint(GovKey == "crown" ? c : null, GovKey == "crown" ? parent : null, GovKey == "crown");
         LastElection = Age;
-        string line = $"{t} has died. {n} {Govs.Succeed[GovKey]}.";
+        string line = $"{line0} {n} {Govs.Succeed[GovKey]}.";
         if (GovKey == "crown") StartFestival(line); // a coronation
         Say(line);
     }
 
-    void Assassination(Walker lw)
+    // An assassin strikes. The attempt may kill outright, wound (and perhaps kill days later), or be survived.
+    void Assassination(Walker lw, Walker? by = null, Bond? why = null)
     {
-        string t = LeaderTitle;
+        string? who = by == null ? null : CitizenName(by);
+        var (line, dead) = Attempt(lw, who);
+        // A named assassin: the story behind it, then caught (most often) or fled.
+        if (by != null && why != null)
+        {
+            AssassinsKnown++;
+            line += $" It went back to day {why.Day}: {WhyFor(by, why)}.";
+            var dest = Sisters.Count > 0 ? Pick(Sisters) : null;
+            if (Chance() < 0.7 || dest == null) { Arrest(by, true); line += $" {who} is seized and led away."; }
+            else { SendAway(by, Goal.Leave, dest.Name); line += $" {who} flees to {dest.Name}."; }
+        }
+        if (dead) { Murdered(lw, line); return; }
+        Nudge(-0.05, "an attempt on the leader");
+        Say(line);
+        Note(line);
+        Npc("physician", "wound", false, LeaderTitle);
+        if (G.Harsh >= 0.8)
+        {
+            // A named assassin's friends are the first to be rounded up.
+            var friends = by == null ? new List<Walker>() : Walkers.Where(w => !w.Gone && !w.Lead && w != by && w.Goal is not (Goal.Leave or Goal.Taken)
+                && (BondOf(w, by.Id, "friend") != null || BondOf(by, w.Id, "friend") != null)).Take(2).ToList();
+            Say(friends.Count > 0 ? $"Guards round up {string.Join(" and ", friends.Select(CitizenName))}, friends of {who}. A crackdown follows." : "Guards hunt the assassin's friends. A crackdown follows.");
+            foreach (var f in friends) Arrest(f, true);
+            for (int i = friends.Count; i < 2; i++) Arrest();
+        }
+    }
+
+    // The leader is dead by an assassin's hand: succession, a crackdown under harsh rule, or the army steps in.
+    void Murdered(Walker lw, string line)
+    {
         int c = lw.C;
         var parent = Leader?.Traits;
         Unseat(lw, true);
-        Nudge(-0.1);
-        string line = $"{t} is assassinated.";
-        if (GovKey == "crown") { Say($"{line} {Appoint(c, parent)} takes the throne."); return; }
+        Nudge(-0.1, "the leader murdered");
+        if (GovKey == "crown") { Say($"{line} {Appoint(c, parent, true)} takes the throne."); return; }
         if (G.Harsh >= 0.8)
         {
             Say($"{line} {Appoint(null)} {Govs.Succeed[GovKey]}. A crackdown follows.");
@@ -303,7 +459,7 @@ partial class Sim
         var dest = Sisters.Count > 0 ? Weighted(Sisters, s => Govs.Get(s.Gov).Harsh + 0.1) : null;
         if (dest != null) SendAway(lw, Goal.Leave, dest.Name);
         Unseat(lw, dest == null);
-        Nudge(0.25);
+        Nudge(0.25, "the revolution");
         string line = $"Revolution! The {old} falls; {t} flees{(dest != null ? " to " + dest.Name : "")}.";
         Npc("ringleader", "won", false, old);
         SetGov(Chance() < 0.5 ? "commune" : "council", line, false);
@@ -313,8 +469,9 @@ partial class Sim
     void Coup(Walker lw)
     {
         string t = LeaderTitle;
+        FallHow = "coup";
         Unseat(lw, false);
-        Nudge(-0.1);
+        Nudge(-0.1, "a coup");
         SetGov("junta", $"A coup: the army deposes {t}.", false);
     }
 
@@ -324,6 +481,7 @@ partial class Sim
         string t = LeaderTitle;
         if (GovKey == "commune")
         {
+            FallHow = "turn";
             Appoint(null);
             Say($"{(Leader != null ? Leader.Name : "Someone")} takes a turn as speaker.");
             return;
@@ -331,17 +489,19 @@ partial class Sim
         if (Mood < 0.35 && Chance() < 0.3) { SetGov("party", $"A strongman wins the vote. {Name} becomes a Party state.", false); return; }
         if (Chance() < 0.25 + Mood * 0.5)
         {
-            Nudge(0.03);
+            Nudge(0.03, "the leader re-elected");
             Say($"{t} is re-elected.");
             return;
         }
-        Nudge(0.05);
+        Nudge(0.05, "a new leader elected");
+        FallHow = "election";
         Say($"Election day: {Appoint(null)} wins.");
     }
 
     void StepDown(Walker lw, double tenure)
     {
         string t = LeaderTitle;
+        FallHow = "stepdown";
         Unseat(lw, false);
         if (tenure >= 2) Honour();
         LastElection = Age;
@@ -360,11 +520,18 @@ partial class Sim
     }
 
     // Guards lead someone out of town; they do not come back.
-    void Arrest()
+    // Who is given (an assassin) or picked; a cruel leader takes those who hate them first. Their friends remember.
+    void Arrest(Walker? who = null, bool quiet = false)
     {
-        var cand = Walkers.Where(w => !w.Lead && !w.Gone && w.Mode == Mode.Wait).ToList();
+        var cand = who != null ? new List<Walker> { who } : Walkers.Where(w => !w.Lead && !w.Gone && w.Mode == Mode.Wait).ToList();
         if (cand.Count == 0 || Lots.Count == 0) return;
+        if (who == null && HasTrait("cruel") && LeaderWalker is { } lw)
+        {
+            var foes = cand.Where(w => BondOf(w, lw.Id, "grudge") != null).ToList();
+            if (foes.Count > 0) cand = foes;
+        }
         var w = Pick(cand);
+        if (who == null) TakenNews(w);
         SendAway(w, Goal.Taken);
         var g = NewWalker(0, 0);
         g.X = w.X;
@@ -375,7 +542,8 @@ partial class Sim
         g.Period = w.Period;
         g.Until = TickNo + w.Period * 2; // a step behind
         guards.Add(g);
-        Nudge(-0.05);
+        Nudge(-0.05, "an arrest");
+        if (quiet) return;
         Say(Pick(new[] { "Someone is taken away.", "Guards lead someone out of town.", "A neighbour is taken in for questioning." }));
         if (G.Harsh >= 0.5 && chatRng.NextDouble() < 0.5) Npc("ringleader", "arrest");
     }
@@ -409,6 +577,7 @@ partial class Sim
                 continue;
             }
             if (TickNo % g.Period != 0) continue;
+            (g.PX, g.PY) = (g.X, g.Y);
             if (WalkStep(g))
             {
                 if (g.Goal == Goal.Taken) g.Gone = true;

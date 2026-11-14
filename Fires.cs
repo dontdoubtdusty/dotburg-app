@@ -160,10 +160,15 @@ partial class Sim
                     if (Chance() < p) StartFire(n, 0.1, $"The fire spreads to the {Content.Label(Built[n])}.");
                 }
             // Sleepers and the bedridden inside may wake in time; if not, a fierce fire kills.
-            foreach (var w in Walkers.Where(w => !w.Gone && w.Mode == Mode.Inside && w.At == f.Rank && (w.Sleep || w.Sick)).ToList())
+            foreach (var w in Walkers.Where(w => !w.Gone && w.Mode == Mode.Inside && w.At == f.Rank && (w.Sleep || w.Sick || w.Hurt)).ToList())
             {
                 if (Chance() < 0.22) { w.Sleep = false; w.Sick = false; w.Dis = -1; (w.X, w.Y) = DoorOf(f.Rank); w.Mode = Mode.Wait; w.Until = TickNo; continue; }
-                if (f.Size > 0.5 && Chance() < 0.03) DieInFire(w, f);
+                if (f.Size > 0.5 && Chance() < 0.03)
+                {
+                    // Someone who matters is burned and carried out rather than dying on the spot; the burns may still kill.
+                    if (BodyOf(w) is { } b) { BurnBody(w, b, f); w.Sick = false; (w.X, w.Y) = DoorOf(f.Rank); w.Mode = Mode.Wait; w.Until = TickNo; }
+                    else DieInFire(w, f);
+                }
             }
             SendFighters(f);
             // The end: put out, burnt out, or burnt down.
@@ -172,7 +177,7 @@ partial class Sim
                 Fires.Remove(f);
                 Say(rainAmt > 0.3 ? $"The rain puts out the fire at the {Content.Label(t)}." : $"The bucket line puts out the fire at the {Content.Label(t)}.");
                 Npc("warden", "out", false, Content.Label(t));
-                Nudge(0.01);
+                Nudge(0.01, "a fire put out");
             }
             else if (f.Burn >= 1)
             {
@@ -193,8 +198,8 @@ partial class Sim
         var (dx, dy) = DoorOf(f.Rank);
         foreach (var w in Walkers
             .Where(w => !w.Gone && !w.Sick && w.Kid == 0 && w.Kind == "" && w.Goal != Goal.Leave && w.Goal != Goal.Taken && w.Goal != Goal.Fight
-                        && !(w.Mode == Mode.Inside && w.Sleep && Chance() > 0.4))
-            .OrderBy(w => Math.Abs(w.X - dx) + Math.Abs(w.Y - dy)).Take(want - have).ToList())
+                        && !Is(w, "craven") && !(w.Mode == Mode.Inside && w.Sleep && Chance() > 0.4))   // the craven stay away
+            .OrderBy(w => Math.Abs(w.X - dx) + Math.Abs(w.Y - dy) - (Is(w, "brave") ? 30 : 0)).Take(want - have).ToList())   // the brave come from further off
         {
             if (w.Mode == Mode.Inside && w.At >= 0 && w.At < Lots.Count) (w.X, w.Y) = DoorOf(w.At);
             w.Sleep = false;
@@ -207,7 +212,8 @@ partial class Sim
         w.Gone = true;
         f.Deaths++;
         FireDeaths++;
-        Nudge(-0.04);
+        Mourn(w, "in the fire");
+        Nudge(-0.04, "a death in a fire");
         if (w.Lead)
         {
             string t = LeaderTitle;
@@ -222,10 +228,11 @@ partial class Sim
     void BurnDown(Fire f, string t)
     {
         Built[f.Rank] = "ruin";
+        LoseStore(f.Rank, t);
         double speed = (GovKey == "guild" ? 0.5 : 1) * (Gold < 8 ? 1.6 : Gold > 60 ? 0.7 : 1);
         Ruins.Add(new Ruin { Rank = f.Rank, Was = t, At = EvClock + DayMs * (1 + Chance()) * speed });
         Pay(-4);
-        Nudge(-0.03);
+        Nudge(-0.03, "a building burnt down");
         if (Gold < 8) AskAid(false); // a poor town asks its friends for help rebuilding
         StaticDirty = true;
         string lost = f.Deaths > 0 ? $"; {f.Deaths} {(f.Deaths == 1 ? "life is" : "lives are")} lost" : "";
@@ -233,7 +240,7 @@ partial class Sim
         Npc("warden", "down", false, Content.Label(t));
         Rehome();
         if (G.Harsh >= 0.8 && Chance() < 0.4) { Arrest(); Say("The authorities blame a saboteur for the fire."); }
-        else if (GovKey is "commune" or "council" && Chance() < 0.5) { Nudge(0.02); Say("Neighbours raise a collection to rebuild."); }
+        else if (GovKey is "commune" or "council" && Chance() < 0.5) { Nudge(0.02, "a collection to rebuild"); Say("Neighbours raise a collection to rebuild."); }
     }
 
     // Rolled with events: ruins whose time has come are rebuilt through scaffolding.

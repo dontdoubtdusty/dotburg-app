@@ -29,6 +29,10 @@ We heard you're going hungry. Wagons of grain are coming.
 Timber is on the way, for the rebuilding.
 We saw the smoke from here. Timber and grain are coming.
 
+[sister.aid news | flood]
+We heard the water took half your low street. Timber is coming.
+Dry grain and good timber, on the road now.
+
 [sister.aid news | war]
 We heard about the war. Wagons are coming, no questions asked.
 Whatever happened out there, you still have to eat. Wagons are coming.

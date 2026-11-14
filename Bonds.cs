@@ -47,7 +47,9 @@ partial class Sim
     }
     // The traits that count: a sitting leader's are the government's (the same two since 0.68, unless from an older save).
     string[] TraitsOf(Walker w) => w.Lead && Leader != null && Leader.Traits.Length > 0 ? Leader.Traits : CitizenTraits(w);
-    bool Is(Walker w, string trait) { var t = TraitsOf(w); return t[0] == trait || t[1] == trait; }
+    // Any of their traits (heart, work, spirit, wildcard). Before 0.84 only the first two were read, so spirit traits
+    // and wildcards (calm, brave, firebug, doomsayer...) never acted between townsfolk.
+    bool Is(Walker w, string trait) => TraitsOf(w).Contains(trait);
 
     public Bond? BondOf(Walker w, int other, string kind) => w.Bonds.FirstOrDefault(b => b.Who == other && b.Kind == kind);
     Walker? ById(int id) { foreach (var w in Walkers) if (w.Id == id && !w.Gone) return w; return null; }
@@ -77,6 +79,8 @@ partial class Sim
             grudgeSaid = TickNo;
             Say($"{CitizenName(w)} will never forgive {NameOfId(other.Id)}: {WhyFor(w, b)}, on day {b.Day}.", other.Lead);
         }
+        // A grudge this deep across two families may become a feud between them (Feuds.cs, 0.85).
+        if (kind == "grudge" && before < FeudAt && b.Str >= FeudAt && !other.Lead) MaybeFeud(w, other, WhyFor(w, b));
         return b;
     }
 
@@ -136,13 +140,13 @@ partial class Sim
             else Say($"Some say {n} was near the {what} when it caught.", false);
             return;
         }
-        if (Is(w, "doomsayer") && Chance() < step * 0.6)
+        if (Is(w, "doomsayer") && Chance() < step * 0.6 * (Comet ? 3 : 1))   // a comet sets them off (Sky.cs)
         {
             Hear(0.03);
             if (TickNo - doomSaid > 1.5 * DayMs / TickMs)
             {
                 doomSaid = TickNo;
-                Say($"{n} stands in the square crying that {Pick(Dooms)}.", false);
+                Say($"{n} stands in the square crying that {(Comet && Chance() < 0.6 ? "the comet will burn the world" : Pick(Dooms))}.", false);
             }
         }
     }
@@ -211,11 +215,17 @@ partial class Sim
             AddBond(b, a, "grudge", 0.2 * gb, $"{an} cheated them at dice at {place}{when}");
             return;
         }
+        // Families at feud (0.85): a sour word about the other family, and no friendship unless a charmer is at work.
+        bool charm = Is(a, "charmer");
+        if (Feuding(a, b))
+        {
+            if (Chance() < 0.5) AddBond(b, a, "grudge", 0.12 * gb, $"{an} cursed their family at {place}{when}");
+            if (!charm) return;
+        }
         // Friendship: never with the cruel; the gentle make friends readily, and a charmer wins anyone over.
         if (Is(a, "cruel") || Is(b, "cruel")) return;
         bool warm = Is(a, "merciful") || Is(a, "tolerant") || Is(a, "honest") || Is(a, "generous") || Is(a, "cheerful")
                     || Is(a, "humble") || Is(a, "loyal") || Is(a, "calm");
-        bool charm = Is(a, "charmer");
         if (Chance() < (charm ? 0.9 : warm ? 0.6 : 0.3))
         {
             string why = Is(a, "generous") ? $"{an} shared their bread with them at {place}{when}" : $"they shared a table at {place}{when}";

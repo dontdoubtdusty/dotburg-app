@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.82.0";
+    const string Version = "Dotburg 0.85.1";
 
     [STAThread]
     static void Main(string[] args)
@@ -77,6 +77,7 @@ public partial class Program
             bool forceFire = false, forceWar = false, forceChat = false, forceHurt = false, forceBrigade = false;
             bool forceHungry = false;
             string? forceBlight = null;
+            string? forceEvent = null;   // --event hero|prophet|hermit|market|comet|flood|flooddamage|feud (0.85)
             string? openChat = null;   // --open <key start>: open that conversation (with --chat)
             (int w, int h)? forceSize = null;   // --size WxH: a screenshot at this window size instead of the fitted one
             // --hands: write sample chat hands (Hands.cs) to hands.txt next to the exe and exit.
@@ -120,11 +121,13 @@ public partial class Program
                 else if (args[i] == "--brigade") forceBrigade = true;
                 else if (args[i] == "--open" && i + 1 < args.Length) openChat = args[++i];
                 else if (args[i] == "--blight" && i + 1 < args.Length) forceBlight = args[++i];
+                else if (args[i] == "--event" && i + 1 < args.Length) forceEvent = args[++i];
                 else if (args[i] == "--pic") bigPic = true;
                 else if (args[i] == "--scheme" && i + 1 < args.Length) forceScheme = int.Parse(args[++i]);
                 else if (args[i] == "--season" && i + 1 < args.Length) forceSeason = int.Parse(args[++i]);
+                else if (args[i] == "--skin" && i + 1 < args.Length) forceSkin = args[++i];
             }
-            if (soak > 0) { Soak(soak, preUnits); SoakTraits(); if (args.Contains("--ill")) SoakIllness(preUnits > 0 ? preUnits : 150); if (args.Contains("--fires")) SoakFires(preUnits > 0 ? preUnits : 150); if (args.Contains("--wars")) SoakWars(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--health")) SoakHealth(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--food")) SoakFood(soak); return; }
+            if (soak > 0) { Soak(soak, preUnits); SoakTraits(); if (args.Contains("--ill")) SoakIllness(preUnits > 0 ? preUnits : 150); if (args.Contains("--fires")) SoakFires(preUnits > 0 ? preUnits : 150); if (args.Contains("--wars")) SoakWars(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--health")) SoakHealth(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--food")) SoakFood(soak); if (args.Contains("--rules")) SoakRules(150); if (args.Contains("--events")) SoakEvents(preUnits > 0 ? preUnits : 400, soak); return; }
             bool testing = shot != null;   // screenshot runs never touch the saved town
             signInOn = !testing || args.Contains("--signin");
 
@@ -145,6 +148,7 @@ public partial class Program
             if (forceHurt) sim.TestHurt();
             if (forceBlight != null) { sim.ForceBlight(forceBlight); for (int i = 0; i < 200; i++) sim.Tick(Sim.TickMs); }
             if (forceFire) { sim.ForceFire(); for (int i = 0; i < 90; i++) sim.Tick(Sim.TickMs); }
+            if (forceEvent != null) { Console.WriteLine(sim.ForceEvent(forceEvent)); for (int i = 0; i < 80; i++) sim.Tick(Sim.TickMs); }
             if (forceSick != null) { sim.ForceOutbreak(forceSick); for (int i = 0; i < 300; i++) sim.Tick(Sim.TickMs); }
             if (forceHungry) { sim.TestHunger(); for (int i = 0; i < 400; i++) sim.Tick(Sim.TickMs); }
             if (forceBrigade) Console.WriteLine(sim.TestBrigade());
@@ -281,6 +285,7 @@ public partial class Program
 
         // Headless long run for checking: no window, no files. Prints what the town became.
         string[] Regions = { "Envoys", "letter", "Refugees", "team", "spy", "caravan", "aid", "tribute", "agreement", "settlement", "moves in", "slips", "revolution", "absorbs", "collapses", "quarrel", "Guards turn", "baby", "welcomes a dotlet", "Wedding bells", "neighbours marry", "Fire!", "burns down", "puts out", "spreads to", "Lightning", "great fire", "perishes", "saboteur", "is rebuilt", "collection", "war", "front", "Victory", "Defeat", "soldier", "Raiders", "Plague", "plague", "Famine", "famine", "hunger", "overrun", "sends aid" };
+        string[] EventWords = { "hero", "prophet", "hermit", "feud", "Market day", "market", "flood", "low roads", "pond spills", "marsh creeps", "comet", "chooses", "strongman", "coup", "Revolution", "never forgive", "crying that", "running from", "was near the" };
         void Soak(int ticks, double preUnits)
         {
             sim.FreshRegion();
@@ -325,6 +330,8 @@ public partial class Program
                 $"festivals: held {sim.FestsHeld}, called off for sickness {sim.FestsOffIll}, for hunger {sim.FestsOffHunger}\n" +
                 $"weddings: friends {sim.FriendWeddings}, arranged {sim.ArrangedWeddings}, matched {sim.MatchWeddings}; married now {live.Count(w => sim.SpouseOf(w) != null)}; meals at a friend's table {sim.SharedMeals}; street tables {sim.StreetTables} (broken up {sim.TablesBroken}), fed {sim.StreetFed}\n" +
                 $"names: {live.Count} living, {live.Select(w => w.First).Distinct().Count()} distinct first names, {live.Select(w => w.First + " " + w.Last).Distinct().Count()} distinct full names, {live.Select(w => w.Last).Distinct().Count()} families\n" +
+                $"events (0.85): heroes {sim.Heroes}, prophets {sim.Prophets} (followers {sim.Followers}), hermits {sim.Hermits}; markets {sim.MarketsHeld}, pickpockets {sim.Pickpockets} (caught {sim.PickpocketsCaught}); floods {sim.Floods}, damaging {sim.FloodDamages}, drowned {sim.Drowned}; comets {sim.Comets}; feuds begun {sim.FeudsBegun}, quarrels {sim.FeudQuarrels}, settled {sim.FeudsSettled}, ended by a wedding {sim.FeudsWed}, cooled {sim.FeudsCooled}, stabbings {sim.FeudStabbings}, taken {sim.FeudTaken}, open now {sim.Feuds.Count}; rule choice: leader kept {sim.RuleKept}, new {sim.RuleNew}\n" +
+                string.Join("\n", sim.SayLog!.Where(l => EventWords.Any(l.Contains)).Take(80)) + "\n" +
                 string.Join("\n", sim.SayLog!.Where(l => story.Any(l.Contains)).Take(60)) + "\n");
         }
         // Food over whole years: several regions grown from a hamlet by the own clock, with a timeline every two days
@@ -486,6 +493,68 @@ public partial class Program
             lines.Add("--- sample lines ---");
             lines.AddRange(deaths.Take(40));
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), "\n" + string.Join("\n", lines) + "\n");
+        }
+        // How villages choose their rule (0.84): many regions grown to a Village. The new choice against the old roll,
+        // how often the leader stays, and whether a gentle or a harsh leader leans the choice their way.
+        void SoakRules(int runs)
+        {
+            Sim.RuleFactors = new();
+            var count = new Dictionary<string, int>();
+            var oldSum = new Dictionary<string, double>();
+            int kept = 0, done = 0;
+            double gentleH = 0, harshH = 0; int gentleN = 0, harshN = 0;
+            var lines = new List<string>();
+            for (int r = 0; r < runs; r++)
+            {
+                var s = new Sim(6000 + r * 23);
+                var o = s.TestRuleChoice();
+                if (o == null) continue;
+                var (rule, k, line, lh, old) = o.Value;
+                done++;
+                count[rule] = count.GetValueOrDefault(rule) + 1;
+                foreach (var kv in old) oldSum[kv.Key] = oldSum.GetValueOrDefault(kv.Key) + kv.Value;
+                if (k) kept++;
+                double h = Govs.Get(rule).Harsh;
+                if (lh < -0.15) { gentleH += h; gentleN++; } else if (lh > 0.15) { harshH += h; harshN++; }
+                if (lines.Count < 30) lines.Add("    " + line);
+            }
+            var o2 = new List<string> { $"\n--- village rule choice, {done} of {runs} regions reached a Village ---" };
+            foreach (var g in Govs.All.Where(g => !Govs.IsHamlet(g.Key)))
+                o2.Add($"{g.Key,-8} now {100.0 * count.GetValueOrDefault(g.Key) / Math.Max(1, done),5:F1}%   old roll {100.0 * oldSum.GetValueOrDefault(g.Key) / Math.Max(1, done),5:F1}%");
+            o2.Add($"leader stays on {100.0 * kept / Math.Max(1, done):F0}%; mean harshness of the rule chosen: gentle leaders {gentleH / Math.Max(1, gentleN):F2} ({gentleN}), harsh leaders {harshH / Math.Max(1, harshN):F2} ({harshN})");
+            if (Sim.RuleFactors != null) foreach (var kv in Sim.RuleFactors) o2.Add($"  {kv.Key,-8} people x{kv.Value[0] / kv.Value[2]:F2}  leader x{kv.Value[1] / kv.Value[2]:F2}");
+            o2.AddRange(lines);
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), string.Join("\n", o2) + "\n");
+        }
+        // The stage 5 events (0.85) over many regions: how often each happens per 100 town days, and sample lines.
+        void SoakEvents(double units, int ticks)
+        {
+            int runs = 8; double days = 0;
+            var tot = new Dictionary<string, double>();
+            var samples = new List<string>();
+            void Add(string k, double v) => tot[k] = tot.GetValueOrDefault(k) + v;
+            for (int r = 0; r < runs; r++)
+            {
+                var s = new Sim(8000 + r * 29);
+                s.FreshRegion();
+                s.SayLog = new();
+                s.Quiet = true; s.Earn(units); s.Grow(); s.Quiet = false; s.FreshFood();
+                for (int i = 0; i < ticks; i++) { s.Tick(Sim.TickMs); if (i % 182 == 0) { s.Earn(1); s.Grow(); } }
+                days += s.EvClock / Sim.DayMs;
+                Add("heroes", s.Heroes); Add("prophets", s.Prophets); Add("followers", s.Followers); Add("hermits", s.Hermits);
+                Add("markets", s.MarketsHeld); Add("pickpockets", s.Pickpockets); Add("floods", s.Floods); Add("flood damage", s.FloodDamages); Add("drowned", s.Drowned);
+                Add("comets", s.Comets); Add("feuds begun", s.FeudsBegun); Add("quarrels", s.FeudQuarrels); Add("feuds settled", s.FeudsSettled);
+                Add("feuds ended by a wedding", s.FeudsWed); Add("feuds cooled", s.FeudsCooled); Add("feud stabbings", s.FeudStabbings); Add("taken in a feud", s.FeudTaken);
+                Add("firebug fires", s.SayLog.Count(l => l.Contains("running from") || l.Contains("was near the")));
+                Add("doomsayer cries", s.SayLog.Count(l => l.Contains("crying that")));
+                Add("deep grudges said", s.SayLog.Count(l => l.Contains("never forgive")));
+                Add("fires", s.SayLog.Count(l => l.StartsWith("Fire!") || l.Contains("Lightning strikes") || l.Contains("running from")));
+                samples.AddRange(s.SayLog.Where(l => EventWords.Take(11).Any(l.Contains)).Take(25).Select(l => $"  [{r}] {l}"));
+            }
+            var o = new List<string> { $"\n--- stage 5 events: {runs} regions, {days / runs:F0} days each (per 100 town days) ---" };
+            o.AddRange(tot.Select(kv => $"{kv.Key,-26} {kv.Value * 100 / days,6:F2}"));
+            o.AddRange(samples);
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), string.Join("\n", o) + "\n");
         }
         void SoakTraits()
         {

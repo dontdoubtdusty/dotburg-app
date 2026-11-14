@@ -80,7 +80,8 @@ partial class Sim
         if (Ill != null) return;
         if (Walkers.Count(w => !w.Gone) < 4) return;
         double crowd = 0.6 + 0.8 * Headcount / (double)Math.Max(1, PopCap);
-        if (!Odds(crowd / OutbreakEvery)) return;
+        bool afterFlood = EvClock - FloodAt < 3 * DayMs;   // dirty water after a flood (Floods.cs)
+        if (!Odds(crowd / OutbreakEvery * (afterFlood ? 2 : 1))) return;
         StartOutbreak(PickDisease());
     }
 
@@ -93,6 +94,7 @@ partial class Sim
             double w = dz.Where[Scheme] * dz.When[SeasonNo];
             if (dz.Water && HasWater) w *= 0.4;
             if (dz.Water && wet) w *= 1.5;
+            if (dz.Water && EvClock - FloodAt < 3 * DayMs) w *= 3;   // the flood fouled the wells
             if (dz.Key == "marsh") w *= 1 + 0.5 * LandCount(Marsh);
             return w;
         });

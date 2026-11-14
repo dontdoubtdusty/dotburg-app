@@ -112,6 +112,7 @@ static class Storage
         public string ChroniclerName { get; set; } = "";
         public int PalLeader { get; set; }             // 0.69: whose personal contacts the saved pal chats are
         public int PrevLeader { get; set; }
+        public List<Feud>? Feuds { get; set; }         // 0.85: feuds between families; null in older saves
         public DateTime SavedAtUtc { get; set; }
     }
 
@@ -142,6 +143,7 @@ static class Storage
                 Bodies = s.Bodies.Select(b => new BodyDto { Id = b.Id, Name = b.Name, Was = b.Was, Born = b.Born, Blood = b.Blood, Attacks = b.Attacks,
                     Conds = b.Conds.Select(c => new CondDto { K = c.Kind, P = c.Part, S = c.Sev, Pk = c.Peak, T = c.TendAt, In = c.Infect, Im = c.Imm, Since = c.Since, Why = c.Why }).ToList() }).ToList(),
                 Food = FoodOf(s),
+                Feuds = s.Feuds.Count > 0 ? s.Feuds : null,
                 SavedAtUtc = DateTime.UtcNow,
             };
             string tmp = SavePath + ".tmp";
@@ -258,6 +260,7 @@ static class Storage
             s.ChroniclerId = d.Chronicler; s.ChroniclerName = d.ChroniclerName ?? "";
             s.PalLeader = d.PalLeader; s.PrevLeader = d.PrevLeader;
             s.RestoreRuins((d.Ruins ?? new()).Select(x => (x.R, x.Was, x.In)));
+            s.RestoreFeuds(d.Feuds);
             s.Sisters = d.Sisters.Select(x => s.SisterFromSave(x.Name, x.Scheme, x.Counts, x.Cap, x.Gov, x.Rel, x.Gold,
                 x.RName == null ? null : new Leader { Name = x.RName, Gen = Math.Max(1, x.RGen), Since = x.RSince, Born = d.EvClock - (d.EvClock - x.RBorn) * oldYears, Traits = x.RTraits ?? Array.Empty<string>() })).ToList();
             s.Convos.Clear();

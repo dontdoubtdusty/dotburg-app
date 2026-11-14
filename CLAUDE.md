@@ -30,7 +30,7 @@ A standalone C# / .NET 10 / Raylib-cs + ImGui.NET port of the `/town` Claude Cod
 
 ## Systems (`claude/systems.md`)
 - How each system works (numbers, saved fields, what was measured, test flags) is in `claude/systems.md`, one section per system. Read only the sections the task touches, and update that section in the same change. Not loaded every session on purpose: it is long.
-- Stages: 1 to 4 (town, life and weather, rule, region) are done; stage 5 events are done except wanderers, feuds, market day, floods and comets (see `claude/next-session-plan.md`). Illness, food, character and bonds, health and the Messenger go beyond the mod (the owner's choice, shaped by reading Songs of Syx and RimWorld data for reference only: no code or text copied).
+- Stages: 1 to 4 (town, life and weather, rule, region) are done; stage 5 events are done (wanderers, feuds, market day, floods and the comet came last, in 0.85). Illness, food, character and bonds, health and the Messenger go beyond the mod (the owner's choice, shaped by reading Songs of Syx and RimWorld data for reference only: no code or text copied).
 - Each stage is checked against the mod (same behaviour, not the same RNG stream) before the next.
 
 ## Gotchas

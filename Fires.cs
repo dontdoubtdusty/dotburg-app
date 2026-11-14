@@ -151,6 +151,7 @@ partial class Sim
             if (LandBy(f.Rank, PondK)) { f.Size -= 0.02; Tally("fire step by a pond"); }      // a bucket chain from the pond
             else if (Neighbours(f.Rank).Any(n => Built[n] is "well" or "fountain")) f.Size -= 0.015; // a bucket chain from the well
             if (LandBy(f.Rank, Marsh)) f.Size -= 0.01;                                       // damp ground next door
+            if (LotFlooded(f.Rank)) f.Size -= 0.05;                                          // standing floodwater (Floods.cs)
             bool grove = GroveDry && LandBy(f.Rank, Grove);
             if (grove) { f.Size += 0.05 * f.Size * (1 - f.Size); Tally("fire step by a dry grove"); }   // dry trees feed it
             f.Size = Clamp(f.Size, 0, 1);

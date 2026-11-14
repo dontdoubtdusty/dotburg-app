@@ -33,10 +33,12 @@ partial class Sim
     }
 
     // The scenery as lit and weathered now: snow, puddles, night, grey sky, fog, lights.
-    void ComposeBase(double nq, double warm, double gq, double fq, double wq, double cq)
+    void ComposeBase(double nq, double warm, double gq, double fq, double wq, double cq, double flq)
     {
         int snowCol = 0xeef2f6;
         int pudCol = Mix(Sc.Road[0], 0x46658a, 0.65);
+        int water = 0x3f6a9a;
+        if (flq > 0) IndexFlood();
         int fogCol = Tint(0xd2d6da, nq, 0);
         double warmE = warm * (1 - gq);
         for (int i = 0; i < baseImg.Length; i++)
@@ -45,6 +47,7 @@ partial class Sim
             byte k = Kind[i];
             if (cq > 0 && k > 0) c = Mix(c, snowCol, cq * (k == 1 ? 0.75 : k == 3 ? 0.55 : 0.35));
             if (wq > 0 && k == 4) c = Mix(c, pudCol, wq * 0.6);
+            if (flq > 0 && (k == 2 || k == 4) && floodLevel[i] <= flq) c = Mix(c, water, 0.75);   // floodwater on the roads
             c = Tint(c, nq, warmE);
             if (gq > 0) c = Gloomy(c, gq);
             if (fq > 0) c = Mix(c, fogCol, fq * fogW[i]);
@@ -160,12 +163,12 @@ partial class Sim
             lampKey[k] = lampNow[k] == 1 ? '1' : '0';
         }
         double gq = Math.Round(gloom * 10) / 10, fq = Math.Round(fogAmt * 8) / 8;
-        double wq = Math.Round(wet * 6) / 6, cq = Math.Round(cover * 8) / 8;
-        string key = $"{StaticVer}|{nq}|{warm}|{gq}|{fq}|{wq}|{cq}|{new string(litKey)}|{new string(lampKey)}";
+        double wq = Math.Round(wet * 6) / 6, cq = Math.Round(cover * 8) / 8, flq = Math.Round(flood * 8) / 8;
+        string key = $"{StaticVer}|{nq}|{warm}|{gq}|{fq}|{wq}|{cq}|{flq}|{new string(litKey)}|{new string(lampKey)}";
         if (key != baseKey)
         {
             baseKey = key;
-            ComposeBase(nq, warm, gq, fq, wq, cq);
+            ComposeBase(nq, warm, gq, fq, wq, cq, flq);
         }
         Array.Copy(baseImg, Out, baseImg.Length);
         int lx(int r) => Ox + Lots[r].tx * TileW;
@@ -247,6 +250,8 @@ partial class Sim
             for (int y = y1 - 1; y > y0; y--) Flag(x0, y);
         }
 
+        DrawMarket(nq, warm);   // market day stalls (Market.cs)
+
         // A builder in a hi-vis vest pacing in front of each scaffold.
         foreach (var wk in WorksList)
         {
@@ -273,7 +278,7 @@ partial class Sim
             Dot(w.X + dx, w.Y, Tint(c, nq, warm), w.Lead ? Tint(0xf2d050, nq * 0.5, 0) : -1);
             // A carrier has a sack beside them in the colour of what is in it (grain gold, flour cream, bread brown, greens green).
             if (w.Good >= 0 && w.Load > 0) Blend(Ox + w.X + dx + 1, Oy + w.Y, Tint(GoodColors[w.Good], nq, warm), 1);
-            // A hoarder walks home with an armful of bread.
+            // A shopper walks home with the bread they bought.
             else if (w.Bag > 0 && w.Mode == Mode.Walk) Blend(Ox + w.X + dx + 1, Oy + w.Y, Tint(GoodColors[(int)Good.Bread], nq, warm), 1);
             // Someone beating a fire carries a bucket: a blue pixel that splashes.
             if (w.Goal == Goal.Fight && w.Mode != Mode.Inside) Blend(Ox + w.X + dx + 1, Oy + w.Y - 1, (TickNo >> 1) % 2 == 0 ? 0x78b8ff : 0xc8e4ff, 1);
@@ -331,6 +336,8 @@ partial class Sim
                 }
             }
         }
+
+        DrawComet(nq);   // Sky.cs
 
         // Northern lights over cold towns on clear winter nights.
         if (nq >= 0.6 && SeasonNo == 3 && (Scheme == 4 || Scheme == 5) && Weather == Wx.Clear)

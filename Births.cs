@@ -46,7 +46,7 @@ partial class Sim
         {
             kind = "match";
             x1 = Pick(free);
-            var ok = free.Where(x => x != x1 && !Grudge(x1, x)).ToList();
+            var ok = free.Where(x => x != x1 && !Grudge(x1, x) && !Feuding(x1, x)).ToList();   // no neighbour matches across a feud
             if (ok.Count == 0) return;
             x2 = Pick(ok);
         }
@@ -62,6 +62,7 @@ partial class Sim
         a.Spouse = b.Id;
         b.Spouse = a.Id;
         bool sour = Grudge(a, b);
+        WeddingEndsFeud(a, b);   // friends across a feud, or a match the rule arranged
         AddBond(a, b, "friend", kind == "friends" ? 0.6 : 0.3, $"they married on day {DayNumber}");
         AddBond(b, a, "friend", kind == "friends" ? 0.6 : 0.3, $"they married on day {DayNumber}");
         MoveIn(a, b);

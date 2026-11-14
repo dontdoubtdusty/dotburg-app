@@ -50,7 +50,7 @@ class Walker
     public string First = "", Last = "";   // their name (Names.cs, 0.78); saved
     public int Spouse;            // the id of the one they married, 0 if never; a dead spouse leaves them free (0.78); saved
     public int FedBy;             // walking to this friend's pantry for a meal (0.78); not saved
-    public int Bag;               // meals bought to hoard, carried home in their arms; not saved
+    public int Bag;               // meals bought for the pantry, carried home in their arms (put away at the door); not saved
     public List<Bond> Bonds = new();   // grudges and friendships, at most three (Bonds.cs); saved
 }
 
@@ -180,7 +180,7 @@ partial class Sim
     // A line counts as major if it matches this (tier changes, charters, rule changes, leader deaths, wars, plagues,
     // every harvest, burn-downs, absorptions and collapses, and since 0.66 the good news too: trade agreements, aid
     // sent, tribute paid). First buildings of each kind are noted directly (Growth.cs).
-    static readonly Regex Major = new(@"\b(is now an? (hamlet|village|town|city)|chartered|founded|overthr\w*|revolution|coup|assassin\w*|takes the throne|crowned|dies|died|plague|famine|harvest fails|harvest is in|bumper|great fire|burns down|perishes in the fire|lives? (is|are) lost|war|defeats|election day|re-elected|steps down|takes power|absorbs|collapses|chooses|settles on|stabbing|saboteur|taken away|outbreak|life (is|was) lost|victory|defeat|trade agreement|sends aid|pays tribute)\b", RegexOptions.IgnoreCase);
+    static readonly Regex Major = new(@"\b(is now an? (hamlet|village|town|city)|chartered|founded|overthr\w*|revolution|coup|assassin\w*|takes the throne|crowned|dies|died|plague|famine|harvest fails|harvest is in|bumper|great fire|burns down|perishes in the fire|lives? (is|are) lost|war|defeats|election day|re-elected|steps down|takes power|absorbs|collapses|chooses|settles on|stabbing|saboteur|taken away|outbreak|life (is|was) lost|victory|defeat|trade agreement|sends aid|pays tribute|comet|washes away|follows the prophet|a feud now|feud is over|ends the feud|feud rest)\b", RegexOptions.IgnoreCase);
     readonly List<string> recentNotes = new();
     public readonly List<string> ChronicleQueue = new();   // lines waiting to be written to the chronicle file
 
@@ -237,6 +237,9 @@ partial class Sim
         if (Weather == Wx.Rain || Weather == Wx.Storm) { o.Add("Puddles on every road."); o.Add("Umbrellas out."); }
         if (Weather == Wx.Storm) { o.Add("Shutters bang in the wind."); o.Add("Dotlets count between the flash and the thunder."); }
         if (Weather == Wx.Fog) o.Add("Lamps glow dimly in the fog.");
+        if (flood >= 0.4) { o.Add("Ducks paddle down the flooded street."); o.Add("Dotlets sail paper boats in the low street."); }
+        if (Comet) { o.Add("Everyone talks about the star with the tail."); o.Add(night ? "Dotlets stay up to watch the star with the tail." : "Nobody slept much: the star with the tail again."); }   // not "comet": that word is chronicled
+        if (MarketOn) { o.Add("Someone haggles over turnips at the stalls."); o.Add("A trader swears the cabbages are fresh."); }
         if (Weather == Wx.Snow) o.Add("Dotlets build a snowman.");
         int se = SeasonNo;
         if (se == 0) { o.Add("Lambs in the fields."); o.Add("Blossom on the hedges."); }
@@ -308,7 +311,9 @@ partial class Sim
         Name = Content.TownName(Rng, new HashSet<string>(), Founded);
         Tier = 1;
         Built = new() { "house" };
-        NextId = 1;
+        // Ids start somewhere new in every region (0.84): traits, names and habits come from the id, so starting at 1
+        // gave every restarted region the same first dot-men.
+        NextId = 1 + Rng.Next(1_000_000);
         Walkers = new() { NewWalker(Sc.Dot, 0) };
         Pool = 0;
         WorksList.Clear();
@@ -319,6 +324,7 @@ partial class Sim
         LastFate = 0;
         Weddings = 0;
         ResetFires();
+        ResetTownEvents();
         Ill = null;
         ResetWar();
         Age = 0.3 * DayMs;

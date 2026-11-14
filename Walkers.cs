@@ -116,13 +116,14 @@ partial class Sim
         // Their time has come: home to die there (or here, if this is home or there is none).
         if (w.Fading != "") { int h = HomeOf(w); if (h < 0 || w.At == h || Burning(h)) PassAway(w, w.Fading); else GoHome(w); return; }
         if (w.Sick || w.Hurt) { GoHome(w); return; } // the sick and the wounded go home to bed
-        if (w.Bag > 0) { GoHome(w); return; }        // a hoarder takes the shopping straight home
+        if (w.Bag > 0) { GoHome(w); return; }        // shopping goes straight home
         // A carrier with a full sack finishes the delivery; one whose trip was interrupted gives the job up.
         if (w.Good >= 0) { if (w.Load > 0) { Deliver(w); return; } if (w.Goal != Goal.Haul) EndJob(w); }
         bool curfew = G.Curfew;
         bool dark = d < 0.25 || (curfew && d < 0.4);
         if (GoEat(w, dark)) return; // the hungry look for food before anything else
         if (Festival && Chance() < 0.75) { JoinFestival(w); return; }
+        if (MarketOn && !dark && Chance() < 0.4) { JoinMarket(w); return; }   // market day (0.85)
         if (w.Kid != 0 && JoinBrigade(w, d)) return;
         bool storm = Stormy;
         for (int i = 0; i < v; i++)
@@ -165,6 +166,8 @@ partial class Sim
         if (w.Goal == Goal.Home)
         {
             w.At = w.Dest;
+            // The shopping they carried goes into the pantry now.
+            if (w.Bag > 0 && w.Dest >= 0 && w.Dest < Visible) Stock[w.Dest, (int)Good.Meals] = Math.Min(RoomFor(w.Dest, Good.Meals), Stock[w.Dest, (int)Good.Meals] + w.Bag);
             w.Bag = 0;
             if (w.Fading != "") { PassAway(w, w.Fading); return; }
             SupperAtHome(w, w.Dest);

@@ -391,6 +391,7 @@ partial class Sim
     void StepLife(double d, double dtMs)
     {
         UpdateWeather(dtMs);
+        StepFlood(dtMs);
         StepFestWeather();
         StepCat();
         StepFlock(d);

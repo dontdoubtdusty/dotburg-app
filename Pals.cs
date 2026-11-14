@@ -253,6 +253,9 @@ partial class Sim
     // of the leader, then an enemy). Returns the first friend's chat key to open.
     public string TestPals()
     {
+        // A pre-grown town has not met for politics yet (rules form in Politics, since 0.73): settle one now so there is a leader.
+        if (GovKey == "none") FormRule();
+        if (LeaderWalker == null && GovKey != "none") Appoint(null);
         var lw = LeaderWalker;
         var o = Walkers.Where(w => !w.Gone && w.Kind == "" && w.Kid == 0 && w != lw).Take(3).ToList();
         if (lw == null || o.Count < 3) return "bot";

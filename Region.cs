@@ -29,12 +29,12 @@ partial class Sim
     static readonly Dictionary<string, int> VisitorColors = new()
     {
         ["pedlar"] = 0x9a7448, ["bard"] = 0xd070c0, ["clown"] = 0xf0f0f0, ["thief"] = 0x3a3a4a, ["cart"] = 0x8a6a3a,
-        ["spy"] = 0x4a3a5a, ["hero"] = 0x30b0d0, ["prophet"] = 0xf0e8d0, ["hermit"] = 0x6a7a4a,
+        ["spy"] = 0x4a3a5a, ["hero"] = 0x30b0d0, ["prophet"] = 0xf0e8d0, ["hermit"] = 0x6a7a4a, ["trader"] = 0x7a8a3a,
     };
     static readonly Dictionary<string, int> VisitorHead = new()
     {
         ["envoy"] = 0xf5f5f5, ["team"] = 0xf5f5f5, ["refugee"] = 0x8a7a5a, ["spy"] = 0xd9432f, ["pedlar"] = 0x6a4a2a,
-        ["hero"] = 0xd9432f, ["prophet"] = 0xf2c14e, ["hermit"] = 0x8a7a5a,
+        ["hero"] = 0xd9432f, ["prophet"] = 0xf2c14e, ["hermit"] = 0x8a7a5a, ["trader"] = 0xd8c070,   // a trader's straw hat
     };
     static readonly string[] Goods = { "cloth", "salt", "spices", "tools", "wine", "wool", "pottery", "news" };
 
@@ -165,6 +165,7 @@ partial class Sim
         Age %= DayMs;
         WorksList.Clear();
         ResetFires();
+        ResetTownEvents();
         puffs.Clear();
         cat = null;
         festUntil = 0;
@@ -296,6 +297,9 @@ partial class Sim
                 else if (v.Kind == "bard" && inn >= 0) Visit(v, inn);
                 else if (v.Kind == "clown" || v.Kind == "team") JoinFestival(v);
                 else if (v.Kind == "envoy" && SeatRank() >= 0) Visit(v, SeatRank());
+                else if (v.Kind == "prophet" && Built.FindIndex(t => t is "church" or "cathedral") is var ch and >= 0 && ch < Lots.Count) Visit(v, ch);
+                else if (v.Kind == "hermit" && Built.FindIndex(t => t is "well" or "fountain" or "park") is var wl and >= 0 && wl < Lots.Count) Visit(v, wl);
+                else if (v.Kind == "trader" && MarketOn) JoinMarket(v);
                 else StrollSomewhere(v);
                 continue;
             }
@@ -631,8 +635,13 @@ partial class Sim
         }
         Population();
         FireDice();
+        MaybeFloodDamage();
         RebuildRuins();
         MaybeOutbreak();
+        MaybeWanderer();
+        StepFeuds();
+        MaybeMarket();
+        MaybeComet();
         MaybeWar();
         StepWar();
         StepSisterWar();

@@ -645,17 +645,32 @@ partial class Sim
     List<Walker> LineAt(int r) { if (!queues.TryGetValue(r, out var q)) queues[r] = q = new(); return q; }
     public int QueueLength(int r) => queues.TryGetValue(r, out var q) ? q.Count : 0;
 
-    // Stand everyone in a counter's line on the road beside its door, head of the line nearest.
+    // Where the i-th in a counter's line stands: on the road beside the door, head nearest, a gap between each so
+    // a line reads as people and not a bar (0.85.1). Where the road ends at the town edge the line goes the other way.
+    (int x, int y) LineSpot(int r, int i)
+    {
+        var (dx, dy) = DoorOf(r);
+        int fit = Math.Max(0, (dx - 1) / 2 + 1);   // how many fit between the door and the town edge
+        return (i < fit ? dx - 1 - 2 * i : dx + 1 + 2 * (i - fit), dy);
+    }
+
+    // Everyone in a counter's line stops what they were doing; StepQueues walks them to their places.
     void PlaceInLine(int r)
     {
         if (!queues.TryGetValue(r, out var q) || r >= Visible) return;
-        var (dx, dy) = DoorOf(r);
+        foreach (var w in q) w.Path.Clear();
+    }
+
+    // Each queuer steps one pixel toward their place in line every other tick, so they can be seen shuffling up.
+    void ShuffleLine(int r, List<Walker> q)
+    {
+        if (TickNo % 2 != 0) return;
         for (int i = 0; i < q.Count; i++)
         {
-            int x = dx - 1 - i;
-            if (x < 0) x = dx + 1 + (i - dx + 1);   // the road ends at the town edge: the line bends to the other side
-            q[i].X = x; q[i].Y = dy;
-            q[i].Path.Clear();
+            var (x, y) = LineSpot(r, i);
+            var w = q[i];
+            if (w.Y != y) w.Y += Math.Sign(y - w.Y);
+            else if (w.X != x) w.X += Math.Sign(x - w.X);
         }
     }
 
@@ -690,6 +705,7 @@ partial class Sim
                 PlaceInLine(r);
             }
             else if (q.Count != before) PlaceInLine(r);
+            ShuffleLine(r, q);
         }
     }
 
@@ -752,8 +768,9 @@ partial class Sim
                 // The greedy grab half as much again, the thrifty and the generous half as much (0.68).
                 double hand = Is(w, "greedy") ? 1.5 : Is(w, "thrifty") || Is(w, "generous") ? 0.5 : 1;
                 if (FoodRule.hoard > 0 && Panic > 0.2) extra += (int)Math.Round(Panic * FoodRule.hoard * 2 * hand * (0.5 + Chance()));
-                for (int i = 0; i < extra && home >= 0 && Stock[home, (int)Good.Meals] < RoomFor(home, Good.Meals) && BuyMeal(r); i++) { Stock[home, (int)Good.Meals] += 1; bought++; }
-                if (bought >= 2) w.Bag = bought;   // arms full: they walk it home
+                // What they buy for home is carried there in their arms and reaches the pantry only at the door (0.85.1).
+                for (int i = 0; i < extra && Stock[home, (int)Good.Meals] + bought < RoomFor(home, Good.Meals) && BuyMeal(r); i++) bought++;
+                w.Bag += bought;
                 HoardNews(bought);
             }
             if (Built[r] != "mill") servingUntil[r] = TickNo + Secs(ServeSecs * (1 + bought), ServeSecs * (1.5 + bought));

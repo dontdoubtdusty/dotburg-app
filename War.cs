@@ -11,6 +11,7 @@ class WarState
     public double Until;            // EvClock when the fighting ends
     public List<Soldier> Away = new();
     public int Lost;                // soldiers who will not come home
+    public bool Hero;               // a travelling hero marched with them (Wanderers.cs): better odds
 }
 
 // Two sisters at war (news only; the loser shrinks).
@@ -38,6 +39,7 @@ partial class Sim
     public Blight? BlightOn;
     double lastDisaster = -1e9;             // EvClock of the last war raid or blight start
     double warEnded = -1e9;
+    double lastDefeat = -1e9;               // EvClock of the last lost war (a cause in the coup line, 0.84)
 
     public bool Famine => BlightOn?.Kind == "famine" && BlightOn.Towns.Contains(Name);
     bool Calm => Fires.Count == 0 && Ill == null && EvClock - lastDisaster > DayMs * 2;
@@ -60,7 +62,7 @@ partial class Sim
     }
 
     // The new town after a charter starts at peace; the old town keeps its soldiers.
-    void ResetWar() { WarOn = null; SisterWarOn = null; BlightOn = null; lastDisaster = -1e9; warEnded = -1e9; }
+    void ResetWar() { WarOn = null; SisterWarOn = null; BlightOn = null; lastDisaster = -1e9; warEnded = -1e9; lastDefeat = -1e9; }
 
     // ---------- war between this town and a sister ----------
     // Harsh towns pick fights, and a harsh neighbour is a reason for one. Rolled with the events.
@@ -138,7 +140,7 @@ partial class Sim
             }
             return;
         }
-        double odds = 0.5 + (G.Harsh - Govs.Get(foe.Gov).Harsh) * 0.2 + (Headcount - foe.Total) * 0.005;
+        double odds = 0.5 + (G.Harsh - Govs.Get(foe.Gov).Harsh) * 0.2 + (Headcount - foe.Total) * 0.005 + (war.Hero ? 0.15 : 0);
         bool won = Chance() < Clamp(odds, 0.15, 0.85);
         int lost = war.Lost;
         ReturnSoldiers(war);
@@ -156,6 +158,7 @@ partial class Sim
             return;
         }
         Pool = 0;
+        lastDefeat = EvClock;
         Pay(-6);
         Nudge(-0.15, "defeat in war");
         Say($"Defeat: {foe.Name} wins the war{(lost > 0 ? $", and {lost} did not come home" : "")}.");

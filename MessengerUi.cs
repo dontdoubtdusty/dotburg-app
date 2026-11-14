@@ -318,12 +318,15 @@ public partial class Program
             float line = ImGui.GetTextLineHeight();
             float spk = TitleH - 6;
             float caps = CapsW;   // the window buttons, while maximised without the Windows title bar
-            XpWindow(bg, a, b, TitleH, $"{sim.Name} Messenger", true, caps + (audioOn ? spk + 4 : 0));
+            // The Windows title bar stays Luna blue; inside it, the leader's own MSN colour scheme (MsnSkin.cs).
+            var sk = skin = LeaderScheme();
+            XpWindow(bg, a, b, TitleH, $"{sim.Name} Messenger", true, caps + (audioOn ? spk + 4 : 0), sk.Back);
             if (audioOn) SpeakerButton(bg, Px(b.X - Bd - caps - spk - 2, a.Y + (Bd + TitleH - spk) / 2), spk);
             WindowButtons(bg, b.X, a.Y);
             float top = a.Y + Bd + TitleH;
             float x0 = a.X + Bd + Pad, x1 = b.X - Bd - Pad;
             float y = top + Pad;
+            SkinBack(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, b.Y - Bd), sk);
 
             // At launch, MSN's "Signing in..." page for a moment (with the start-up sound), then the contact list.
             if (signInOn)
@@ -334,51 +337,70 @@ public partial class Program
                 if (signInUntil > 0) { signInUntil = -1; Play(Sfx.Online); }
             }
 
-            // Me: our leader's picture, name and status, and personal message, on MSN 7's pale blue band.
+            // Me: our leader's picture, name and status, and personal message, on the tinted top of the window.
             float pic = MathF.Max(48, line * 2 + 12);
-            Grad(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, y + pic + Pad), 0xd3e1fa, Face);
             DisplayPic(bg, new Vector2(x0, y), pic, "me");
             var me = sim.MePresence;
             float tx = x0 + pic + 8;
             bg.PushClipRect(new Vector2(tx, y), new Vector2(x1, y + pic), true);
-            BoldText(bg, Px(tx, y + 2), Ink, sim.MeName);
+            BoldText(bg, Px(tx, y + 2), sk.Text, sim.MeName);
             float nw = BoldW(sim.MeName);
-            bg.AddText(Px(tx + nw + 6, y + 2), U(Shade), $"({PresenceWord(me)})");
-            Rich(bg, new Vector2(tx, y + line + 6), 0, sim.MeMessage(), Navy);
+            bg.AddText(Px(tx + nw + 6, y + 2), U(sk.Dim), $"({PresenceWord(me)})");
+            Rich(bg, new Vector2(tx, y + line + 6), 0, sim.MeMessage(), sk.Motto);
             bg.PopClipRect();
             if (ImGui.IsMouseHoveringRect(new Vector2(x0, y), new Vector2(x1, y + pic)))
-                Tip($"You are signed in as {sim.LeaderTitle}, {sim.G.Name.ToLower()} of {sim.Name}.\nStatus: {PresenceWord(me)}. The leader answers for the town; you read along.");
+                Tip($"You are signed in as {sim.LeaderTitle}, {sim.G.Name.ToLower()} of {sim.Name}.\nStatus: {PresenceWord(me)}. Colour scheme: {sk.Name}, the leader's choice.\nThe leader answers for the town; you read along.");
             y += pic + Gap;
 
-            // Contacts: a sunken white list, about 40% of what is left.
+            // Contacts: a white pane, about 40% of what is left (a little less when the toolbar fits under it).
             var rows = Contacts();
             float rowH = MathF.Max(line, 16) + 4;
             var groups = rows.Select(r => r.Group).Distinct().ToList();
             float need = groups.Count * rowH + rows.Count(r => !folded.Contains(r.Group)) * rowH + 8;
             float rest = b.Y - Bd - Pad - y;
-            float listH = Math.Clamp(need, rowH * 4, MathF.Max(rowH * 4, rest * 0.42f));
+            float barH = ToolbarH(x1 - x0, out bool labels);
+            if (rest < line * 30) barH = 0;                          // a short window keeps its room for the talk
+            float listH = Math.Clamp(need, rowH * 4, MathF.Max(rowH * 4, (rest - barH) * 0.4f));
             var lA = new Vector2(x0, y);
             var lB = new Vector2(x1, y + listH);
-            Sunken(bg, lA, lB, Paper);
-            Area("contacts", lA + new Vector2(2, 2), lB - new Vector2(2, 2));
+            Pane(bg, lA, lB, sk);
+            Area("contacts", lA + new Vector2(2, 3), lB - new Vector2(2, 3));
             ContactList(rows, groups, rowH);
             ImGui.End();
             y = lB.Y + Gap;
 
-            // The conversation header, as in MSN 7.5: "To:" with a made-up address, and their personal message.
-            // The display pictures sit in the column on the right (below).
+            // MSN 7's big toolbar over the conversation, when there is room for it.
+            if (barH > 0) { Toolbar(bg, new Vector2(x0, y), new Vector2(x1, y + barH), labels, sk); y += barH + Gap; }
+
+            // MSN 7.5's conversation: a pane with the "To:" header over the history, the formatting toolbar and the
+            // typing box under it; on the right their display picture at the top and ours at the bottom.
             var sel = rows.FirstOrDefault(r => r.Key == selKey) ?? rows[0];
             if (sel.Key != selKey) selKey = sel.Key;
+            float footH = line + 8;
+            float bottom = b.Y - Bd - footH;
+            float frame = MathF.Floor(Math.Clamp((x1 - x0) * 0.24f, 72, 104));
+            float frameH = frame + 12;                               // the picture plus the drop-down arrow under it
+            float picCol = frame + 8;
+            float boxH = MathF.Max(frameH, line * 3 + 30);           // toolbar plus typing box, as tall as our picture
+            float tbH = line + 8;
+            var cA = new Vector2(x0, y);
+            var cB = new Vector2(x1 - picCol, bottom - Pad - boxH - 6);
+            Pane(bg, cA, cB, sk);
+
+            // The header: "To:" with a made-up address, and their personal message, over a thin tinted rule.
             float hh = line * 2 + 6;
-            bg.PushClipRect(new Vector2(x0, y), new Vector2(x1, y + hh), true);
-            bg.AddText(Px(x0, y + 1), U(Shade), "To:");
+            float hx = cA.X + 8, hy = cA.Y + 4;
+            bg.PushClipRect(new Vector2(hx, hy), new Vector2(cB.X - 6, hy + hh), true);
+            bg.AddText(Px(hx, hy + 1), U(Shade), "To:");
             float toW = ImGui.CalcTextSize("To: ").X;
             string head = sel.Head.Length > 0 ? sel.Head : sel.Title;
-            BoldText(bg, Px(x0 + toW, y + 1), Ink, head);
-            bg.AddText(Px(x0 + toW + BoldW(head) + 8, y + 1), U(Shade), Address(sel));
-            Rich(bg, new Vector2(x0, y + line + 4), 0, sel.Msg, Shade);
+            BoldText(bg, Px(hx + toW, hy + 1), Ink, head);
+            bg.AddText(Px(hx + toW + BoldW(head) + 8, hy + 1), U(Shade), Address(sel));
+            Rich(bg, new Vector2(hx, hy + line + 4), 0, sel.Msg, Shade);
             bg.PopClipRect();
-            y += hh + 2;
+            float hist = hy + hh + 2;
+            bg.AddLine(new Vector2(cA.X + 1, hist), new Vector2(cB.X - 1, hist), U(sk.Edge));
+            hist += 1;
 
             // A notice bar in pale yellow when the contact is not online, as MSN did.
             if (sel.P != Presence.Online && sel.Key != "bot")
@@ -389,65 +411,64 @@ public partial class Program
                     Presence.Blocked => sel.Key.StartsWith("pal:") ? $"{sel.Title} is blocked: there is bad blood between you." : $"{sel.Title} is blocked: relations are hostile.",
                     _ => $"{sel.Title} may not reply because their status is set to {PresenceWord(sel.P)}.",
                 };
-                var nA = new Vector2(x0, y);
-                var nB = new Vector2(x1, y + line + 6);
+                var nA = new Vector2(cA.X + 1, hist);
+                var nB = new Vector2(cB.X - 1, hist + line + 6);
                 bg.AddRectFilled(nA, nB, U(TipBg));
-                bg.AddRect(nA, nB, U(0xc8c090));
+                bg.AddLine(new Vector2(nA.X, nB.Y), nB, U(0xc8c090));
                 bg.PushClipRect(nA, nB, true);
                 bg.AddCircleFilled(nA + new Vector2(10, (line + 6) / 2), line * 0.36f, U(0x2050c0));
                 bg.AddText(nA + new Vector2(8, 3), U(Hi), "i");
                 bg.AddText(nA + new Vector2(20, 3), U(Ink), note);
                 bg.PopClipRect();
-                y = nB.Y + 4;
+                hist = nB.Y + 1;
             }
 
-            // MSN 7.5's conversation: the history on the left with the formatting toolbar and the typing box under
-            // it; on the right their display picture at the top and ours at the bottom, in glossy rounded frames.
-            float footH = line + 8;
-            float bottom = b.Y - Bd - Pad - footH;
-            float frame = MathF.Floor(Math.Clamp((x1 - x0) * 0.24f, 72, 104));
-            float picCol = frame + 8;
-            float boxH = MathF.Max(frame, line * 3 + 30);           // toolbar plus typing box, as tall as our picture
-            float tbH = line + 8;
-            var cA = new Vector2(x0, y);
-            var cB = new Vector2(x1 - picCol, bottom - boxH - 6);
-            Sunken(bg, cA, cB, Paper);
-            Area("convo", cA + new Vector2(2, 2), cB - new Vector2(2, 2));
+            Area("convo", new Vector2(cA.X + 2, hist), cB - new Vector2(2, 4));
             string foot = Conversation(sel);
             ImGui.End();
-            PicFrame(bg, new Vector2(x1 - frame, y), frame, sel.Key, sel.P);
-            PicFrame(bg, new Vector2(x1 - frame, bottom - frame), frame, "me", me);
-            ComposeBox(bg, new Vector2(x0, bottom - boxH), new Vector2(x1 - picCol, bottom), tbH);
-            bg.PushClipRect(new Vector2(x0, bottom), new Vector2(x1, b.Y - Bd), true);
-            Rich(bg, new Vector2(x0 + 2, bottom + 5), 0, foot, Shade);
+            PicFrame(bg, new Vector2(x1 - frame, y), frame, sel.Key, sel.P, sk);
+            PicFrame(bg, new Vector2(x1 - frame, bottom - Pad - frameH), frame, "me", me, sk);
+            ComposeBox(bg, new Vector2(x0, bottom - Pad - boxH), new Vector2(x1 - picCol, bottom - Pad), tbH, sk);
+
+            // The status bar along the foot of the window, with the resize grip in the corner.
+            var fA = new Vector2(a.X + Bd, bottom);
+            var fB = new Vector2(b.X - Bd, b.Y - Bd);
+            Grad(bg, fA, fB, Lighten(sk.Base, 0.88f), Lighten(sk.Base, 0.74f));
+            bg.AddLine(fA, new Vector2(fB.X, fA.Y), U(sk.Edge));
+            bg.AddLine(fA + new Vector2(0, 1), new Vector2(fB.X, fA.Y + 1), U(Hi, 0.8f));
+            bg.PushClipRect(fA, fB, true);
+            Rich(bg, new Vector2(x0 + 2, bottom + 4), 0, foot, Ink);
             bg.PopClipRect();
+            Grip(bg, fB, sk);
         }
 
-        // A display picture in MSN 7's frame: a rounded, glossy pale-blue bezel with a status-coloured rim
-        // (green online, orange away, red busy or blocked, grey offline) round the picture.
-        void PicFrame(ImDrawListPtr dl, Vector2 a, float size, string key, Presence p)
+        // A display picture in MSN 7's frame: a white pane with a tinted edge and a soft gloss, the picture inside
+        // with a thin rim in the status colour (green online, orange away, red busy or blocked, grey offline), and
+        // the little drop-down arrow under it.
+        void PicFrame(ImDrawListPtr dl, Vector2 a, float size, string key, Presence p, MsnScheme sk)
         {
-            var b = a + new Vector2(size, size);
-            float r = MathF.Floor(size * 0.12f);
+            var b = a + new Vector2(size, size + 12);
+            Pane(dl, a, b, sk, Paper, 7);
+            GradA(dl, a + new Vector2(1, 1), new Vector2(b.X - 1, a.Y + size * 0.5f), sk.Soft, 0.9f, Hi, 0f);
             int rim = p == Presence.Blocked ? Busy : PresenceCol(p);
-            dl.AddRectFilled(a, b, U(Darken(rim, 0.9f)), r);
-            dl.AddRectFilled(a + new Vector2(2, 2), b - new Vector2(2, 2), U(Lighten(rim, 0.55f)), r - 1);
-            dl.AddRectFilled(a + new Vector2(4, 4), b - new Vector2(4, 4), U(0xf4f8ff), r - 2);
-            // The gloss: a white sheen over the top half of the bezel.
-            dl.AddRectFilledMultiColor(a + new Vector2(3, 3), new Vector2(b.X - 3, a.Y + size * 0.45f), U(Hi, 0.55f), U(Hi, 0.55f), U(Hi, 0f), U(Hi, 0f));
-            DisplayPic(dl, a + new Vector2(6, 6), size - 12, key);
-            dl.AddRect(a, b, U(Darken(rim, 0.7f)), r, ImDrawFlags.None, 1);
+            var pa = a + new Vector2(5, 5);
+            var pb = pa + new Vector2(size - 10, size - 10);
+            dl.AddRectFilled(pa - new Vector2(2, 2), pb + new Vector2(2, 2), U(rim), 4);
+            DisplayPic(dl, pa, size - 10, key);
+            DropArrow(dl, new Vector2(b.X - 10, b.Y - 6));
         }
 
-        // The bottom of an MSN 7.5 conversation: the formatting toolbar (font, emoticons, winks, nudge) and the
-        // typing box with its Send button, shown read only: the leader answers for the town; we read along.
-        void ComposeBox(ImDrawListPtr dl, Vector2 a, Vector2 b, float tbH)
+        // The bottom of an MSN 7.5 conversation in one pane: the formatting toolbar (font, emoticons, winks, nudge)
+        // on a tinted strip, the typing box under it and the Send button beside, none of it does anything: the
+        // leader answers for the town; we read along.
+        void ComposeBox(ImDrawListPtr dl, Vector2 a, Vector2 b, float tbH, MsnScheme sk)
         {
             float line = ImGui.GetTextLineHeight();
-            // Toolbar: a pale band with small buttons, each a picture and a drop-down arrow.
-            Grad(dl, a, new Vector2(b.X, a.Y + tbH), 0xf6f9ff, 0xdde7f8);
-            dl.AddRect(a, new Vector2(b.X, a.Y + tbH), U(0xa8bede));
-            float x = a.X + 6, cy = a.Y + tbH / 2;
+            Pane(dl, a, b, sk);
+            // Toolbar: a tinted strip with small buttons, each a picture and a drop-down arrow.
+            GradA(dl, a + new Vector2(1, 1), new Vector2(b.X - 1, a.Y + tbH), Lighten(sk.Base, 0.94f), 1, Lighten(sk.Base, 0.84f), 1);
+            dl.AddLine(new Vector2(a.X + 1, a.Y + tbH), new Vector2(b.X - 1, a.Y + tbH), U(sk.Edge));
+            float x = a.X + 8, cy = a.Y + tbH / 2;
             void Arrow() { dl.AddTriangleFilled(new Vector2(x, cy - 1), new Vector2(x + 6, cy - 1), new Vector2(x + 3, cy + 2), U(0x404040)); x += 14; }
             BoldText(dl, Px(x, cy - line / 2), 0x1f4fa0, "A");
             dl.AddRectFilled(new Vector2(x, cy + line / 2 - 2), new Vector2(x + BoldW("A"), cy + line / 2), U(0xd02020));
@@ -455,35 +476,28 @@ public partial class Program
             foreach (var code in new[] { ":)", ";)" }) { Rich(dl, new Vector2(x, cy - line / 2), 0, code, Ink); x += line + 5; Arrow(); }
             // Nudge: a little window with shake lines.
             var na = Px(x, cy - line * 0.35f);
-            dl.AddRectFilled(na, na + new Vector2(line * 0.8f, line * 0.7f), U(Frame), 2);
+            dl.AddRectFilled(na, na + new Vector2(line * 0.8f, line * 0.7f), U(sk.Base), 2);
             dl.AddRectFilled(na + new Vector2(2, 4), na + new Vector2(line * 0.8f - 2, line * 0.7f - 2), U(Paper));
-            dl.AddLine(na + new Vector2(-4, 2), na + new Vector2(-4, line * 0.6f), U(0x4060a0), 1);
-            dl.AddLine(na + new Vector2(line * 0.8f + 3, 2), na + new Vector2(line * 0.8f + 3, line * 0.6f), U(0x4060a0), 1);
-            bool toolHot = ImGui.IsMouseHoveringRect(a, new Vector2(b.X, a.Y + tbH));
+            dl.AddLine(na + new Vector2(-4, 2), na + new Vector2(-4, line * 0.6f), U(sk.Deep), 1);
+            dl.AddLine(na + new Vector2(line * 0.8f + 3, 2), na + new Vector2(line * 0.8f + 3, line * 0.6f), U(sk.Deep), 1);
 
-            // The typing box (white, sunken) and the Send button beside it, greyed out.
+            // The typing area (greyed text) and the glossy Send button on its right, inside the same pane.
             float sendW = MathF.Max(64, ImGui.CalcTextSize("Send").X + 24);
-            var ia = new Vector2(a.X, a.Y + tbH + 4);
-            var ib = new Vector2(b.X - sendW - 6, b.Y);
-            Sunken(dl, ia, ib, Paper);
+            var ia = new Vector2(a.X + 1, a.Y + tbH + 1);
+            var ib = new Vector2(b.X - sendW - 12, b.Y - 1);
             dl.PushClipRect(ia, ib, true);
             Rich(dl, ia + new Vector2(6, 4), ib.X - ia.X - 12, "Reading along: the leader answers for the town.", 0xa0a0a0);
             dl.PopClipRect();
-            var sa = new Vector2(b.X - sendW, ia.Y);
-            var sb = new Vector2(b.X, b.Y);
-            Grad(dl, sa, sb, 0xf8f8f4, 0xe6e3d6);
-            dl.AddRect(sa, sb, U(0x9aa8c0), 3);
-            var ts = ImGui.CalcTextSize("Send");
-            dl.AddText(Px(sa.X + (sendW - ts.X) / 2, sa.Y + (sb.Y - sa.Y - ts.Y) / 2), U(0xa0a0a0), "Send");
-            if (!modal && (toolHot || ImGui.IsMouseHoveringRect(ia, sb)))
-                Tip("Read only: the leader writes for the town. You read along.");
+            var sa = new Vector2(b.X - sendW - 6, ia.Y + 6);
+            var sb = new Vector2(b.X - 6, MathF.Min(b.Y - 6, sa.Y + line * 2 + 8));
+            GlossButton(dl, sa, sb, "Send", sk);
         }
 
         // MSN's sign-in page: the green and blue buddies chasing each other round in a circle, "Signing in..."
         // and our address under it, on a white-to-blue page.
         void SigningIn(ImDrawListPtr dl, Vector2 a, Vector2 b, double now)
         {
-            Grad(dl, a, b, Paper, 0xc9daf5);
+            Grad(dl, a, b, Paper, Lighten(LeaderScheme().Base, 0.72f));
             float line = ImGui.GetTextLineHeight();
             var c = new Vector2(MathF.Floor((a.X + b.X) / 2), MathF.Floor(a.Y + (b.Y - a.Y) * 0.38f));
             float px = MathF.Max(4, MathF.Floor((b.X - a.X) / 70));
@@ -534,10 +548,10 @@ public partial class Program
                 if (ImGui.InvisibleButton("g" + g, new Vector2(w, rowH))) { if (open) folded.Add(g); else folded.Remove(g); }
                 // A small triangle: pointing down when open, right when folded.
                 var c = p + new Vector2(7, rowH / 2);
-                if (open) dl.AddTriangleFilled(c + new Vector2(-4, -2), c + new Vector2(4, -2), c + new Vector2(0, 3), U(Navy));
-                else dl.AddTriangleFilled(c + new Vector2(-2, -4), c + new Vector2(-2, 4), c + new Vector2(3, 0), U(Navy));
+                if (open) dl.AddTriangleFilled(c + new Vector2(-4, -2), c + new Vector2(4, -2), c + new Vector2(0, 3), U(skin.Deep));
+                else dl.AddTriangleFilled(c + new Vector2(-2, -4), c + new Vector2(-2, 4), c + new Vector2(3, 0), U(skin.Deep));
                 int on = gr.Count(r => r.P != Presence.Offline);
-                BoldText(dl, Px(p.X + 16, p.Y + (rowH - line) / 2), Navy, $"{g} ({on}/{gr.Count})");
+                BoldText(dl, Px(p.X + 16, p.Y + (rowH - line) / 2), skin.Deep, $"{g} ({on}/{gr.Count})");
                 if (!open) continue;
                 foreach (var r in gr)
                 {
@@ -547,12 +561,12 @@ public partial class Program
                     bool hot = ImGui.IsItemHovered();
                     var ra = p;
                     var rb = p + new Vector2(w, rowH);
-                    if (selRow) dl.AddRectFilled(ra, rb, U(Select), 2);
-                    else if (hot) dl.AddRectFilled(ra, rb, U(0xdfe8f8), 2);
+                    if (selRow) dl.AddRectFilled(ra, rb, U(skin.Sel), 3);
+                    else if (hot) dl.AddRectFilled(ra, rb, U(skin.Soft), 3);
                     BuddyIcon(dl, Px(p.X + 18, p.Y + (rowH - 8 * bpx) / 2), bpx, r.P);
                     float tx = p.X + 18 + 7 * bpx + 6, ty = p.Y + (rowH - line) / 2;
                     dl.PushClipRect(ra, rb, true);
-                    int ink = selRow ? Hi : Ink, grey = selRow ? 0xd8e2f6 : Shade;
+                    int ink = selRow ? Hi : Ink, grey = selRow ? Lighten(skin.Base, 0.75f) : Shade;
                     string name = r.Unread > 0 ? $"{r.Title} ({r.Unread})" : r.Title;
                     if (r.Unread > 0) BoldText(dl, Px(tx, ty), ink, name); else dl.AddText(Px(tx, ty), U(r.P == Presence.Offline ? grey : ink), name);
                     tx += r.Unread > 0 ? BoldW(name) : ImGui.CalcTextSize(name).X;
@@ -681,7 +695,7 @@ public partial class Program
                 XpWindow(dl, a, b, line + 4, s.T.Crier ? $"{sim.Name} crier" : $"{sim.Name} Messenger", false);
                 var tA = a + new Vector2(Bd, Bd);
                 var tB = new Vector2(b.X - Bd, tA.Y + line + 4);
-                Grad(dl, new Vector2(tA.X, tB.Y), b - new Vector2(Bd, Bd), Paper, 0xd6e4fb);
+                Grad(dl, new Vector2(tA.X, tB.Y), b - new Vector2(Bd, Bd), Paper, Lighten(skin.Base, 0.82f));
                 var p = new Vector2(tA.X + 8, tB.Y + 6);
                 if (pic > 0) { DisplayPic(dl, Px(p.X, p.Y), pic, s.T.Key); p.X += pic + 8; }
                 if (s.T.Title.Length > 0) BoldText(dl, Px(p.X, p.Y), s.T.Urgent ? 0xa00000 : Navy, s.T.Title);

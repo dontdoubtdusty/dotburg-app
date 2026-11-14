@@ -197,6 +197,8 @@ partial class Sim
                 }
         }
 
+        DrawLand(d, nq);   // ducks, heron, fireflies, a burning grove (Land.cs)
+
         // Chimney smoke, fading as it rises and spreading in its second half.
         int smokeCol = Tint(0xf2f2f6, nq * 0.8, 0);
         foreach (var f in puffs)

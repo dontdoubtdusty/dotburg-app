@@ -39,7 +39,8 @@ partial class Sim
         foreach (var w in Walkers) if (!w.Gone && w.Kind == "") alive++;
         // The town's side of the odds, once for everyone.
         bool winter = SeasonNo == 3, autumn = SeasonNo == 2, snow = cover > 0.4 || Weather == Wx.Snow;
-        bool pond = Built.Contains("park"), cart = false;
+        int ponds = (Built.Contains("park") ? 1 : 0) + LandCount(PondK), rocks = LandCount(Rocks);
+        bool cart = false;
         foreach (var v in Visitors) if (v.Kind == "cart" && !v.Gone) cart = true;
         int works = WorksList.Count;
         double care = Care();
@@ -67,7 +68,8 @@ partial class Sim
             if (autumn) causes.Add(("after a fall from a hayrick", 1 / 1500.0, true));
             if (w.Good >= 0) causes.Add(("under a cart's wheels", 1 / 2500.0, true));
             if (snow && y >= 55) causes.Add(("after a slip on the ice", 1 / 400.0, true));
-            if (winter && pond && y < 40) causes.Add(("through the ice on the pond", 1 / 3000.0, true));
+            if (winter && ponds > 0 && y < 40) causes.Add(("through the ice on the pond", ponds / 3000.0, true));
+            if (rocks > 0 && y < 30) causes.Add(("after a fall from the rocks", rocks / 5000.0, true));
             if (works > 0) causes.Add(("after a fall from the scaffolding", works / 6000.0, true));
             if (cart && !winter) causes.Add(("kicked by a horse", 1 / 4000.0, true));
             if (winter && (w.Food < WeakAt || y >= 75)) causes.Add(("of the cold", 1 / 200.0, false));
@@ -83,6 +85,7 @@ partial class Sim
             {
                 pick -= c.rate;
                 if (pick > 0) continue;
+                if (c.how.Contains("pond") || c.how.Contains("rocks")) Tally(c.how);
                 if (c.sudden) PassAway(w, c.how);
                 else { w.Fading = c.how; if (w.Mode == Mode.Inside && w.At == HomeOf(w)) PassAway(w, c.how); }
                 alive--;

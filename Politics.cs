@@ -291,6 +291,7 @@ partial class Sim
         if (Stormy) l.Add(("Stormy weather", -0.08));
         else if (Weather == Wx.Clear && Daylight() > 0.3) l.Add(("A clear, sunny day", 0.04));
         if (PopCap > 0 && Headcount >= PopCap) l.Add(("Crowded: every home is full", -0.05));
+        if (LandCount(Grove) > 0 && SeasonNo <= 1 && !Stormy) l.Add(("Walks in the grove", 0.02));
         if (SeasonMood[SeasonNo] != 0) l.Add(($"It is {SeasonNow.Name.ToLowerInvariant()}", SeasonMood[SeasonNo]));
         foreach (var t in LeaderTraits) if (t.Mood != 0) l.Add(($"The leader is {t.Name.ToLowerInvariant()}", t.Mood));
         int sick = Walkers.Count(w => w.Sick && !w.Gone);

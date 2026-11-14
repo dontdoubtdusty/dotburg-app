@@ -472,6 +472,7 @@ public partial class Program
             var size = new Vector2(townRect.Width, townRect.Height);
             dl.AddImage((IntPtr)tex.Id, a, a + size);
             hoverRank = -1;
+            hoverLand = -1;
             if (testHover >= 0 && testHover < sim.Built.Count && testHover < sim.Lots.Count)
             {
                 var b = sim.LotBox(testHover);
@@ -479,10 +480,13 @@ public partial class Program
             }
             var m = testMouse ?? Raylib.GetMousePosition();
             if (m.X >= a.X && m.Y >= a.Y && m.X < a.X + size.X && m.Y < a.Y + size.Y)
-                hoverRank = sim.RankAtPixel((int)((m.X - a.X) / scale), (int)((m.Y - a.Y) / scale));
-            if (hoverRank >= 0)
             {
-                var b = sim.LotBox(hoverRank);
+                hoverRank = sim.RankAtPixel((int)((m.X - a.X) / scale), (int)((m.Y - a.Y) / scale));
+                if (hoverRank < 0) hoverLand = sim.LandAtPixel((int)((m.X - a.X) / scale), (int)((m.Y - a.Y) / scale));
+            }
+            if (hoverRank >= 0 || hoverLand >= 0)
+            {
+                var b = hoverRank >= 0 ? sim.LotBox(hoverRank) : sim.LandBox(hoverLand);
                 dl.AddRect(new Vector2(a.X + b.x * scale - 1, a.Y + b.y * scale - 1), new Vector2(a.X + (b.x + b.w) * scale + 1, a.Y + (b.y + b.h) * scale + 1), U(0xffeca0, 0.9f), 0, ImDrawFlags.None, 2);
             }
         }
@@ -987,8 +991,9 @@ public partial class Program
         void HoverTip()
         {
             if (modal) return;
-            if (hoverRank < 0 || hoverRank >= sim.Built.Count) return;
-            var (title, lines) = sim.InfoFor(hoverRank);
+            bool land = hoverLand >= 0 && hoverLand < sim.Land.Count;
+            if (!land && (hoverRank < 0 || hoverRank >= sim.Built.Count)) return;
+            var (title, lines) = land ? sim.LandInfo(hoverLand) : sim.InfoFor(hoverRank);
             if (testMouse != null) ImGui.SetNextWindowPos(testMouse.Value + new Vector2(16, 16));
             ImGui.BeginTooltip();
             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 24);

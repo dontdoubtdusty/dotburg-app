@@ -15,16 +15,28 @@ partial class Sim
     // Lay the roads and lots out. The picture size is fixed, so this is 7 x 7 lots.
     public void Build()
     {
+        LayLots();
+        ResetLife();
+        PlaceAll();
+        StaticDirty = true;
+        baseKey = "";
+    }
+
+    // The grid and the lot order (middle outwards, land tiles left out); used by Build and the charter.
+    void LayLots()
+    {
         Cols = (W - 2) / TileW;
         RowsT = (H - 2) / TileH;
         if (Cols < 1 || RowsT < 1) { Cols = 0; RowsT = 0; }
         Ox = (W - (Cols * TileW + 2)) / 2;
         Oy = (H - (RowsT * TileH + 2)) / 2;
-        // Lots fill from the middle outwards.
+        IndexLand();
+        // Lots fill from the middle outwards; land is never built on.
         var all = new List<(int tx, int ty, double k)>();
         for (int ty = 0; ty < RowsT; ty++)
             for (int tx = 0; tx < Cols; tx++)
             {
+                if (IsLand(tx, ty)) continue;
                 double dx = tx - (Cols - 1) / 2.0;
                 double dy = ty - (RowsT - 1) / 2.0;
                 all.Add((tx, ty, dx * dx + dy * dy * 1.3 + Hash(tx, ty) * 0.001));
@@ -33,10 +45,6 @@ partial class Sim
         rankAt = new int[Math.Max(1, Cols * RowsT)];
         Array.Fill(rankAt, 1 << 20);
         for (int i = 0; i < Lots.Count; i++) rankAt[Lots[i].ty * Cols + Lots[i].tx] = i;
-        ResetLife();
-        PlaceAll();
-        StaticDirty = true;
-        baseKey = "";
     }
 
     // The door of a building, on the road below it.
@@ -128,6 +136,7 @@ partial class Sim
             Put(r, 5, 4, 0x7a7a74);
             n++;
         }
+        PaintLand(grass, se);   // groves, ponds, rocks and marsh (Land.cs)
         // Street lamps grow with the town: none in a hamlet, the seat's corners in a village, the middle and the
         // public buildings in a town, most crossings in a city (a few always stay dark). Lamps by an all-night
         // building (inn, hall, tower...) burn till dawn; the rest go out around midnight (LampsOn).

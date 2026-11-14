@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.81.0";
+    const string Version = "Dotburg 0.82.0";
 
     [STAThread]
     static void Main(string[] args)
@@ -49,6 +49,7 @@ public partial class Program
         double saveAcc;
         double flushAcc;
         int hoverRank = -1;            // lot under the mouse, or -1
+        int hoverLand = -1;            // land tile under the mouse (index into sim.Land), or -1
         Vector2? testMouse;            // --hover: pretend the mouse is here (screenshot tests)
         int testHover = -1;
         bool showHealthTip;          // --hurt: show the leader's health chart in the screenshot
@@ -68,6 +69,8 @@ public partial class Program
             int soak = 0;
             Wx? forceWx = null;
             bool forceFest = false;
+            int forceScheme = -1, forceSeason = -1;   // --scheme N, --season N: landscape and season for a screenshot
+            bool bigPic = false;                      // --pic: also save the bare town picture at 8x next to --shot
             double forcePhase = -1;   // --phase: time of day for a screenshot (0 midnight, 0.5 noon)
             string? forceGov = null;
             string? forceSick = null;
@@ -117,6 +120,9 @@ public partial class Program
                 else if (args[i] == "--brigade") forceBrigade = true;
                 else if (args[i] == "--open" && i + 1 < args.Length) openChat = args[++i];
                 else if (args[i] == "--blight" && i + 1 < args.Length) forceBlight = args[++i];
+                else if (args[i] == "--pic") bigPic = true;
+                else if (args[i] == "--scheme" && i + 1 < args.Length) forceScheme = int.Parse(args[++i]);
+                else if (args[i] == "--season" && i + 1 < args.Length) forceSeason = int.Parse(args[++i]);
             }
             if (soak > 0) { Soak(soak, preUnits); SoakTraits(); if (args.Contains("--ill")) SoakIllness(preUnits > 0 ? preUnits : 150); if (args.Contains("--fires")) SoakFires(preUnits > 0 ? preUnits : 150); if (args.Contains("--wars")) SoakWars(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--health")) SoakHealth(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--food")) SoakFood(soak); return; }
             bool testing = shot != null;   // screenshot runs never touch the saved town
@@ -125,6 +131,8 @@ public partial class Program
             // Start from the save, exactly where it was left (the town does not grow while the app is closed), else a new region.
             TimeSpan? away = (fresh || testing) ? null : Storage.Load(sim);
             if (away == null) sim.FreshRegion();
+            if (forceScheme >= 0) { sim.Scheme = forceScheme; sim.NewLand(); sim.Build(); }   // land leans by the forced landscape
+            if (forceSeason >= 0) sim.Age = (forceSeason * Sim.DaysPerSeason + 1) * Sim.DayMs + sim.Age % Sim.DayMs;
             if (preUnits > 0) { sim.Quiet = true; sim.Earn(preUnits); sim.Grow(); sim.Quiet = false; sim.FreshFood(); }
             sim.Tick(0);
             for (int i = 0; i < preTicks; i++) sim.Tick(Sim.TickMs);
@@ -246,6 +254,18 @@ public partial class Program
                     Image s = Raylib.LoadImageFromScreen();
                     Raylib.ExportImage(s, shot);
                     Raylib.UnloadImage(s);
+                    if (bigPic)
+                    {
+                        // The bare town picture at 8x next to the screenshot.
+                        Image pic = Raylib.GenImageColor(Sim.W * 8, Sim.H * 8, Color.Black);
+                        for (int p = 0; p < sim.Out.Length; p++)
+                        {
+                            int c = sim.Out[p];
+                            Raylib.ImageDrawRectangle(ref pic, p % Sim.W * 8, p / Sim.W * 8, 8, 8, new Color((byte)(c >> 16), (byte)(c >> 8), (byte)c, (byte)255));
+                        }
+                        Raylib.ExportImage(pic, Path.ChangeExtension(shot, null) + "-pic.png");
+                        Raylib.UnloadImage(pic);
+                    }
                     break;
                 }
             }
@@ -276,6 +296,7 @@ public partial class Program
             }
             File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"),
                 $"rule {sim.G.Name}, {sim.LeaderTitle}, mood {sim.Mood:F2}; weather {sim.WxWord}; {ticks} ticks = {sim.Age / Sim.DayMs:F1} days: {sim.Name}, {Sim.TierNames[sim.Tier - 1]}, {sim.Walkers.Count} dot-men, {sim.Built.Count} buildings, pool {sim.Pool:F1}, founded {sim.Founded}, gold {sim.Gold:F0}\n" +
+                $"land: {string.Join(", ", sim.Land.Select(l => $"{Sim.LandKinds[l.K]} ({l.Tx},{l.Ty})"))}; {string.Join(", ", sim.LandTally.Select(t => $"{t.Key} {t.Value}"))}\n" +
                 string.Join("\n", sim.Sisters.Select(s => $"sister {s.Name} {s.Total}/{s.Cap} {s.Gov} rel {sim.RelOf(s):F2} gold {sim.GoldOf(s):F0}")) + "\n" +
                 string.Join("\n", sim.ChronicleQueue.Take(40)) + "\n--- region lines ---\n" +
                 string.Join("\n", sim.SayLog!.Where(l => Regions.Any(k => l.Contains(k))).Take(120)) + "\n--- illness and leaders ---\n" +

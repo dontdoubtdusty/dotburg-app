@@ -93,6 +93,7 @@ partial class Sim
             double w = dz.Where[Scheme] * dz.When[SeasonNo];
             if (dz.Water && HasWater) w *= 0.4;
             if (dz.Water && wet) w *= 1.5;
+            if (dz.Key == "marsh") w *= 1 + 0.5 * LandCount(Marsh);
             return w;
         });
     }
@@ -104,9 +105,13 @@ partial class Sim
         if (pool.Count == 0) return;
         Ill = new Outbreak { D = d };
         int first = Diseases[d].Key == "plague" ? 2 : 1;
+        // Marsh fever starts in a home by the marsh, most of the time.
+        var near = Diseases[d].Key == "marsh" ? pool.Where(w => LandBy(HomeOf(w), Marsh)).ToList() : new List<Walker>();
         for (int i = 0; i < first && pool.Count > 0; i++)
         {
-            var w = Pick(pool);
+            var w = near.Count > 0 && Chance() < 0.7 ? Pick(near) : Pick(pool);
+            if (near.Contains(w)) Tally("marsh fever began by the marsh");
+            near.Remove(w);
             pool.Remove(w);
             Infect(w, d);
             if (showNow) w.Incub = TickNo;

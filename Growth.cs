@@ -63,7 +63,7 @@ partial class Sim
     public string NextThing()
     {
         if (Headcount < PopCap) return FedEnough ? "a newcomer" : "a newcomer, when there is food to spare";
-        if (Built.Count < MaxLots) return Content.Label(Content.TypeAt(Built.Count));
+        if (Built.Count < Lots.Count) return Content.Label(Content.TypeAt(Built.Count));
         var u = NextUpgrade();
         if (u != null) return $"{Content.Label(Built[u.Value.rank])} to {Content.Label(u.Value.to)}";
         if (Tier < 4) return $"becoming a {TierNames[Tier].ToLower()}";
@@ -93,7 +93,7 @@ partial class Sim
             AddDot();
             return true;
         }
-        if (Built.Count < MaxLots)
+        if (Built.Count < Lots.Count)
         {
             string t = Content.TypeAt(Built.Count);
             Built.Add(t);
@@ -162,7 +162,7 @@ partial class Sim
         if (Quiet || rank >= Lots.Count) { Say(BuiltLine(to, up)); return; }
         if (WorksList.Count >= 4) FinishWorks(WorksList[0]);
         WorksList.RemoveAll(w => w.Rank == rank);
-        WorksList.Add(new Works { Rank = rank, To = to, Up = up, Until = TickNo + Secs(WorksMs[0] / 1000, WorksMs[1] / 1000) });
+        WorksList.Add(new Works { Rank = rank, To = to, Up = up, Until = TickNo + Secs(WorksMs[0] / 1000 * StoneK, WorksMs[1] / 1000 * StoneK) });   // stone from the rocks speeds it
         StaticDirty = true;
     }
 

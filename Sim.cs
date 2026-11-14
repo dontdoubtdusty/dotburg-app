@@ -226,6 +226,13 @@ partial class Sim
         if (Has("shop") && !night) o.Add("The shop has new hats in.");
         if (Has("park") && !night && !Stormy && SeasonNo != 3) o.Add("Ducks paddle in the park pond.");
         if (Has("park") && night && SeasonNo == 1 && Weather != Wx.Rain && Weather != Wx.Snow) o.Add("Fireflies over the park.");
+        if (LandCount(PondK) > 0 && !night && !Stormy && SeasonNo != 3) o.Add("Ducks paddle on the pond.");
+        if (LandCount(PondK) > 0 && SeasonNo == 3) o.Add("Dotlets slide on the frozen pond.");
+        if (LandCount(Marsh) > 0 && night && SeasonNo <= 1) o.Add("Frogs sing in the marsh.");
+        if (LandCount(Marsh) > 0 && !night && SeasonNo != 3) o.Add("A heron stands in the reeds.");
+        if (LandCount(Grove) > 0 && !night && SeasonNo <= 1) o.Add("Birdsong from the grove.");
+        if (LandCount(Grove) > 0 && SeasonNo == 2) o.Add("Dotlets gather nuts in the grove.");
+        if (LandCount(Rocks) > 0 && !night) o.Add("Masons cut stone at the rocks.");
         if (cat != null) { o.Add("The cat naps on a doorstep."); o.Add("The cat stalks a moth."); }
         if (Weather == Wx.Rain || Weather == Wx.Storm) { o.Add("Puddles on every road."); o.Add("Umbrellas out."); }
         if (Weather == Wx.Storm) { o.Add("Shutters bang in the wind."); o.Add("Dotlets count between the flash and the thunder."); }
@@ -315,6 +322,7 @@ partial class Sim
         Ill = null;
         ResetWar();
         Age = 0.3 * DayMs;
+        NewLand();
         Build();
         ResetGov();
         InitFood();

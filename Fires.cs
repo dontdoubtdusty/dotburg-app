@@ -148,7 +148,11 @@ partial class Sim
             int fighters = Walkers.Count(w => !w.Gone && w.Goal == Goal.Fight && w.Dest == f.Rank && w.Mode == Mode.Wait);
             f.Size -= 0.01 * fighters;
             if (Tier >= 3) f.Size -= 0.02;                                                  // a fire brigade turns out
-            if (Neighbours(f.Rank).Any(n => Built[n] is "well" or "fountain")) f.Size -= 0.015; // a bucket chain from the well
+            if (LandBy(f.Rank, PondK)) { f.Size -= 0.02; Tally("fire step by a pond"); }      // a bucket chain from the pond
+            else if (Neighbours(f.Rank).Any(n => Built[n] is "well" or "fountain")) f.Size -= 0.015; // a bucket chain from the well
+            if (LandBy(f.Rank, Marsh)) f.Size -= 0.01;                                       // damp ground next door
+            bool grove = GroveDry && LandBy(f.Rank, Grove);
+            if (grove) { f.Size += 0.05 * f.Size * (1 - f.Size); Tally("fire step by a dry grove"); }   // dry trees feed it
             f.Size = Clamp(f.Size, 0, 1);
             f.Burn += f.Size / (30 * hp);
             // Jump to the lots next door: fiercer fires, flammable neighbours and dry weather all raise it.
@@ -158,6 +162,14 @@ partial class Sim
                     if (!CanBurn(n)) continue;
                     double p = 0.012 * f.Size * FuelOf(Built[n]).Flam * dry * wetK * (cover > 0.3 ? 0.5 : 1);
                     if (Chance() < p) StartFire(n, 0.1, $"The fire spreads to the {Content.Label(Built[n])}.");
+                }
+            // In a dry spell it runs through a grove to the lots on its far side.
+            if (grove && f.Size > 0.4)
+                foreach (int n in AcrossGrove(f.Rank))
+                {
+                    if (!CanBurn(n)) continue;
+                    double p = 0.009 * f.Size * FuelOf(Built[n]).Flam * dry * wetK * (cover > 0.3 ? 0.5 : 1);
+                    if (Chance() < p && StartFire(n, 0.1, $"The fire runs through the grove to the {Content.Label(Built[n])}.")) Tally("fire through a grove");
                 }
             // Sleepers and the bedridden inside may wake in time; if not, a fierce fire kills.
             foreach (var w in Walkers.Where(w => !w.Gone && w.Mode == Mode.Inside && w.At == f.Rank && (w.Sleep || w.Sick || w.Hurt)).ToList())

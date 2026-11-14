@@ -6,24 +6,17 @@
 
 ## 1. Next steps, in order
 
-1. **Wanderers (a hero could beat back fires), feuds, market day, floods, comets** from the mod's Pass 3. Floods share the weather and seasons links; wanderers can use war and blight (a hero marches with soldiers, a prophet in a plague). Feuds are the other half of the bonds-to-births idea: weddings between friends and family names are built (0.78), so a feud is a grudge inherited between two family names (`Walker.Last`). Every one must pass the two questions under "The player" in `vision.md`.
-2. Fix `--pals`: it no longer seats a leader since Settlers (0.73), so it shows no friends.
-3. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
-4. **Land** (designed 2026-11-13, not built; order against step 1 not decided). See below.
+1. **How a village chooses its rule** (found 2026-11-14). See "Village rule choice" below.
+2. **Wanderers (a hero could beat back fires), feuds, market day, floods, comets** from the mod's Pass 3. Floods share the weather and seasons links and can rise from the land's ponds and marshes (Land, 0.82, `systems.md`); wanderers can use war and blight (a hero marches with soldiers, a prophet in a plague). Feuds are the other half of the bonds-to-births idea: weddings between friends and family names are built (0.78), so a feud is a grudge inherited between two family names (`Walker.Last`). Every one must pass the two questions under "The player" in `vision.md`.
+3. Fix `--pals`: it no longer seats a leader since Settlers (0.73), so it shows no friends.
+4. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
 5. **Hearsay tooltips** (vision, The player): mood, sister and people tips in words and reported reasons instead of exact numbers. Not designed yet.
 
-### Land: agreed design (brainstormed with the owner, 2026-11-13)
-- **Why:** every town has the same 7x7 grid. Instead, every town loses exactly **7 of the 49 tiles** to land, so every town has **42 lots** (same for all, fair, one tuning) and the land gives the town its shape.
-- **Arrangement:** one big feature per town plus small ones (single rocks, copses) for the rest of the 7. Big features: **river with bridges, lake or pond, rocky ridge, forest edge**. Kind **leans by scheme** (any can appear). Generated from a saved seed at founding; re-roll if any lot cannot reach the gate.
-- **Roads:** a road between two blocked tiles disappears, so features are solid organic shapes (rough painted edges, not squares); rivers keep crossing roads as bridges. `Route` (L-shaped) must become a path search over road pixels; check queues (`PlaceInLine`), lamps (crossings), `Entrance`, `StrollSomewhere`.
-- **Growth:** same middle-out order as today, skipping blocked tiles (rank 0 stays central).
-- **House size:** each house rolls its own room from a hash of its lot (cottage 2, house 3, family house 4; upgrades add on top), shown in the hover tip, so 24 homes fill like 29 did. Tier caps (`PopCaps` 40/60/80/100) stay. Soak-check time per tier and food.
-- **Effects, existing systems only:** water: ducks live there, bucket chain for fires next door (like a well), marsh fever likelier, pond ice (the existing accident), freezes in winter. Woods: seasonal colour, fireflies, birds, fire can spread from them in a dry summer. Rocks: never burn, firebreaks. Not now (ideas for the mechanics page): floods, fishing, quarry, wanderers from the woods, sisters named by their land.
-- **Old saves:** no land means a new town on load, done like the restart button (backup, archive chronicle, toast). Old-grid code is not kept.
-- **River:** cuts a corner (about 4 to 5 tiles, e.g. west edge to south edge), framing the town rather than splitting it; the rest of the 7 goes to small features.
-- **Gate follows the land:** the road comes in where the land suggests (along the river, through a gap in the ridge, past the woods), so newcomers, caravans, soldiers and exiles use that side. `Entrance()` and everything that assumes "the west gate" (walkers, war, `Leave`, visitors, sacks for the barn in `DrawFoodSigns`, crier lines saying "west gate") must read it.
-- **Land stays fixed** for the life of the town: no clearing, no shrinking ponds. Keeps "same for everyone" true.
-- **Not decided yet:** art per scheme and season (decide at build time, show screenshots).
+### Village rule choice (found 2026-11-14)
+- **The problem:** when a hamlet becomes a village, `ChooseGov` (`Politics.cs`) rolls the new rule from base lean x scheme lean x hamlet `Grows` only. It ignores the townsfolk and the sitting leader. `SetGov(k, line, keep: false)` then retires the leader and `Appoint` picks whoever fits the new rule's harshness. Example: Stonemere (snow, founding family) had a loyal, honest, calm founder; the roll gave a party state (about 5%), and a cruel, greedy, brave dot-man was about 12x likelier to lead it than someone like her. To the player it read as the founder handing power to a cruel friend (the friendship was chance: `Appoint` ignores bonds).
+- **Fix:** make it like `FormRule` (the settlers' choice): weight each rule by who lives there and who leads (a calm, honest leader makes council, mayor, monarchy likelier; harsh rule needs cruel or ambitious townsfolk), keep the sitting leader under the new title when the rule suits them (`keep: true`; a founder can be crowned), and give the chronicle line a reason.
+- **Keep crisis flips as they are:** coups (mood under 0.3, to junta), junta to party, strongman elections, army takeovers after a murder, revolutions and the Party's collapse all live in `Politics()` and do not use `ChooseGov`. Traits may steer which way a crisis flips (junta, party, commune), never whether it happens, so a gentle town can still go harsh after plague or defeat.
+- **Optional with it:** a cause in the coup and strongman lines (plague, hunger, defeat); the strongman drawn from the angry, ambitious or cruel, ideally one with a grudge against the old leader; warning signs before a coup (fits the bonds idea of a threat before an attempt).
 
 ## 2. Patterns to follow
 

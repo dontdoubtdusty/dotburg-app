@@ -87,6 +87,7 @@ static class Storage
         public double Lifetime { get; set; }
         public int NextId { get; set; }
         public List<string> Built { get; set; } = new();
+        public List<int[]>? Land { get; set; }   // 0.82: [tx, ty, kind] per land tile; null in older saves (no land)
         public List<Dot> Dots { get; set; } = new();
         public string Weather { get; set; } = "Clear";
         public double[] Wx { get; set; } = Array.Empty<double>();
@@ -124,6 +125,7 @@ static class Storage
             {
                 V = 2, Name = s.Name, Scheme = s.Scheme, Tier = s.Tier, Founded = s.Founded, Age = s.Age, Pool = s.Pool, Lifetime = s.Lifetime,
                 Built = s.Built.ToList(),
+                Land = s.Land.Select(l => new[] { l.Tx, l.Ty, l.K }).ToList(),
                 Dots = s.Walkers.Where(w => !w.Gone).Select(w => new Dot { C = w.C, H = w.H, L = w.Lead, I = w.Id, F = Math.Round(w.Food, 3), S = Math.Round(w.Starve, 3), Y = double.IsNaN(w.Born) ? 0 : Math.Round((s.Age - w.Born) / Sim.YearMs, 3), B = w.Bonds.Count > 0 ? w.Bonds : null, Fn = w.First, Ln = w.Last, P = w.Spouse }).Concat(s.AwayColours.Select(c => new Dot { C = c })).ToList(), // soldiers away count as home
                 NextId = s.NextId,
                 Weather = s.Weather.ToString(), Wx = s.WxAmounts,
@@ -229,6 +231,8 @@ static class Storage
                 else Sim.LegacyName(s.Walkers[i]);
                 s.Walkers[i].Spouse = d.Dots[i].P;
             }
+            // Land (0.82): an older save has none and keeps none; only new towns get land.
+            s.Land = (d.Land ?? new()).Where(a => a.Length == 3 && a[2] >= 0 && a[2] < Sim.LandKinds.Length).Select(a => new LandTile(a[0], a[1], a[2])).ToList();
             s.Build();
             // Food: an older save has none, so the town starts with a few days of grain in the barn.
             if (d.Food == null) s.FreshFood();

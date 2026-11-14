@@ -174,6 +174,8 @@ partial class Sim
         WarOn = null; // and its soldiers
         ResetGov();
         InitFood();   // the old town keeps its stores; settlers bring seed and a few sacks
+        NewLand();
+        LayLots();
         PlaceAll();
         StaticDirty = true;
         Say($"{old} is chartered. {Name} is founded.");

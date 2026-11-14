@@ -8,7 +8,7 @@ Session count: 3.
 
 **Open bugs:** the `--pals` test flag no longer seats a leader (since Settlers, 0.73), so its screenshot shows no friends. Claude can check by `--soak` numbers and `--shot` screenshots, not by watching the app for hours; the owner's play is the real test.
 
-**Committed:** the repo has one commit (0.52.0, 78b0c43); everything since is uncommitted.
+**Committed:** 0.76.0 committed and pushed (32337c7, Nov 13).
 
 **Published:** 0.76.0 is in `Dotburg Town` (Nov 13).
 

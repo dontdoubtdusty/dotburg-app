@@ -43,6 +43,20 @@ partial class Sim
     // Our leader's short name for the chat ("Mayor Ada"), or the town while nobody leads.
     public string MeName => Leader != null ? $"{G.Title} {Leader.Name}" : Name;
 
+    // ---------- the crier's chat (0.86) ----------
+    const int CrierKeep = 600;   // lines kept (and saved): about two weeks of calls
+    public const string CrierKey = "crier";
+
+    // Every crier line goes into a bot chat beside the Chronicle, plain (no hand), with the time it was called.
+    void CrierLine(string text)
+    {
+        var c = ConvoFor(CrierKey, "crier", "Town crier");
+        c.Lines.Add(new ChatLine { From = "Town crier", Text = text, Day = DayNumber, Due = TickNo, H = MinuteAt(TickNo) });
+        int over = c.Lines.Count - CrierKeep;
+        if (over > 0) { c.Lines.RemoveRange(0, over); c.Seen = Math.Max(0, c.Seen - over); }
+        c.Last = EvClock;
+    }
+
     // ---------- posting ----------
     Convo ConvoFor(string key, string kind, string title, string role = "")
     {

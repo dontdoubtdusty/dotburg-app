@@ -27,6 +27,8 @@ partial class Sim
         if (works != null)
         {
             lines.Add(works.Up != null ? $"Being rebuilt as {An(Content.Label(works.To))}." : "Under construction.");
+            int at = Walkers.Count(w => w.Dest == rank && AtWork(w));
+            lines.Add(at == 0 ? "Nobody at work on it." : at == 1 ? "One builder at work." : $"{at} builders at work.");
             return (Cap(Content.Label(works.To)), lines);
         }
         var burning = FireAt(rank);

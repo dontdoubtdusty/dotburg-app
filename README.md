@@ -22,7 +22,7 @@ Uninstall: delete the `Dotburg Town` folder next to `dotburg-app`, the two **Dot
 
 ## Usage
 The town grows only while the window is open and picks up exactly where it was left. Rest the mouse on a building,
-a piece of land or any bar for details. The Messenger on the right shows the chronicle and whoever the leader talks
+a piece of land or any bar for details. The Messenger on the right shows the chronicle, the town crier (every call it has made) and whoever the leader talks
 to, in the colour scheme the leader picked; the button at the top right starts a new region (the old town is backed up
 first).
 

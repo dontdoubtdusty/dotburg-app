@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Dotburg;
 
 enum Mode { Walk, Wait, Inside }
-enum Goal { Home, Visit, Stroll, Fest, Leave, Taken, Fight, Haul, Eat }
+enum Goal { Home, Visit, Stroll, Fest, Leave, Taken, Fight, Haul, Eat, Build, Fetch }
 
 // One dot-man (or, later, a visitor). Positions are in town pixels and always sit on a road.
 class Walker
@@ -52,13 +52,16 @@ class Walker
     public int FedBy;             // walking to this friend's pantry for a meal (0.78); not saved
     public int Bag;               // meals bought for the pantry, carried home in their arms (put away at the door); not saved
     public List<Bond> Bonds = new();   // grudges and friendships, at most three (Bonds.cs); saved
+    public bool Held;             // arrested: stands still until a guard reaches them (Politics.cs); not saved
+    public Walker? Prisoner;      // guards: the arrested dot-man they are walking to fetch; not saved
 }
 
 // Scaffolding over a lot while something is built or upgraded. Up is the old type for an upgrade.
+// Need is the work in ticks for two builders; Done grows only while builders stand at the site (Builders.cs).
 class Works
 {
     public int Rank;
-    public long Until;
+    public double Need, Done;
     public string To = "";
     public string? Up;
 }
@@ -202,6 +205,7 @@ partial class Sim
         if (note && Major.IsMatch(text)) Note(text);
         else MaybeChronicle(text);   // the chronicler may write it down anyway, if it is the kind of thing they care about
         Crier = text;
+        CrierLine(text);   // every call is kept in the crier's Messenger chat (Messenger.cs)
         Pop("", text, "", false, true);
         chatterDue = TickNo + Secs(ChatterMs[0] / 1000, ChatterMs[1] / 1000);
     }
@@ -273,7 +277,7 @@ partial class Sim
         double d = Daylight();
         foreach (var w in Walkers) StepWalker(w, d);
         if (Walkers.Any(w => w.Gone)) Walkers.RemoveAll(w => w.Gone);
-        foreach (var wk in WorksList.ToList()) if (TickNo >= wk.Until) FinishWorks(wk);
+        StepWorks();
         StepLife(d, dtMs);
         StepFires(dtMs);
         UpdateMood(dtMs);

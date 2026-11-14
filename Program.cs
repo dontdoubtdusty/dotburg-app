@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.85.1";
+    const string Version = "Dotburg 0.86.0";
 
     [STAThread]
     static void Main(string[] args)
@@ -148,6 +148,7 @@ public partial class Program
             if (forceHurt) sim.TestHurt();
             if (forceBlight != null) { sim.ForceBlight(forceBlight); for (int i = 0; i < 200; i++) sim.Tick(Sim.TickMs); }
             if (forceFire) { sim.ForceFire(); for (int i = 0; i < 90; i++) sim.Tick(Sim.TickMs); }
+            if (args.Contains("--works")) { sim.TestWorks(); for (int i = 0; i < 150; i++) sim.Tick(Sim.TickMs); }
             if (forceEvent != null) { Console.WriteLine(sim.ForceEvent(forceEvent)); for (int i = 0; i < 80; i++) sim.Tick(Sim.TickMs); }
             if (forceSick != null) { sim.ForceOutbreak(forceSick); for (int i = 0; i < 300; i++) sim.Tick(Sim.TickMs); }
             if (forceHungry) { sim.TestHunger(); for (int i = 0; i < 400; i++) sim.Tick(Sim.TickMs); }
@@ -239,7 +240,7 @@ public partial class Program
                 FrameOnMaximize();
                 if (Raylib.IsKeyPressed(KeyboardKey.M)) ToggleMute();
                 ListenForSounds();
-                if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
+                if (Raylib.IsKeyPressed(KeyboardKey.F)) Raylib.ToggleBorderlessWindowed();
                 Raylib.BeginDrawing();
                 Raylib.ClearBackground(panelsOn ? DeskCol : Color.Black);
                 rlImGui.Begin();
@@ -297,11 +298,11 @@ public partial class Program
                 sim.Tick(Sim.TickMs);
                 acc2 += power.Earned(Sim.TickMs);
                 if (acc2 >= 1) { sim.Earn(Math.Floor(acc2)); acc2 -= Math.Floor(acc2); sim.Grow(); }
-                if (i % 50 == 0) sim.Frame();
-            }
+                if (i % 50 == 0) sim.Frame();            }
             File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"),
                 $"rule {sim.G.Name}, {sim.LeaderTitle}, mood {sim.Mood:F2}; weather {sim.WxWord}; {ticks} ticks = {sim.Age / Sim.DayMs:F1} days: {sim.Name}, {Sim.TierNames[sim.Tier - 1]}, {sim.Walkers.Count} dot-men, {sim.Built.Count} buildings, pool {sim.Pool:F1}, founded {sim.Founded}, gold {sim.Gold:F0}\n" +
                 $"land: {string.Join(", ", sim.Land.Select(l => $"{Sim.LandKinds[l.K]} ({l.Tx},{l.Ty})"))}; {string.Join(", ", sim.LandTally.Select(t => $"{t.Key} {t.Value}"))}\n" +
+                $"builders: {sim.SitesDone} sites finished, {(sim.SiteTicks == 0 ? 0 : 100.0 * sim.IdleSiteTicks / sim.SiteTicks):F0}% of site time idle, avg {(sim.SitesDone == 0 ? 0 : sim.SiteTicks * Sim.TickMs / 1000.0 / sim.SitesDone):F0} s a site open, {sim.GrowWaits} growth steps held back; {sim.SayLog!.Count(l => l.Contains("fall from the scaffolding"))} scaffold falls\n" +
                 string.Join("\n", sim.Sisters.Select(s => $"sister {s.Name} {s.Total}/{s.Cap} {s.Gov} rel {sim.RelOf(s):F2} gold {sim.GoldOf(s):F0}")) + "\n" +
                 string.Join("\n", sim.ChronicleQueue.Take(40)) + "\n--- region lines ---\n" +
                 string.Join("\n", sim.SayLog!.Where(l => Regions.Any(k => l.Contains(k))).Take(120)) + "\n--- illness and leaders ---\n" +

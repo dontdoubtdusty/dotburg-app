@@ -83,7 +83,7 @@ partial class Sim
     }
 
     // Food you can see: goods in the shop and bakery windows (dark when bare), sacks stacked by the mill and at the
-    // field gate as the stores rise and fall, and under a rationing rule a guard at every counter while people panic.
+    // field gate as the stores rise and fall. (Guards posted at the counters are real patrols: StepGuards.)
     void DrawFoodSigns(int v, double d, double nq, double warm)
     {
         int bread = GoodColors[(int)Good.Bread], greens = GoodColors[(int)Good.Greens], grain = GoodColors[(int)Good.Grain];
@@ -123,12 +123,6 @@ partial class Sim
                 int n = (int)Math.Min(6, Math.Ceiling(Stock[r, (int)Good.Grain] / 60));
                 (int, int)[] spots = { (0, 5), (6, 5), (0, 4), (6, 4), (0, 3), (6, 3) };
                 for (int k = 0; k < n; k++) Px(spots[k].Item1, spots[k].Item2, k % 2 == 0 ? grain : Mix(grain, 0x8a6a20, 0.3));
-            }
-            // A guard at the counter door while food is rationed.
-            if (day && Panic > 0.5 && FoodRule.hoard == 0 && G.Guards > 0 && SellsFood(r))
-            {
-                var (dx, dy) = DoorOf(r);
-                Dot(dx + 1, dy, Tint(0x2a2e36, nq * 0.5, 0), Tint(G.Banner, nq * 0.7, 0));
             }
         }
         // The barn at the fields: stooks and sacks by the west gate, a green crate when there are greens.
@@ -252,17 +246,6 @@ partial class Sim
 
         DrawMarket(nq, warm);   // market day stalls (Market.cs)
 
-        // A builder in a hi-vis vest pacing in front of each scaffold.
-        foreach (var wk in WorksList)
-        {
-            if (wk.Rank >= Lots.Count) continue;
-            int s = (int)(((TickNo >> 2) + wk.Rank * 3) % 12);
-            int bx = Ox + Lots[wk.Rank].tx * TileW + 2 + (s < 6 ? s : 12 - s);
-            int by = Oy + Lots[wk.Rank].ty * TileH + TileH - 1 + 2 - 2;
-            Blend(bx, by, Tint(0xf08a24, nq, 0), 1);
-            if (((TickNo >> 1) % 4) == 0) Blend(bx, by - 1, 0xfff4c0, 0.5); // a hammer glint
-        }
-
         DrawFoodSigns(v, d, nq, warm);
 
         // Dot-men, each with a shadow; at a festival they dance a little.
@@ -282,6 +265,8 @@ partial class Sim
             else if (w.Bag > 0 && w.Mode == Mode.Walk) Blend(Ox + w.X + dx + 1, Oy + w.Y, Tint(GoodColors[(int)Good.Bread], nq, warm), 1);
             // Someone beating a fire carries a bucket: a blue pixel that splashes.
             if (w.Goal == Goal.Fight && w.Mode != Mode.Inside) Blend(Ox + w.X + dx + 1, Oy + w.Y - 1, (TickNo >> 1) % 2 == 0 ? 0x78b8ff : 0xc8e4ff, 1);
+            // A builder at work on a scaffold: a hammer glint now and then.
+            if (w.Mode == Mode.Wait && ((TickNo >> 1) + j) % 4 == 0 && AtWork(w)) Blend(Ox + w.X + 1, Oy + w.Y - 1, 0xfff4c0, 0.6);
         }
         // Guards: dark with a cap in the rule's banner colour.
         int capCol = Tint(G.Banner, nq * 0.7, 0);

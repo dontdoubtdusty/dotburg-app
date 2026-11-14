@@ -63,9 +63,10 @@ partial class Sim
     public string NextThing()
     {
         if (Headcount < PopCap) return FedEnough ? "a newcomer" : "a newcomer, when there is food to spare";
-        if (Built.Count < Lots.Count) return Content.Label(Content.TypeAt(Built.Count));
+        string wait = SitesFull ? ", once a site is finished" : "";
+        if (Built.Count < Lots.Count) return Content.Label(Content.TypeAt(Built.Count)) + wait;
         var u = NextUpgrade();
-        if (u != null) return $"{Content.Label(Built[u.Value.rank])} to {Content.Label(u.Value.to)}";
+        if (u != null) return $"{Content.Label(Built[u.Value.rank])} to {Content.Label(u.Value.to)}{wait}";
         if (Tier < 4) return $"becoming a {TierNames[Tier].ToLower()}";
         return "the charter";
     }
@@ -93,6 +94,8 @@ partial class Sim
             AddDot();
             return true;
         }
+        // Every open site is taken: no new scaffold until the builders finish one (Builders.cs).
+        if (SitesFull && (Built.Count < Lots.Count || NextUpgrade() != null)) { GrowWaits++; return false; }
         if (Built.Count < Lots.Count)
         {
             string t = Content.TypeAt(Built.Count);
@@ -160,9 +163,8 @@ partial class Sim
     void StartWorks(int rank, string to, string? up)
     {
         if (Quiet || rank >= Lots.Count) { Say(BuiltLine(to, up)); return; }
-        if (WorksList.Count >= 4) FinishWorks(WorksList[0]);
         WorksList.RemoveAll(w => w.Rank == rank);
-        WorksList.Add(new Works { Rank = rank, To = to, Up = up, Until = TickNo + Secs(WorksMs[0] / 1000 * StoneK, WorksMs[1] / 1000 * StoneK) });   // stone from the rocks speeds it
+        WorksList.Add(new Works { Rank = rank, To = to, Up = up, Need = Secs(WorksMs[0] / 1000 * StoneK, WorksMs[1] / 1000 * StoneK) });   // stone from the rocks speeds it
         StaticDirty = true;
     }
 

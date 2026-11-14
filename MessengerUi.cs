@@ -109,6 +109,13 @@ public partial class Program
             "............", ".....fff....", ".....f......", ".....r......", "....rrrr....", "...rrrrrr...",
             "..rrrrrrrr..", "...wwwwww...", "...wwddww.h.", "...wwddw.bbb", "gggggggggggg", "gggggggggggg",
         };
+        // The crier's hand bell: a wooden handle over a brass bell with its clapper.
+        static readonly string[] Bell =
+        {
+            "............", ".....hh.....", ".....hh.....", ".....hh.....", "....BBBB....", "...BbbbbB...",
+            "...BbbbbB...", "..BbbbbbbB..", "..BbbbbbbB..", ".BBBBBBBBBB.", ".....cc.....", "............",
+        };
+
         static readonly string[] Scroll =
         {
             "............", ".pPPPPPPPPp.", ".PppppppppP.", "..pllllllp..", "..pppppppp..", "..plllllpp..",
@@ -145,6 +152,12 @@ public partial class Program
             {
                 dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(0xe8e0c8));
                 Art(dl, at, px, Scroll, c => c switch { 'P' => 0x9a7040, 'l' => 0x705030, _ => 0xf4e4b4 });
+                return;
+            }
+            if (key == Sim.CrierKey)
+            {
+                dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(0xf6e7c0));
+                Art(dl, at, px, Bell, c => c switch { 'B' => 0xb07a1c, 'b' => 0xe0a830, 'h' => 0x6a4a2a, 'c' => 0x4a3a2a, _ => 0xf6e7c0 });
                 return;
             }
             if (key.StartsWith("sis:") || key.StartsWith("gos:"))
@@ -280,6 +293,8 @@ public partial class Program
             var rows = new List<Row>();
             int botNew = selKey == "bot" ? 0 : Math.Max(0, chronicleView.Count - botSeen);
             rows.Add(new Row("bot", "Chronicle", Presence.Online, sim.Chronicler != null ? $"kept by {sim.ChroniclerName} (*)" : "Major events, kept forever (*)", botNew, sim.Name, "", sim.ChroniclerLine()));
+            // The town crier: every call, as it was called (no unread count: it calls all day).
+            rows.Add(new Row(Sim.CrierKey, "Town crier", Presence.Online, "Every call, as it is called", 0, sim.Name, "", "Keeps the last 600 calls."));
             foreach (var c in sim.Convos.Where(c => c.Kind == "npc" && !c.Gone).OrderByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), sim.Name));
             // The leader's own people: friends, then those blocked for bad blood (0.69).
@@ -523,6 +538,7 @@ public partial class Program
             static string Slug(string s) => Sim.Slug(s);
             string home = Slug(sim.Name) + ".town";
             if (r.Key == "bot") return $"<chronicle@{home}>";
+            if (r.Key == Sim.CrierKey) return $"<crier@{home}>";
             if (r.Key.StartsWith("npc:")) return $"<{r.Key.Split(':')[1]}@{home}>";
             if (r.Key.StartsWith("pal:")) return $"<{Slug(r.Title)}@{home}>";
             if (r.Key.StartsWith("gos:")) return "<group chat>";

@@ -69,7 +69,7 @@ public partial class Program
             // A message: a line someone else wrote that became visible since the last frame, in a conversation the
             // reader is not looking at right now (MSN stays quiet for the window you are typing in).
             bool reading = panelsOn && Raylib.IsWindowFocused() && !Raylib.IsWindowMinimized();
-            bool message = sim.Convos.Any(c => !(reading && c.Key == selKey) && c.Lines.Any(l => !l.Ours && l.Due > heardTick && l.Due <= now));
+            bool message = sim.Convos.Any(c => c.Kind != "crier" && !(reading && c.Key == selKey) &&c.Lines.Any(l => !l.Ours && l.Due > heardTick && l.Due <= now));
             bool alert = chronLast != heardChron && !(reading && selKey == "bot");
             heardTick = now; heardNudge = sim.NudgeTick; heardChron = chronLast;
 

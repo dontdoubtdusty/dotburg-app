@@ -104,12 +104,13 @@ partial class Sim
         foreach (var w in Walkers)
         {
             if (w.Gone || w.Kind != "" || (w.Id + bondStep) % LivesEvery != 3) continue;
-            // Feelings fade: friendships in days (slower for the loyal), grudges slowly, deep ones hardly at all.
+            // Feelings fade: friendships over a week or two (slower for the loyal; halved in 0.86 so friends last long
+            // enough to deepen), grudges slowly, deep ones hardly at all.
             double fade = GrudgeFade(w);
             for (int i = w.Bonds.Count - 1; i >= 0; i--)
             {
                 var b = w.Bonds[i];
-                b.Str -= (b.Kind == "friend" ? (Is(w, "loyal") ? 0.01 : 0.03) : 0.012 * (1 - b.Str) * fade) * step;
+                b.Str -= (b.Kind == "friend" ? (Is(w, "loyal") ? 0.005 : 0.015) : 0.012 * (1 - b.Str) * fade) * step;
                 // A living spouse stays a friend (0.78): the bond settles at Wed and fades no further.
                 if (b.Kind == "friend" && b.Who == w.Spouse && b.Str < WedBond && ById(w.Spouse) != null) b.Str = WedBond;
                 if (b.Str <= 0.02) w.Bonds.RemoveAt(i);
@@ -259,6 +260,20 @@ partial class Sim
         return (best, bb);
     }
 
+    // Who a dot-man loves, likes and hates, for the hover tip: the spouse, the closest friend and the deepest grudge,
+    // each shown (until 0.86 only the single strongest bond was, which was nearly always a grudge).
+    string Feelings(Walker w)
+    {
+        var parts = new List<string>();
+        var sp = SpouseOf(w);
+        if (sp != null) parts.Add($"loves {NameOfId(sp.Id)}, their spouse");
+        var friend = w.Bonds.Where(b => b.Kind == "friend" && (sp == null || b.Who != sp.Id)).OrderByDescending(b => b.Str).FirstOrDefault();
+        if (friend != null) parts.Add($"{(friend.Str >= 0.6 ? "close to" : friend.Str >= 0.3 ? "friends with" : "fond of")} {NameOfId(friend.Who)}");
+        var foe = w.Bonds.Where(b => b.Kind == "grudge").OrderByDescending(b => b.Str).FirstOrDefault();
+        if (foe != null) parts.Add($"{(foe.Str >= 0.5 ? "hates" : "has words with")} {NameOfId(foe.Who)} ({foe.Why})");
+        return parts.Count == 0 ? "" : "; " + string.Join("; ", parts);
+    }
+
     // Lines for a building's hover tip: who is in or at it, with traits and the strongest feeling they carry.
     public IEnumerable<string> PeopleAt(int rank)
     {
@@ -269,10 +284,7 @@ partial class Sim
             if (++n > 4) yield break;
             var tr = TraitsOf(w);
             string who = w.Lead ? LeaderTitle : w.Kid != 0 ? $"{CitizenName(w)} (a dotlet)" : $"{CitizenName(w)}, {YearsOfDot(w)}";
-            var top = w.Bonds.OrderByDescending(b => b.Str).FirstOrDefault();
-            string feel = top == null ? "" : top.Kind == "grudge" ? $"; hates {NameOfId(top.Who)} ({top.Why})" : $"; friends with {NameOfId(top.Who)}";
-            if (SpouseOf(w) is { } sp && (top == null || top.Kind != "grudge")) feel = $"; married to {NameOfId(sp.Id)}";
-            yield return $"{who}: {string.Join(", ", tr.Where(Traits.Exists).Select(k => Traits.Get(k).Name))}{feel}.";
+            yield return $"{who}: {string.Join(", ", tr.Where(Traits.Exists).Select(k => Traits.Get(k).Name))}{Feelings(w)}.";
         }
     }
 }

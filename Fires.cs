@@ -262,6 +262,7 @@ partial class Sim
         foreach (var ru in Ruins.ToList())
         {
             if (EvClock < ru.At) continue;
+            if (WorksList.Count >= MaxSites) break;   // every open site is taken: the ruin waits for builders
             Ruins.Remove(ru);
             if (ru.Rank >= Built.Count || Built[ru.Rank] != "ruin") continue;
             Built[ru.Rank] = ru.Was;

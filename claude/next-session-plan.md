@@ -9,7 +9,7 @@
 **No scope creep (owner, 2026-11-14).** The next few sessions build the major features already planned below, in order. A new idea that comes up mid-session goes to the mechanics page as an idea and is mentioned to the owner, not built, unless the owner explicitly says to build it now.
 
 1. **Hearsay tooltips** (vision, The player): mood, sister and people tips in words and reported reasons instead of exact numbers. Owner's choice: words, reasons without amounts, only those the leader has heard, some late, missing or wrong; friends, spies and the chronicler hear better.
-2. **Builders, and no stand-ins:** real free grown-ups walk to each scaffold and work only while there; no builders means no progress and growth waits at the open-site cap. Also replace the two other stand-ins: the ration guard pixel at the counters (a patrol guard walks there) and the arrest escort made on the prisoner's spot (a guard walks to them).
+2. **Council** (vision, Rule and people): design it with the owner first (seats, who appoints, votes, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
 3. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
 
 ## 2. Patterns to follow

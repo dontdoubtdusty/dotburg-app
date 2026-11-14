@@ -123,6 +123,7 @@ partial class Sim
         bool dark = d < 0.25 || (curfew && d < 0.4);
         if (GoEat(w, dark)) return; // the hungry look for food before anything else
         if (Festival && Chance() < 0.75) { JoinFestival(w); return; }
+        if (KeepBuilding(w, dark)) return;   // a builder at a scaffold carries on (Builders.cs)
         if (MarketOn && !dark && Chance() < 0.4) { JoinMarket(w); return; }   // market day (0.85)
         if (w.Kid != 0 && JoinBrigade(w, d)) return;
         bool storm = Stormy;
@@ -141,7 +142,8 @@ partial class Sim
             return;
         }
         if (storm && Chance() < 0.35) { GoHome(w); return; }
-        // Work first: carry food along the chain if something needs carrying (not in a storm).
+        // Work first: lend a hand at a building site, or carry food along the chain (not in a storm).
+        if (!storm && JoinWorks(w)) return;
         if (!storm && Chance() < 0.6 && TakeJob(w)) return;
         double r = Chance();
         if (r < 0.7 && places.Count > 0) { Visit(w, Pick(places)); return; }
@@ -161,6 +163,7 @@ partial class Sim
         double linger = Stormy ? 1.8 : 1; // bad weather keeps people indoors longer
         // A building that caught fire on the way is not entered.
         if ((w.Goal == Goal.Home || w.Goal == Goal.Visit) && w.Dest >= 0 && Burning(w.Dest)) { w.At = -1; w.Mode = Mode.Wait; w.Until = TickNo + Secs(1, 3); return; }
+        if (w.Held) { w.Mode = Mode.Wait; w.Until = long.MaxValue; return; }   // arrested: waits here for the guard
         if (w.Goal == Goal.Haul) { ArriveHaul(w); return; }
         if (w.Goal == Goal.Eat) { ArriveEat(w); return; }
         if (w.Goal == Goal.Home)

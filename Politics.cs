@@ -361,7 +361,7 @@ partial class Sim
         LastElection = Age;
         if (!keep || LeaderWalker == null) Appoint(null);
         else if (k == "crown" && Leader != null) Regnal[Leader.Name] = Leader.Gen = (Regnal.TryGetValue(Leader.Name, out var n) ? n : 0) + 1;
-        guards.RemoveAll(g => g.Goal != Goal.Taken);
+        guards.RemoveAll(g => g.Goal is not (Goal.Taken or Goal.Fetch));
         StaticDirty = true;
         if (line != "") Say(line);   // "": the caller says it, once the new leader is known
     }
@@ -691,46 +691,94 @@ partial class Sim
         }
         var w = Pick(cand);
         if (who == null) TakenNews(w);
-        SendAway(w, Goal.Taken);
-        var g = NewWalker(0, 0);
-        g.X = w.X;
-        g.Y = w.Y;
-        g.Path = w.Path.ToList();
-        g.Goal = Goal.Taken;
-        g.Mode = Mode.Wait;
-        g.Period = w.Period;
-        g.Until = TickNo + w.Period * 2; // a step behind
-        guards.Add(g);
+        Hold(w);   // StepGuards sends a guard to fetch them
         Nudge(-0.05, "an arrest");
         if (quiet) return;
         Say(Pick(new[] { "Someone is taken away.", "Guards lead someone out of town.", "A neighbour is taken in for questioning." }));
         if (G.Harsh >= 0.5 && chatRng.NextDouble() < 0.5) Npc("ringleader", "arrest");
     }
 
-    // Patrols walk the roads under harsh rule; escorts leave with their prisoner.
+    // An arrested dot-man stops where they are (one walking stops at the next corner) and waits for the guard who fetches them.
+    void Hold(Walker w)
+    {
+        if (w.InLine >= 0) LeaveLine(w);
+        if (w.Mode == Mode.Inside && w.At >= 0 && w.At < Lots.Count) (w.X, w.Y) = DoorOf(w.At);
+        if (w.Mode != Mode.Walk || w.Path.Count == 0) { w.Mode = Mode.Wait; w.Path.Clear(); }
+        else if (w.Path.Count > 1) w.Path.RemoveRange(1, w.Path.Count - 1);   // stops at the next corner (always on a road)
+        w.Until = long.MaxValue;
+        w.Goal = Goal.Taken;
+        w.To = "";
+        w.Sleep = false;
+        w.Lead = false;
+        w.Held = true;
+    }
+
+    // Where a held dot-man will stand: the end of the walk they were on, or where they are.
+    static (int x, int y) HeldSpot(Walker w) => w.Mode == Mode.Walk && w.Path.Count > 0 ? w.Path[^1] : (w.X, w.Y);
+
+    // A guard walking in at the west gate, not yet doing anything.
+    Walker NewGuard()
+    {
+        var g = NewWalker(0, 0);
+        (g.X, g.Y) = Entrance();
+        g.Mode = Mode.Wait;
+        g.Until = TickNo + Secs(1, 4);
+        g.Period = 2;
+        g.Goal = Goal.Stroll;
+        guards.Add(g);
+        return g;
+    }
+
+    // Rationing: under a rule that bans hoarding, while people panic, a guard stands at each food counter by day.
+    bool Rationing(double d) => d > 0.25 && Panic > 0.5 && FoodRule.hoard == 0 && G.Guards > 0;
+
+    // Every guard on the picture is a real walker: patrols walk the roads under harsh rule, are posted at the food
+    // counters while rationing, and fetch the arrested (a patrol if one is free, else one from the gate), then lead
+    // them out of the west gate.
     void StepGuards()
     {
         int want = Lots.Count > 0 ? G.Guards : 0;
-        var patrol = guards.Where(g => g.Goal != Goal.Taken).ToList();
+        var patrol = guards.Where(g => g.Goal is Goal.Stroll or Goal.Visit).ToList();
         for (int i = want; i < patrol.Count; i++) patrol[i].Gone = true;
-        for (int i = patrol.Count; i < want; i++)
+        for (int i = patrol.Count; i < want; i++) NewGuard();
+
+        // Each held prisoner needs a guard on the way: the nearest free patrol, or a new one from the gate.
+        foreach (var w in Walkers)
         {
-            var g = NewWalker(0, 0);
-            (g.X, g.Y) = Entrance();
-            g.Mode = Mode.Wait;
-            g.Until = TickNo + Secs(1, 4);
-            g.Period = 2;
-            g.Goal = Goal.Stroll;
-            guards.Add(g);
+            if (!w.Held || w.Gone || guards.Any(g => g.Prisoner == w)) continue;
+            var (hx, hy) = HeldSpot(w);
+            var g = guards.Where(p => !p.Gone && p.Goal == Goal.Stroll && !Walkers.Any(k => k.Follow == p))
+                          .OrderBy(p => Math.Abs(p.X - hx) + Math.Abs(p.Y - hy)).FirstOrDefault() ?? NewGuard();
+            g.Prisoner = w;
+            GoTo(g, hx, hy, Goal.Fetch, -1);
         }
+
+        // Post free patrols at the counters while rationing; stand them down when it ends.
+        double d = Daylight();
+        bool ration = Rationing(d);
+        foreach (var g in guards)
+            if (g.Goal == Goal.Visit && (!ration || !SellsFood(g.Dest))) { g.Goal = Goal.Stroll; g.Mode = Mode.Wait; g.Until = TickNo; }
+        if (ration)
+            for (int r = 0; r < Visible; r++)
+            {
+                if (!SellsFood(r) || guards.Any(g => g.Goal == Goal.Visit && g.Dest == r)) continue;
+                var (dx, dy) = DoorOf(r);
+                var g = guards.Where(p => !p.Gone && p.Goal == Goal.Stroll && !Walkers.Any(k => k.Follow == p))
+                              .OrderBy(p => Math.Abs(p.X - dx) + Math.Abs(p.Y - dy)).FirstOrDefault();
+                if (g == null) break;   // fewer guards than counters: the rest go unguarded
+                GoTo(g, dx + 1, dy, Goal.Visit, r);
+            }
+
         foreach (var g in guards)
         {
             if (g.Gone) continue;
             if (g.Mode == Mode.Wait)
             {
+                if (g.Goal == Goal.Fetch) { TakePrisoner(g); continue; }
                 if (TickNo >= g.Until)
                 {
                     if (g.Goal == Goal.Taken) g.Mode = Mode.Walk;
+                    else if (g.Goal == Goal.Visit) g.Until = TickNo + 20;   // stays at the counter
                     else StrollSomewhere(g);
                 }
                 continue;
@@ -744,5 +792,31 @@ partial class Sim
             }
         }
         guards.RemoveAll(g => g.Gone);
+    }
+
+    // A guard who reached the prisoner's spot: once the prisoner stands there, both walk to the west gate, the guard
+    // a step behind. A prisoner who died meanwhile leaves the guard to walk out alone.
+    void TakePrisoner(Walker g)
+    {
+        var w = g.Prisoner;
+        var (gx, gy) = Entrance();
+        if (w == null || w.Gone || !w.Held)
+        {
+            g.Prisoner = null;
+            g.Path = Route(g.X, g.Y, gx, gy, g.Lane);
+            g.Goal = Goal.Taken;
+            g.Mode = Mode.Walk;
+            return;
+        }
+        if (w.Mode == Mode.Walk) return;   // still finishing their walk to where they will be held
+        w.Held = false;
+        w.Path = Route(w.X, w.Y, gx, gy, w.Lane);
+        w.Mode = Mode.Walk;
+        g.Prisoner = null;
+        (g.X, g.Y) = (w.X, w.Y);
+        g.Path = w.Path.ToList();
+        g.Goal = Goal.Taken;
+        g.Period = w.Period;
+        g.Until = TickNo + w.Period * 2;   // a step behind
     }
 }

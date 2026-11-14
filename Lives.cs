@@ -42,7 +42,6 @@ partial class Sim
         int ponds = (Built.Contains("park") ? 1 : 0) + LandCount(PondK), rocks = LandCount(Rocks);
         bool cart = false;
         foreach (var v in Visitors) if (v.Kind == "cart" && !v.Gone) cart = true;
-        int works = WorksList.Count;
         double care = Care();
         foreach (var w in Walkers)
         {
@@ -70,7 +69,7 @@ partial class Sim
             if (snow && y >= 55) causes.Add(("after a slip on the ice", 1 / 400.0, true));
             if (winter && ponds > 0 && y < 40) causes.Add(("through the ice on the pond", ponds / 3000.0, true));
             if (rocks > 0 && y < 30) causes.Add(("after a fall from the rocks", rocks / 5000.0, true));
-            if (works > 0) causes.Add(("after a fall from the scaffolding", works / 6000.0, true));
+            if (AtWork(w)) causes.Add(("after a fall from the scaffolding", 1 / 300.0, true));   // only builders on site
             if (cart && !winter) causes.Add(("kicked by a horse", 1 / 4000.0, true));
             if (winter && (w.Food < WeakAt || y >= 75)) causes.Add(("of the cold", 1 / 200.0, false));
 

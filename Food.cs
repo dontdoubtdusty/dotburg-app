@@ -76,7 +76,6 @@ partial class Sim
     public int FoodSeason = -1;                            // the season the fields last saw (sowing, reaping)
     int foodStep;
     double harvestIn;                                      // grain reaped this autumn (for the crier)
-    double lastCropQ = 1;
     bool queueSaid, lowSaid;
     long lastQueueTick;
     public int HungerDead;                                 // starved since the town was founded (not saved)
@@ -168,7 +167,7 @@ partial class Sim
         Stock = new double[MaxLots, 5];
         Barn[(int)Good.Grain] = 40;
         Barn[(int)Good.Greens] = 6;
-        CropQ = lastCropQ = 0.85 + 0.3 * Chance();
+        CropQ = 0.85 + 0.3 * Chance();
         Standing = 0;
         Panic = 0;
         FoodSeason = SeasonNo;
@@ -191,7 +190,7 @@ partial class Sim
             if (t == "bakery") { Stock[r, (int)Good.Flour] = 20; Stock[r, (int)Good.Bread] = 15; }
             if (IsSeller(t)) { Stock[r, (int)Good.Bread] = 10; Stock[r, (int)Good.Greens] = 10; }
         }
-        CropQ = lastCropQ = 1;
+        CropQ = 1;
         FoodSeason = SeasonNo;
         Seed = SeasonNo == 3 ? Farmers * SeedPerFarmer : 0;
         Standing = SeasonNo == 2 ? Farmers * GrainPerFarmer * 0.5 : 0;
@@ -206,7 +205,7 @@ partial class Sim
         Stock = new double[MaxLots, 5];
         foreach (var (r, g) in stores)
             if (r >= 0 && r < MaxLots) for (int k = 0; k < 5 && k < g.Length; k++) Stock[r, k] = Math.Max(0, g[k]);
-        CropQ = lastCropQ = Clamp(cropQ, 0, 1.5);
+        CropQ = Clamp(cropQ, 0, 1.5);
         Standing = Math.Max(0, standing);
         Seed = Math.Max(0, seed);
         Panic = Clamp(panic, 0, 1);
@@ -305,7 +304,6 @@ partial class Sim
             Seed = 0;   // what is not needed is sown thick; it does not come back
             if (got < need) got += TakeGrain(need - got);
             CropQ = (got / Math.Max(1, need)) * (0.8 + 0.4 * Chance());
-            lastCropQ = CropQ;
             if (got < need * 0.6) { Say($"Too little seed to sow the fields of {Name}."); Npc("steward", "seed", false); Hear(0.15); }
             else Say("Seed goes into the fields.", false);
         }
@@ -449,15 +447,6 @@ partial class Sim
     void Hear(double bad) => Rumour = Clamp(Rumour + bad, 0, 1);
 
     // ---------- moving food ----------
-    int Holder(Good g)
-    {
-        // The store a good is drawn from first: the mill's granary for grain and flour.
-        int v = Visible;
-        int best = -1;
-        for (int r = 0; r < v; r++) if (!Burning(r) && Stock[r, (int)g] >= 3 && (best < 0 || Stock[r, (int)g] > Stock[best, (int)g])) best = r;
-        return best;
-    }
-
     // What needs carrying, most urgent first. Each job takes one carrier (the harvest to the mill takes up to three).
     void PlanJobs()
     {

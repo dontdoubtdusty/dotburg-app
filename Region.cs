@@ -26,7 +26,6 @@ partial class Sim
     const double PassOn = 0.5;              // chance a sister that lost someone takes one from another sister
     const double FateGapMs = DayMs * 100;   // rare fates (collapse) are at least this far apart
 
-    public static readonly int[] CircusColors = { 0xd9432f, 0xf5f5f5, 0xf2c14e, 0x2f62c9 };
     static readonly Dictionary<string, int> VisitorColors = new()
     {
         ["pedlar"] = 0x9a7448, ["bard"] = 0xd070c0, ["clown"] = 0xf0f0f0, ["thief"] = 0x3a3a4a, ["cart"] = 0x8a6a3a,
@@ -42,6 +41,9 @@ partial class Sim
     // ---------- state ----------
     public List<Sister> Sisters = new();
     public double Gold = 12;                // this town's treasury, 0..100 (not growth units)
+    const double EmptyCoffers = 5, FullCoffers = 60; // treasury levels that move the mood (0.77)
+    const double FollowFriend = 0.25;                // a friend this close may follow an emigrant (0.77)
+    const double RefugeePlague = 0.5;                // chance refugees from a plague town bring it in (0.77)
     public double EvClock;                  // ms of event time, region-wide (a charter does not reset it)
     public double LastFate;                 // EvClock of the last rare fate
     public int Weddings;                    // births owed to recent weddings (used by stage 5)
@@ -424,8 +426,11 @@ partial class Sim
         if (G.Harsh < 0.7 && Headcount + cs.Count <= PopCap)
         {
             foreach (int c in cs) SettleColour(c);
-            Say($"{fall}; refugees reach {Name} and are taken in.");
+            // Refugees from a town in the plague may bring it with them (0.77).
+            bool sick = BlightOn is { Kind: "plague" } b && b.Towns.Contains(s.Name) && !b.Towns.Contains(Name) && Chance() < RefugeePlague;
+            Say($"{fall}; refugees reach {Name} and are taken in{(sick ? ", and some of them are sick" : "")}.");
             Tell(s, "refugees.in");
+            if (sick) { BlightOn!.Towns.Add(Name); CatchPlague(true); }
         }
         else
         {

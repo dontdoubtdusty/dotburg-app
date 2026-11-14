@@ -10,9 +10,9 @@
   "project": "Dotburg",
   "eyebrow": "Dotburg design tool",
   "accent": { "light": "#3a63b8", "dark": "#8fb0f0" },
-  "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then republish the page (claude/mechanics-page.html). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Checked against CLAUDE.md and the code notes Nov 11 (0.45), not yet line by line.",
+  "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then republish the page (claude/mechanics-page.html). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Summaries checked against claude/systems.md on Nov 13 (0.77): stale trait and age wording fixed. Links are hand-kept per feature and not yet verified line by line against the code. Every idea must pass the two questions in vision.md (The player): could the leader know it, and does it give the player a lever?",
   "updated": "2026-11-13",
-  "version": "0.76.0",
+  "version": "0.77.0",
   "levels": [
     { "level": 0, "name": "None", "percent": 0 },
     { "level": 1, "name": "Flavor", "percent": 33 },
@@ -36,8 +36,8 @@
     { "id": "weather", "name": "Weather", "group": "world", "summary": "Markov sky by scheme and season: clouds, rain, snow cover, fog, storms, lightning flash." },
     { "id": "wildlife", "name": "Small life", "group": "world", "summary": "Smoke, cat, ducks, fireflies, birds, aurora. Cosmetic." },
     { "id": "gov", "name": "Rule", "group": "rule", "summary": "A new settlement has no rule and no leader (0.73) until it has 5 grown dot-men; then it settles on one of four hamlet rules (elders, headman, founding family, shrine keepers), weighted by who they are: the old, strong wills, the pious, friendships. It outgrows it on becoming a Village, choosing one of nine rules by its scheme and by the hamlet rule it grew up under (a headman leans to crown or junta, shrine keepers to a theocracy or commune, a founding family to crown or guild, elders to a council). Costs, home bonus, curfew, guards, banner. Hover the rule name for what it means in play (0.68.1, built from the rule's numbers)." },
-    { "id": "leader", "name": "Leader and traits", "group": "rule", "summary": "A leader dot-man with two of eight traits, epithets, heirs, statues." },
-    { "id": "health", "name": "Leader health", "group": "rule", "summary": "RimWorld-style body for every leader and former leader in town: age (a year per town day), wounds on body parts that bleed until tended, infection, poison, weak heart, growths, strokes, frailty, falls, scars and lost parts. Every death has a named cause (\"dies of an infected stab wound in the left leg, 2 days after an attempt on their life\"). Shown beside the traits, chart on hover, and on the home's hover tip." },
+    { "id": "leader", "name": "Leader and traits", "group": "rule", "summary": "A leader chosen from the townsfolk, keeping their own traits (three of 32, maybe a wildcard), epithets, heirs, statues." },
+    { "id": "health", "name": "Leader health", "group": "rule", "summary": "RimWorld-style body for every leader and former leader in town: age (a year every 4 town days since 0.67, as for everyone), wounds on body parts that bleed until tended, infection, poison, weak heart, growths, strokes, frailty, falls, scars and lost parts. Every death has a named cause (\"dies of an infected stab wound in the left leg, 2 days after an attempt on their life\"). Shown beside the traits, chart on hover, and on the home's hover tip." },
     { "id": "mood", "name": "Mood", "group": "rule", "summary": "The town's mood bar: a target summed from standing reasons (rule, weather, season, crowding, leader traits, sickness, quarantine, war, hunger, ruins) that the mood drifts toward, plus events that move it at once. Hover it for every reason with its number and what lately moved it (0.72)." },
     { "id": "politics", "name": "Politics", "group": "rule", "summary": "Every quarter day: revolution, coup, assassination, elections, reforms, emigration, arrests." },
     { "id": "guards", "name": "Guards and curfew", "group": "rule", "summary": "Patrols, escorts, curfew, rallies under harsh rule." },
@@ -58,6 +58,9 @@
   ],
   "links": [
     { "from": "growth", "to": "walkers", "level": 3, "why": "Units become newcomers who walk in at the west gate and take the emptiest home." },
+    { "from": "treasury", "to": "mood", "level": 2, "why": "0.77: empty coffers (under 5 gold) weigh on the town, full ones (60 and up) cheer it; shown in the mood tooltip." },
+    { "from": "bonds", "to": "migration", "level": 2, "why": "0.77: under harsh rule those who hate the leader are likelier to emigrate (the crier says they leave cursing the leader), and a close friend may go with them." },
+    { "from": "migration", "to": "illness", "level": 2, "why": "0.77: refugees taken in from a sister in the plague bring it through the gate half the time." },
     { "from": "growth", "to": "construction", "level": 3, "why": "Each building or upgrade starts scaffolding on its lot." },
     { "from": "growth", "to": "gov", "level": 3, "why": "Becoming a Village makes the town choose its rule." },
     { "from": "growth", "to": "gov", "level": 3, "why": "0.73: a settlement forms its first rule once 5 grown dot-men live there; until then no leader and no politics." },
@@ -181,7 +184,7 @@
     { "from": "guards", "to": "births", "level": 2, "why": "Curfew babies: a curfew town marries half again as often, and the crier says so." },
     { "from": "births", "to": "guards", "level": 1, "why": "Youth brigade: under a junta or party state children march behind the patrols, and a guard walks them home at curfew." },
     { "from": "leader", "to": "sisters", "level": 2, "why": "0.58: every sister has a ruler, a lighter version of our leader (name, age, two of the eight traits, epithet, regnal number under a crown). Merciful, Tolerant and Honest rulers warm relations; Cruel, Proud and Cunning ones cool them. Trait gold changes her treasury; trait revolt odds change how often a harsh sister falls. Our leader stays on as the old town's ruler after a charter." },
-    { "from": "health", "to": "sisters", "level": 2, "why": "0.58: sister rulers age a year per day on the same kind of curve as ours (no bodies) and die of old age, fever, falls, battle, plague, famine or the knife under harsh rule; a successor takes over, a crown's heir keeps the number and often a trait. The crier gives the news, not the chronicle." },
+    { "from": "health", "to": "sisters", "level": 2, "why": "0.58: sister rulers age on the same clock and the same kind of curve as ours (no bodies) and die of old age, fever, falls, battle, plague, famine or the knife under harsh rule; a successor takes over, a crown's heir keeps the number and often a trait. The crier gives the news, not the chronicle." },
     { "from": "seasons", "to": "food", "level": 3, "why": "0.61: spring sows, summer grows, autumn is the reaping, winter takes grain left standing; greens follow the season." },
     { "from": "weather", "to": "food", "level": 2, "why": "0.61: rain slows the reaping and rots grain in the open barn; a dry spell thins the crop; snow stops the greens." },
     { "from": "blight", "to": "food", "level": 3, "why": "0.61: a famine here thins the greens and the growing crop and triples rot in the stores. 0.63: famine news (here or in a sister) is rumour that raises panic before the stores fall; a region in blight or war makes caravan grain scarcer and dearer, and harsh or guild sisters keep theirs at home." },
@@ -224,7 +227,7 @@
     { "from": "festivals", "to": "illness", "level": 2, "fits": "Illness polish", "idea": "A festival crowd is a shared room: it spreads illness; a festival could be called off in an outbreak." },
     { "from": "births", "to": "gov", "level": 2, "fits": "Births follow-up", "idea": "A monarch heir is a child born in town and takes the throne when grown." },
     { "from": "births", "to": "growth", "level": 1, "fits": "Births follow-up", "idea": "A school makes children grow up sooner." },
-    { "from": "sisters", "to": "illness", "level": 2, "fits": "Undecided in vision", "idea": "A sick migrant or caravan carries illness to or from a sister." },
+    { "from": "sisters", "to": "illness", "level": 2, "fits": "Undecided in vision", "idea": "A sick newcomer or caravan carries illness to or from a sister (refugees from a plague town already do, 0.77)." },
     { "from": "seasons", "to": "growth", "level": 2, "fits": "Floods step", "idea": "Floods hit low lots in spring and a poor harvest slows growth (famine already makes everything dearer)." },
     { "from": "leader", "to": "crier", "level": 1, "fits": "Undecided in vision", "idea": "Idle crier chatter that reflects the leader traits." },
     { "from": "fires", "to": "walkers", "level": 2, "fits": "Wanderers step", "idea": "A travelling hero beats back the flames (the mod did this)." },
@@ -233,7 +236,6 @@
     { "from": "guards", "to": "war", "level": 2, "fits": "War follow-up", "idea": "A junta or party state sends more soldiers than a council can." },
     { "from": "blight", "to": "festivals", "level": 2, "fits": "Blight follow-up", "idea": "A festival is called off in a plague or famine; a harvest festival ends one." },
     { "from": "festivals", "to": "weather", "level": 1, "fits": "Weather follow-up", "idea": "A festival in good weather lasts longer and draws bigger crowds." },
-    { "from": "messenger", "to": "sisters", "level": 2, "fits": "Messenger replies", "idea": "Reply buttons: choose the answer to a plea, tribute demand or wedding offer, changing relations and gold (turned down for 0.52, the owner chose read only)." },
     { "from": "health", "to": "war", "level": 2, "fits": "Health polish", "idea": "A junta general or a Proud leader rides with the soldiers and can come home wounded or not at all." },
     { "from": "health", "to": "festivals", "level": 1, "fits": "Health polish", "idea": "A leader who survives an attempt or a heart attack throws a thanksgiving festival." },
     { "from": "health", "to": "gov", "level": 2, "fits": "Health polish", "idea": "A frail or bedridden monarch rules through a regent; a regent may not give the crown back." },
@@ -253,7 +255,8 @@
   ],
   "onPurpose": [
     { "id": "wildlife", "why": "Small life stays cosmetic by design: it makes the town look alive and changes nothing." },
-    { "id": "crier", "why": "The crier is a mirror of what happened, not a mechanic that acts." }
+    { "id": "crier", "why": "The crier is a mirror of what happened, not a mechanic that acts." },
+    { "id": "messenger", "why": "Read only for good (0.77, vision: The player): the player witnesses and never steers, so no reply buttons. It reads the town and never changes it (its own random generator)." }
   ]
 }
 </script>

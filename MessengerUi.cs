@@ -317,8 +317,10 @@ public partial class Program
 
             float line = ImGui.GetTextLineHeight();
             float spk = TitleH - 6;
-            XpWindow(bg, a, b, TitleH, $"{sim.Name} Messenger", true, audioOn ? spk + 4 : 0);
-            if (audioOn) SpeakerButton(bg, Px(b.X - Bd - spk - 2, a.Y + (Bd + TitleH - spk) / 2), spk);
+            float caps = CapsW;   // the window buttons, while maximised without the Windows title bar
+            XpWindow(bg, a, b, TitleH, $"{sim.Name} Messenger", true, caps + (audioOn ? spk + 4 : 0));
+            if (audioOn) SpeakerButton(bg, Px(b.X - Bd - caps - spk - 2, a.Y + (Bd + TitleH - spk) / 2), spk);
+            WindowButtons(bg, b.X, a.Y);
             float top = a.Y + Bd + TitleH;
             float x0 = a.X + Bd + Pad, x1 = b.X - Bd - Pad;
             float y = top + Pad;

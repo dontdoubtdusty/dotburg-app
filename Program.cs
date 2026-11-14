@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.76.0";
+    const string Version = "Dotburg 0.77.1";
 
     [STAThread]
     static void Main(string[] args)
@@ -180,7 +180,7 @@ public partial class Program
 
             int frameNo = 0;
             int fps = 60;
-            while (!Raylib.WindowShouldClose())
+            while (!Raylib.WindowShouldClose() && !quit)
             {
                 frameNo++;
                 // Pace the window by attention: full speed with the mouse over it (hover tips, scrolling), slower in the
@@ -212,6 +212,7 @@ public partial class Program
                 }
 
                 if (Raylib.IsKeyPressed(KeyboardKey.H)) panelsOn = !panelsOn;
+                FrameOnMaximize();
                 if (Raylib.IsKeyPressed(KeyboardKey.M)) ToggleMute();
                 ListenForSounds();
                 if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();

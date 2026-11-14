@@ -34,12 +34,14 @@ partial class Sim
 
         // Who qualifies now: friendship or grudge in either direction, with a lower bar to stay than to join.
         var want = new List<(Walker w, string role, double str)>();
+        var listedPals = new Dictionary<string, Convo>();   // the leader's current contacts, looked up by key below
+        foreach (var c in Convos) if (c.Kind == "pal" && !c.Gone) listedPals.TryAdd(c.Key, c);
         foreach (var w in Walkers)
         {
             if (w.Gone || w == lw || w.Kind != "" || w.Kid != 0) continue;
             double friend = Math.Max(BondOf(lw, w.Id, "friend")?.Str ?? 0, BondOf(w, lw.Id, "friend")?.Str ?? 0);
             double grudge = Math.Max(BondOf(lw, w.Id, "grudge")?.Str ?? 0, BondOf(w, lw.Id, "grudge")?.Str ?? 0);
-            var have = Convos.FirstOrDefault(c => c.Key == PalKey(lid, w.Id) && !c.Gone);
+            var have = listedPals.GetValueOrDefault(PalKey(lid, w.Id));
             bool listed = have != null;
             PalBestFriend = Math.Max(PalBestFriend, friend); PalBestGrudge = Math.Max(PalBestGrudge, grudge);
             if (grudge >= (listed ? PalFoeKeep : PalFoeAt)) want.Add((w, "foe", grudge));
@@ -63,12 +65,11 @@ partial class Sim
         {
             var c = Convos.FirstOrDefault(x => x.Key == PalKey(lid, w.Id));
             if (c != null && c.Role == role) continue;
-            bool fresh = c == null;
             c ??= ConvoFor(PalKey(lid, w.Id), "pal", CitizenName(w), role);
             c.Role = role;
             c.Gone = false;
             if (role == "foe") PalFoesMade++; else PalFriendsMade++;
-            PalHello(c, w, lw, fresh);
+            PalHello(c, w, lw);
         }
     }
 
@@ -105,12 +106,12 @@ partial class Sim
     }
 
     // A new contact's first line, or a friend's last before the block.
-    void PalHello(Convo c, Walker w, Walker lw, bool fresh)
+    void PalHello(Convo c, Walker w, Walker lw)
     {
         string kind = c.Role == "foe" ? "grudge" : "friend";
         var mine = BondOf(w, lw.Id, kind);              // what they feel about the leader
         var theirs = mine == null ? BondOf(lw, w.Id, kind) : null;   // or what the leader feels about them
-        string why = mine != null ? WhyAs(mine.Why, w, lw, true) : theirs != null ? WhyAs(theirs.Why, lw, w, false) : "";
+        string why = mine != null ? WhyAs(mine.Why, lw, true) : theirs != null ? WhyAs(theirs.Why, w, false) : "";
         string line;
         if (w.Id == PrevLeader && Age - (Leader?.Since ?? 0) < DayMs)
             line = c.Role == "foe" ? CPick(new[] { "Enjoy the chair while it lasts :@", "You'll get yours, {first}. (6)", "Don't get comfortable." }) : CPick(new[] { "The chain is yours now. Look after them (L)", "Good luck, {first}. You'll need it ;)", "Hah, your turn now. Call me if you need me :)" });
@@ -120,14 +121,14 @@ partial class Sim
             line = CPick(new[] { "You're {title} now?! (crown) Don't forget us little people :D", "Congratulations, {first}! (*) Drinks on you.", "Look at you! I always knew :)" });
         else
             line = why != "" ? $"Remember when {why}? :)" : CPick(new[] { "Hi {first} :)", "Thought I'd say hello (F)" });
-        PalSay(c, w, line);
+        PalSay(c, line);
         if (c.Role == "friend" && chatRng.NextDouble() < 0.7) PalReply(c, "hello");
     }
 
     // How a bond began, told by the contact to the leader. A bond's origin is written about its holder ("Odo shoved
     // them at the inn"); speakerHolds says whether the contact holds it (then "them" is "me" and the leader "you")
     // or the leader does (then "them" is "you" and the contact "I").
-    string WhyAs(string why, Walker holder, Walker other, bool speakerHolds)
+    string WhyAs(string why, Walker other, bool speakerHolds)
     {
         string s = " " + why + " ";
         if (speakerHolds) s = s.Replace(" " + CitizenName(other) + " ", " you ").Replace(" them ", " me ").Replace(" their ", " my ");
@@ -137,7 +138,7 @@ partial class Sim
     }
 
     // A friend says something, in their own font, as a toast too.
-    void PalSay(Convo c, Walker w, string text)
+    void PalSay(Convo c, string text)
     {
         text = text.Replace("{first}", Leader?.Name ?? "").Replace("{title}", MeName).Replace("{us}", Name);
         text = Post(c, c.Title, text, false, TickNo);
@@ -171,7 +172,7 @@ partial class Sim
             if (w == null || w.Sleep || chatRng.NextDouble() >= PerDay(0.6)) continue;
             string v = VoiceOf(w);
             string? trouble = PalTrouble(w, lw);
-            PalSay(c, w, trouble ?? CPick(PalSmall.TryGetValue(v, out var s) ? s : PalSmall["calm"]));
+            PalSay(c, trouble ?? CPick(PalSmall.TryGetValue(v, out var s) ? s : PalSmall["calm"]));
             if (chatRng.NextDouble() < 0.6) PalReply(c, trouble != null ? "trouble" : "small");
         }
     }
@@ -258,7 +259,7 @@ partial class Sim
         foreach (var c in Convos.Where(c => c.Kind == "pal" && c.Role == "friend").ToList())
         {
             var w = ById(PalId(c))!;
-            PalSay(c, w, CPick(PalSmall[VoiceOf(w)]));
+            PalSay(c, CPick(PalSmall[VoiceOf(w)]));
             PalReply(c, "small");
         }
         foreach (var (w, lines) in new[] { (o[0], new[] { "The harvest is in: 1200 sacks.", $"{LeaderTitle} opens the new market." }),

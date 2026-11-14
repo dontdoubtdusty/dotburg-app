@@ -20,7 +20,6 @@ class Cond
     public double Imm;           // the body's fight against that infection or poison, 0..1
     public double Since;         // Age it began
     public string Why = "";      // how it came about: "an attempt on their life", "the fire at the bakery", "a fall"
-    public bool Lasting => Kind is "heart" or "frail" or "back" or "eyes" or "ears" or "scar" or "lost" or "stroke";
 }
 
 // The health of someone who matters: every leader, and former leaders while they live in town.

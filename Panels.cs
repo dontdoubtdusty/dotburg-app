@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using ImGuiNET;
 using Raylib_cs;
 
@@ -234,6 +235,116 @@ public partial class Program
             return (min, max);
         }
 
+        // The version as shown inside the window ("v0.76.2"): faint in the town window's title bar, or in the bottom-left
+        // corner while the panels are hidden.
+        static readonly string VersionTag = "v" + Version[(Version.LastIndexOf(' ') + 1)..];
+
+        bool bare;              // the window is maximised and its Windows title bar has been taken off
+        Vector2 normalPos, normalSize;   // the window's inner place and size the last time it was a normal window
+
+        // A maximised window drops the Windows title bar, so only the XP panels show; restoring puts it back.
+        // With no bar to click, a double-click on the top strip (the XP title bars) restores the window, as in Windows.
+        void FrameOnMaximize()
+        {
+            bool max = Raylib.IsWindowMaximized() && !Raylib.IsWindowState(ConfigFlags.BorderlessWindowMode);
+            if (max && !bare)
+            {
+                // A frameless window maximises over the taskbar; FitWorkArea (below, every frame) pulls it back to the work area.
+                bare = true;
+                Raylib.SetWindowState(ConfigFlags.UndecoratedWindow);
+            }
+            else if (!max && bare)
+            {
+                // Putting the frame back would push the title bar up off the screen; go back to the place and size from before.
+                bare = false;
+                Raylib.ClearWindowState(ConfigFlags.UndecoratedWindow);
+                Raylib.SetWindowSize((int)normalSize.X, (int)normalSize.Y);
+                Raylib.SetWindowPosition((int)normalPos.X, (int)normalPos.Y);
+            }
+            else if (!max && !Raylib.IsWindowMinimized() && !Raylib.IsWindowState(ConfigFlags.BorderlessWindowMode))
+            {
+                normalPos = Raylib.GetWindowPosition();
+                normalSize = new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+            }
+            if (bare) FitWorkArea();
+            if (bare && !modal && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && ImGui.GetMousePos().Y < Outer + Bd + TitleH)
+                RestoreFromMax();
+        }
+
+        static bool quit;   // the close button of a frameless maximised window was clicked: the main loop ends and saves
+
+        // Puts a maximised window back to its normal size. Asks Windows directly (SW_RESTORE), since Raylib's restore
+        // depends on flags it keeps itself; FrameOnMaximize then puts the frame back on the next frame.
+        static unsafe void RestoreFromMax() => ShowWindow((IntPtr)Raylib.GetWindowHandle(), 9);
+
+        // How much of the rightmost title bar the window buttons take (none unless the Windows title bar is off).
+        float CapsW => bare ? 3 * (TitleH - 6) + 2 * 2 + 4 : 0;
+
+        // Minimise, restore and close, drawn at the right end of a title bar (right edge and top of that window) while
+        // the window is maximised without its Windows title bar, so there is always a visible way back.
+        void WindowButtons(ImDrawListPtr dl, float right, float top)
+        {
+            if (!bare) return;
+            float s = TitleH - 6, y = top + (Bd + TitleH - s) / 2, x = right - Bd - 2 - s;
+            if (WinButton(dl, Px(x, y), s, 2)) quit = true;
+            x -= s + 2;
+            if (WinButton(dl, Px(x, y), s, 1)) RestoreFromMax();
+            x -= s + 2;
+            if (WinButton(dl, Px(x, y), s, 0)) Raylib.MinimizeWindow();
+        }
+
+        // One XP window button: 0 minimise, 1 restore, 2 close (red). True when clicked.
+        static bool WinButton(ImDrawListPtr dl, Vector2 a, float s, int kind)
+        {
+            var b = a + new Vector2(s, s);
+            bool hot = !modal && ImGui.IsMouseHoveringRect(a, b, false);
+            bool down = hot && ImGui.IsMouseDown(ImGuiMouseButton.Left);
+            int top, bot;
+            if (kind == 2) { top = down ? 0xb83a14 : hot ? 0xf2896a : 0xe46b4a; bot = down ? 0xd2522c : hot ? 0xd8502a : 0xc23d1c; }
+            else { top = down ? 0x1a4fc8 : hot ? 0x6aa6ff : 0x3d8cf7; bot = down ? 0x3a7ef0 : hot ? 0x2a74f2 : 0x1659e0; }
+            dl.AddRectFilled(a, b, U(bot), 3);
+            Grad(dl, a + new Vector2(2, 2), new Vector2(b.X - 2, a.Y + s * 0.55f), top, bot);
+            dl.AddRect(a, b, U(Hi), 3);
+            if (kind == 0) dl.AddRectFilled(Px(a.X + s * 0.26f, a.Y + s * 0.66f), Px(a.X + s * 0.58f, a.Y + s * 0.66f + 3), U(Hi));
+            else if (kind == 1)
+            {
+                // Two overlapping windows, as on XP's restore button.
+                dl.AddRect(Px(a.X + s * 0.36f, a.Y + s * 0.22f), Px(a.X + s * 0.78f, a.Y + s * 0.6f), U(Hi));
+                dl.AddRectFilled(Px(a.X + s * 0.36f, a.Y + s * 0.22f), Px(a.X + s * 0.78f, a.Y + s * 0.22f + 2), U(Hi));
+                dl.AddRectFilled(Px(a.X + s * 0.22f, a.Y + s * 0.38f), Px(a.X + s * 0.64f, a.Y + s * 0.78f), U(bot));
+                dl.AddRect(Px(a.X + s * 0.22f, a.Y + s * 0.38f), Px(a.X + s * 0.64f, a.Y + s * 0.78f), U(Hi));
+                dl.AddRectFilled(Px(a.X + s * 0.22f, a.Y + s * 0.38f), Px(a.X + s * 0.64f, a.Y + s * 0.38f + 2), U(Hi));
+            }
+            else
+            {
+                dl.AddLine(new Vector2(a.X + s * 0.28f, a.Y + s * 0.28f), new Vector2(a.X + s * 0.72f, a.Y + s * 0.72f), U(Hi), 2.4f);
+                dl.AddLine(new Vector2(a.X + s * 0.28f, a.Y + s * 0.72f), new Vector2(a.X + s * 0.72f, a.Y + s * 0.28f), U(Hi), 2.4f);
+            }
+            if (hot) Tip(kind == 0 ? "Minimise" : kind == 1 ? "Restore Down" : "Close");
+            return hot && ImGui.IsMouseReleased(ImGuiMouseButton.Left);
+        }
+
+        // A window with no frame is maximised over the whole monitor, taskbar included; fit it to the work area instead
+        // (the monitor less the taskbar), as Windows does for a framed window. Checked every frame, since Windows sets the
+        // full size again after the style change. Raylib has no call for the work area, so Win32.
+        static unsafe void FitWorkArea()
+        {
+            IntPtr hwnd = (IntPtr)Raylib.GetWindowHandle();
+            var info = new MonitorInfo { Size = sizeof(MonitorInfo) };
+            if (!GetMonitorInfoW(MonitorFromWindow(hwnd, 2), ref info)) return;
+            var w = info.Work;
+            if (!GetWindowRect(hwnd, out var r) || (r.L == w.L && r.T == w.T && r.R == w.R && r.B == w.B)) return;
+            SetWindowPos(hwnd, IntPtr.Zero, w.L, w.T, w.R - w.L, w.B - w.T, 0x0014);   // no z-order change, no activation
+        }
+
+        [StructLayout(LayoutKind.Sequential)] struct WinRect { public int L, T, R, B; }
+        [StructLayout(LayoutKind.Sequential)] struct MonitorInfo { public int Size; public WinRect Monitor, Work; public uint Flags; }
+        [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+        [DllImport("user32.dll")] static extern bool GetMonitorInfoW(IntPtr monitor, ref MonitorInfo info);
+        [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out WinRect r);
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int w, int h, uint flags);
+        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hwnd, int cmd);
+
         // Is the window free to be snapped (not maximised, minimised or full screen)?
         static bool Snappable() => !Raylib.IsWindowMaximized() && !Raylib.IsWindowMinimized() && !Raylib.IsWindowState(ConfigFlags.BorderlessWindowMode);
 
@@ -281,6 +392,8 @@ public partial class Program
                 townRect = new Rectangle(MathF.Floor((sw - Sim.W * s0) / 2), MathF.Floor((sh - Sim.H * s0) / 2), Sim.W * s0, Sim.H * s0);
                 DrawTown(bg, s0);
                 DrawToasts(bg);
+                bg.AddText(Px(6, sh - ImGui.GetFontSize() - 4), U(0x3a3a3a), VersionTag);
+                WindowButtons(bg, sw, 0);
                 HoverTip();
                 return;
             }
@@ -303,8 +416,12 @@ public partial class Program
             var mA = new Vector2(x0, y0);
             var mB = new Vector2(x0 + mainW, y0 + mainExtra + picH + extraH);
             float rbtn = title - 6;
-            XpWindow(bg, mA, mB, title, $"{sim.Name} - {Sim.TierNames[sim.Tier - 1]}", true, rbtn + 4);
-            RestartButton(bg, Px(mB.X - Bd - rbtn - 2, mA.Y + (Bd + title - rbtn) / 2), rbtn);
+            float verW = ImGui.CalcTextSize(VersionTag).X;
+            float caps = chron ? 0 : CapsW;   // the window buttons go in the rightmost title bar
+            XpWindow(bg, mA, mB, title, $"{sim.Name} - {Sim.TierNames[sim.Tier - 1]}", true, caps + rbtn + 4 + verW + 10);
+            RestartButton(bg, Px(mB.X - Bd - caps - rbtn - 2, mA.Y + (Bd + title - rbtn) / 2), rbtn);
+            bg.AddText(Px(mB.X - Bd - caps - rbtn - 10 - verW, mA.Y + (Bd + title - ImGui.GetFontSize()) / 2), U(0x9cc0ff), VersionTag);
+            if (!chron) WindowButtons(bg, mB.X, mA.Y);
             float bandTop = mA.Y + Bd + title;
             var picA = Px(x0 + (mainW - picW) / 2, bandTop + bandH + 2 + extraH / 2);
             Sunken(bg, picA - new Vector2(1, 1), picA + new Vector2(picW + 1, picH + 1));

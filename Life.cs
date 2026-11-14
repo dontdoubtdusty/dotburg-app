@@ -267,11 +267,6 @@ partial class Sim
         GoTo(w, x, y, Goal.Fest, -1);
     }
 
-    static readonly string[] FestSay =
-    {
-        "A festival on the square.",
-    };
-
     // A festival on the square: bunting goes up and most of the awake dot-men gather.
     public void StartFestival(string? line = null, int[]? colors = null)
     {

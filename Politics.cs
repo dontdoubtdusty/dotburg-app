@@ -271,9 +271,14 @@ partial class Sim
         w.Lead = false;
     }
 
-    // Mood settles toward what the rule, the weather, the season and crowding allow.
-    // Drift the mood toward where the town's conditions put it (MoodTarget), half the scale a day.
-    void UpdateMood(double dt) => Mood = Ease(Mood, MoodTarget, dt, DayMs * 2);
+    // Drift the mood toward where the town's conditions put it (MoodTarget), half the scale a day. The reasons
+    // change slowly, so they are summed about once a second rather than every tick.
+    double moodGoal = -1;
+    void UpdateMood(double dt)
+    {
+        if (moodGoal < 0 || TickNo % 9 == 0) moodGoal = MoodTarget;
+        Mood = Ease(Mood, moodGoal, dt, DayMs * 2);
+    }
 
     // Where the mood is heading: the sum of the standing reasons, from 0 to 1.
     public double MoodTarget => Clamp(MoodParts().Sum(p => p.D), 0, 1);
@@ -295,6 +300,9 @@ partial class Sim
         l.AddRange(HungerMoodParts()); // the hungry, the starving and the panic (Food.cs)
         int burnt = Ruins.Count + Fires.Count; // burnt lots and live fires weigh on the town
         if (burnt > 0) l.Add(($"{(Fires.Count > 0 ? "Fires and ruins" : "Ruins")} ({burnt})", -Math.Min(0.1, burnt * 0.02)));
+        // The treasury: an empty one worries the town, a full one reassures it (0.77).
+        if (Gold < EmptyCoffers) l.Add(("The coffers are empty", -0.04));
+        else if (Gold >= FullCoffers) l.Add(("The coffers are full", 0.03));
         return l;
     }
 
@@ -383,7 +391,6 @@ partial class Sim
     {
         if (murdered) { Murdered(lw, line0); return; }
         double tenure = Leader != null ? (Age - Leader.Since) / DayMs : 0;
-        string t = LeaderTitle;
         int c = lw.C;
         var parent = Leader?.Traits;
         bool proud = HasTrait("proud");
@@ -508,15 +515,27 @@ partial class Sim
         Say($"{t} steps down. {Appoint(null)} {Govs.Succeed[GovKey]}.");
     }
 
-    // Someone gives up on harsh rule and slips out of town.
+    // Someone leaves a harsh town. Those who hate the leader go first (0.77), and a close friend may go with them.
     void Emigrate()
     {
         var cand = Walkers.Where(w => !w.Lead && !w.Gone && w.Mode != Mode.Walk).ToList();
         if (cand.Count == 0) return;
         var gentler = Sisters.Where(s => Govs.Get(s.Gov).Harsh < G.Harsh).ToList();
         var dest = gentler.Count > 0 ? Weighted(gentler, s => 1.3 - Govs.Get(s.Gov).Harsh) : null;
-        SendAway(Pick(cand), Goal.Leave, dest?.Name ?? "");
-        Say(dest != null ? $"Someone slips away to {dest.Name}." : "Someone flees into the hills.");
+        int lid = LeaderWalker?.Id ?? -1;
+        double Hate(Walker w) => BondOf(w, lid, "grudge")?.Str ?? 0;
+        var who = Weighted(cand, w => 1 + 4 * Hate(w));
+        string to = dest != null ? $"to {dest.Name}" : "into the hills";
+        SendAway(who, Goal.Leave, dest?.Name ?? "");
+        // A close friend (FollowFriend) who is free to go follows half the time.
+        var pal = who.Bonds.Where(b => b.Kind == "friend" && b.Str >= FollowFriend).Select(b => ById(b.Who))
+            .FirstOrDefault(f => f != null && !f.Lead && f.Kind == "" && f.Mode != Mode.Walk && f.Goal is not (Goal.Leave or Goal.Taken));
+        bool both = pal != null && Chance() < 0.5;
+        if (both) SendAway(pal!, Goal.Leave, dest?.Name ?? "");
+        string names = both ? $"{CitizenName(who)} and {CitizenName(pal!)}" : CitizenName(who);
+        if (Hate(who) >= 0.3) Say($"{names} {(dest != null ? "slip" : "flee")}{(both ? "" : "s")} away {to}, cursing the {G.Title.ToLowerInvariant()}.");
+        else if (both) Say($"{names} slip away {to} together.");
+        else Say(dest != null ? $"Someone slips away {to}." : "Someone flees into the hills.");
     }
 
     // Guards lead someone out of town; they do not come back.

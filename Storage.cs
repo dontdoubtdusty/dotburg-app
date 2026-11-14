@@ -11,7 +11,7 @@ static class Storage
     public static string ChroniclePath => Path.Combine(Dir, "chronicle.txt");
 
     class RuinDto { public int R { get; set; } public string Was { get; set; } = "house"; public double In { get; set; } }
-    class Dot { public int C { get; set; } public int H { get; set; } public bool L { get; set; } public int I { get; set; } public double F { get; set; } = 0.8; public double S { get; set; } public double Y { get; set; } public List<Bond>? B { get; set; } }   // Y: age in years, 0 if unknown (older saves)
+    class Dot { public int C { get; set; } public int H { get; set; } public bool L { get; set; } public int I { get; set; } public double F { get; set; } = 0.8; public double S { get; set; } public double Y { get; set; } public List<Bond>? B { get; set; } public string? Fn { get; set; } public string? Ln { get; set; } public int P { get; set; } }   // Y: age in years, 0 if unknown (older saves)
     class StoreDto { public int R { get; set; } public double[] G { get; set; } = Array.Empty<double>(); }
     class FoodDto
     {
@@ -124,7 +124,7 @@ static class Storage
             {
                 V = 2, Name = s.Name, Scheme = s.Scheme, Tier = s.Tier, Founded = s.Founded, Age = s.Age, Pool = s.Pool, Lifetime = s.Lifetime,
                 Built = s.Built.ToList(),
-                Dots = s.Walkers.Where(w => !w.Gone).Select(w => new Dot { C = w.C, H = w.H, L = w.Lead, I = w.Id, F = Math.Round(w.Food, 3), S = Math.Round(w.Starve, 3), Y = double.IsNaN(w.Born) ? 0 : Math.Round((s.Age - w.Born) / Sim.YearMs, 3), B = w.Bonds.Count > 0 ? w.Bonds : null }).Concat(s.AwayColours.Select(c => new Dot { C = c })).ToList(), // soldiers away count as home
+                Dots = s.Walkers.Where(w => !w.Gone).Select(w => new Dot { C = w.C, H = w.H, L = w.Lead, I = w.Id, F = Math.Round(w.Food, 3), S = Math.Round(w.Starve, 3), Y = double.IsNaN(w.Born) ? 0 : Math.Round((s.Age - w.Born) / Sim.YearMs, 3), B = w.Bonds.Count > 0 ? w.Bonds : null, Fn = w.First, Ln = w.Last, P = w.Spouse }).Concat(s.AwayColours.Select(c => new Dot { C = c })).ToList(), // soldiers away count as home
                 NextId = s.NextId,
                 Weather = s.Weather.ToString(), Wx = s.WxAmounts,
                 Gov = s.GovKey, Mood = s.Mood, LeaderName = s.Leader?.Name ?? "", LeaderGen = s.Leader?.Gen ?? 1, LeaderSince = s.Leader?.Since ?? 0,
@@ -224,6 +224,10 @@ static class Storage
                 s.Walkers[i].Starve = Math.Max(0, d.Dots[i].S);
                 if (d.Dots[i].Y > 0) s.Walkers[i].Born = d.Age - d.Dots[i].Y * Sim.YearMs;
                 if (d.Dots[i].B != null) s.Walkers[i].Bonds = d.Dots[i].B!;
+                // Names (0.78): an older save has none, so the old name from the id is kept (duplicates renamed below).
+                if (!string.IsNullOrEmpty(d.Dots[i].Fn)) { s.Walkers[i].First = d.Dots[i].Fn!; s.Walkers[i].Last = d.Dots[i].Ln ?? ""; }
+                else Sim.LegacyName(s.Walkers[i]);
+                s.Walkers[i].Spouse = d.Dots[i].P;
             }
             s.Build();
             // Food: an older save has none, so the town starts with a few days of grain in the barn.
@@ -242,6 +246,8 @@ static class Storage
             s.Honoured = Sim.Clamp(d.Honoured, 0, 6);
             s.Regnal = d.Regnal ?? new();
             s.RestoreLeader(d.LeaderName, d.LeaderGen, d.LeaderSince, d.LeaderTraits);
+            // A save from before 0.78 used 40 first names: anyone sharing a name is named anew (not the leader or former leaders).
+            if (d.Dots.Any(x => string.IsNullOrEmpty(x.Fn))) s.RenameDuplicates();
             s.Gold = Sim.Clamp(d.Gold, 0, 100);
             s.EvClock = d.EvClock;
             s.LastFate = d.LastFate;

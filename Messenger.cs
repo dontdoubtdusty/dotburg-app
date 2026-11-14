@@ -99,16 +99,18 @@ partial class Sim
     // {gov} the sister's rule, {tier} our tier, {a} an extra word given by the caller.
     string Fill(string t, Sister? s, string other = "", string a = "") => t
         .Replace("{us}", Name).Replace("{them}", s?.Name ?? "").Replace("{other}", other).Replace("{me}", MeName)
-        .Replace("{gov}", s != null ? Govs.Get(s.Gov).Lower : "").Replace("{tier}", TierNames[Tier - 1].ToLower()).Replace("{a}", a);
+        .Replace("{gov}", s != null ? Govs.Get(s.Gov).Lower : "").Replace("{tier}", TierNames[Tier - 1].ToLower()).Replace("{a}", a).Replace("{fest}", FestPlace);
 
     Convo SisterConvo(Sister s) => ConvoFor("sis:" + s.Name, "sister", HandleOf(s));
     Sister? SisterOfConvo(Convo c) => c.Key.StartsWith("sis:") ? SisterNamed(c.Key[4..]) : null;
 
     // A sister writes about an event, and our leader answers (gently or harshly, by our rule) a few seconds later.
     // The sister's line is looked up by the event key, or by its first part ("plea.yes" falls back to "plea").
-    public void Tell(Sister? s, string ev, bool urgent = false, string extra = "")
+    // Events the phrase file covers go through Voices (Voices.cs) instead; why tags the moment ("fire", "war").
+    public void Tell(Sister? s, string ev, bool urgent = false, string extra = "", string why = "")
     {
         if (s == null || Quiet) return;
+        if (VoiceSister(s, ev, urgent, extra, why)) return;
         if (!TheySay.TryGetValue(ev, out var theirs) && !TheySay.TryGetValue(ev.Split('.')[0], out theirs)) return;
         var c = SisterConvo(s);
         c.Gone = false;
@@ -139,9 +141,10 @@ partial class Sim
     }
 
     // A notable of this town writes to the leader. {a} carries the detail (a building, an illness line, a name).
+    // Events in the phrase file go through Voices (Voices.cs) first.
     public void Npc(string role, string ev, bool urgent = false, string a = "")
     {
-        if (Quiet || (!NpcSay.TryGetValue($"{role}.{ev}", out var lines) && !RoutineSay.TryGetValue($"{role}.{ev}", out lines))) return;
+        if (Quiet || VoiceNpc(role, ev, urgent, a) || (!NpcSay.TryGetValue($"{role}.{ev}", out var lines) && !RoutineSay.TryGetValue($"{role}.{ev}", out lines))) return;
         var c = ConvoFor($"npc:{role}:{Founded}", "npc", NpcTitle(role), role);
         // Never the same line twice running: pick again (a few tries) if it matches the last thing they said
         // (compared before styling, so typos and closers don't hide a repeat).
@@ -201,11 +204,11 @@ partial class Sim
         PalChatter();
     }
 
-    // A notable's display name. Names come from a hash of the role and the town, so they stay put.
+    // A notable's display name, from a hash of the role and the town (in the town's own naming lean), so it stays put.
     public string NpcTitle(string role)
     {
         int i = Array.IndexOf(NpcRoles, role);
-        string n = Govs.First[(Hash(i + 3, Founded * 7 + 1) + i * 5) % Govs.First.Length];
+        string n = GivenFrom(Names.Seed($"{role}.{Name}.{Founded}"), TownLean);
         return role switch
         {
             "captain" => $"Captain {n}",
@@ -256,7 +259,7 @@ partial class Sim
         if (Fires.Count > 0) return "FIRE. Buckets, everyone!";
         if (Ill != null) return "Wash your hands +o(";
         if (Famine) return "Tighten your belts :(";
-        if (Festival) return "Party on the square! (jester)";
+        if (Festival) return $"Party at {FestPlace}! (jester)";
         if (Leader == null) return "Looking for a leader";
         if (Mood < 0.3) return "Things will get better. Probably :S";
         // Half of all leaders write their own motto (by their voice), the rest the rule's: the account is theirs.
@@ -481,7 +484,7 @@ partial class Sim
     {
         if (Sisters.Count == 0) return "bot";
         var s = Sisters[0];
-        foreach (var ev in new[] { "hello", "gifts", "small.friend", "wedding", "fairlost", "tribute.refused", "warthey" }) Tell(s, ev);
+        foreach (var ev in new[] { "hello", "gifts", "small.friend", "wedding", "fairlost", "tribute.refused", "warthey", "aid" }) Tell(s, ev);
         if (Sisters.Count > 1) { Gossip(Sisters[0], Sisters[1], "quarrel"); Tell(Sisters[1], "plague"); }
         Npc("warden", "fire", false, "bakery");
         Npc("physician", "start", false, "Marsh fever in the low houses. The church takes in the sick.");

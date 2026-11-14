@@ -58,6 +58,7 @@ partial class Sim
     double gloom, fogAmt, rainAmt, snowAmt, wet, cover;
     float[] fogW = Array.Empty<float>();   // fog thickness per pixel, thicker toward the edges
     long festUntil;
+    int festLot;                     // the lot the festival gathers round: the square, or a newly finished building
     int[] festColors = Bunting;
     readonly List<Puff> puffs = new();
     readonly List<Drop> drops = new();
@@ -67,6 +68,8 @@ partial class Sim
     int catDir = 1;
 
     public bool Festival => TickNo < festUntil;
+    // Where the festival is, for talk: "the square", or "the new library" when it celebrates a new building.
+    public string FestPlace => festLot > 0 && festLot < Built.Count ? $"the new {Content.Label(Built[festLot])}" : "the square";
     bool Rally;                      // the current festival is a compulsory rally
     bool Stormy => rainAmt > 0.5 || snowAmt > 0.5;
     public string WxWord => Weather == Wx.Clear ? (Daylight() > 0.3 ? "sunny" : "clear") : Weather == Wx.Storm ? "thunder" : Weather.ToString().ToLower();
@@ -254,10 +257,10 @@ partial class Sim
     }
 
     // ---------- festivals ----------
-    // A spot on the road just above or below the centre lot, where festivals gather.
+    // A spot on the road just above or below the festival lot, where festivals gather.
     (int x, int y) FestSpot()
     {
-        var l = Lots[0];
+        var l = Lots[festLot < Lots.Count ? festLot : 0];
         return (RandInt(l.tx * TileW + 1, (l.tx + 1) * TileW + 1), (Chance() < 0.5 ? l.ty : l.ty + 1) * TileH);
     }
 
@@ -267,8 +270,8 @@ partial class Sim
         GoTo(w, x, y, Goal.Fest, -1);
     }
 
-    // A festival on the square: bunting goes up and most of the awake dot-men gather.
-    public void StartFestival(string? line = null, int[]? colors = null)
+    // A festival on the square (or round lot `at`, for a new building): bunting goes up and most of the awake dot-men gather.
+    public void StartFestival(string? line = null, int[]? colors = null, int at = 0)
     {
         if (Quiet || Lots.Count == 0) return;
         var g = G;
@@ -281,6 +284,7 @@ partial class Sim
                 festWait = true;
                 festWaitLine = line;
                 festWaitColors = colors;
+                festWaitLot = at;
                 festWaitUntil = EvClock + DayMs * 2;
                 Say($"{(snowAmt > 0.5 ? "Snow" : "Rain")} on the square: the festival is put off until the sky clears.");
             }
@@ -289,6 +293,7 @@ partial class Sim
         bool fresh = TickNo >= festUntil;
         festUntil = Math.Max(festUntil, TickNo + Round(FestMs * Math.Max(0.4, g.Fest) / TickMs));
         Rally = rally;
+        festLot = at < Lots.Count ? at : 0;
         festColors = colors ?? (rally ? new[] { g.Banner, 0x1e1e1e, g.Banner, 0x1e1e1e } : Govs.IsHamlet(GovKey) ? Bunting : new[] { g.Banner, Bunting[1], Bunting[2], Bunting[3] });
         Nudge(rally ? 0.02 : 0.08 * g.Fest, rally ? "a rally" : "a festival");
         if (fresh) Say(line ?? Pick(Govs.FestSay[GovKey]));
@@ -305,6 +310,7 @@ partial class Sim
     bool festWait;
     string? festWaitLine;
     int[]? festWaitColors;
+    int festWaitLot;
     double festWaitUntil;
     void StepFestWeather()
     {
@@ -314,7 +320,7 @@ partial class Sim
             else if (!Stormy)
             {
                 festWait = false;
-                StartFestival(festWaitLine ?? "The festival goes ahead at last.", festWaitColors);
+                StartFestival(festWaitLine ?? "The festival goes ahead at last.", festWaitColors, festWaitLot);
             }
         }
         if (Festival && !Rally && Stormy)

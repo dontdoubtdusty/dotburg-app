@@ -310,8 +310,9 @@ partial class Sim
     }
 
     // ---------- aid, envoys, letters, refugees, fairs, spies ----------
-    // A friendly, solvent sister sends aid when this town is struck; true if one did.
-    bool AskAid(bool speak)
+    // A friendly, solvent sister sends aid when this town is struck; true if one did. Why ("fire", "war",
+    // "hungry") only colours what she writes.
+    bool AskAid(bool speak, string why = "")
     {
         var givers = Sisters.Where(s => RelOf(s) >= 0.25 && GoldOf(s) >= 15 && WarOn?.Foe != s.Name).ToList();
         if (givers.Count == 0 || Chance() > 0.7)
@@ -324,7 +325,7 @@ partial class Sim
         Pay(8);
         Bump(s, 0.05, "they sent us aid");
         Say(Pick(new[] { $"{s.Name} sends grain and timber.", $"Wagons of aid arrive from {s.Name}." }));
-        Tell(s, "aid");
+        Tell(s, "aid", false, "", why);
         return true;
     }
 

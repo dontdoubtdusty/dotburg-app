@@ -618,6 +618,9 @@ partial class Sim
         if (pantry && (best < 0 || home == w.At)) best = home;
         // Counters bare: under a gentle rule the granary doors open and people take grain for porridge.
         if (best < 0 && FoodRule.open) { int mill = Built.FindIndex(t => t == "mill"); if (mill >= 0 && mill < v && !Burning(mill) && Stock[mill, (int)Good.Grain] + Stock[mill, (int)Good.Flour] >= 1) best = mill; }
+        // Still nothing and truly hungry: a spouse or friend with food at home sets a place for them (0.78).
+        w.FedBy = 0;
+        if (best < 0 && w.Food < HungryAt && FriendsTable(w) is { } host) { best = HomeOf(host); w.FedBy = host.Id; }
         if (best < 0)
         {
             // Nothing anywhere: they give up for a while (and the empty counters feed the panic).
@@ -734,6 +737,8 @@ partial class Sim
         if (Content.IsHome(Built[r]))
         {
             if (Stock[r, (int)Good.Meals] >= 1) { Stock[r, (int)Good.Meals] -= 1; ate = true; }
+            if (ate && w.FedBy != 0 && r != HomeOf(w) && ById(w.FedBy) is { } host) SharedMeal(w, host);
+            w.FedBy = 0;
         }
         else
         {
@@ -832,6 +837,87 @@ partial class Sim
         }
         // Many hungry: the steward says so (once until it eases).
         if (hungry > 0.3 && OncePer(2)) Npc("steward", "hungry", false, HungryCount.ToString());
+        // Hard times: a generous dot-man with food at home feeds the hungry of the street (0.78).
+        if (HungryCount >= 2 && (Famine || Panic > 0.3 || FoodDays < 2) && Odds(StreetTablesPerDay)) StreetTable();
+    }
+
+    // ---------- sharing (0.78) ----------
+    const double ShareFriendAt = 0.15;      // a friendship this strong (theirs toward us) opens their pantry
+    const double StreetTablesPerDay = 1.5;  // how often, in hard times, a generous dot-man feeds the street
+    const int StreetMeals = 5;              // the most one table feeds
+    public int SharedMeals, StreetFed, StreetTables, TablesBroken;   // soak counters
+    long shareSaid = -1, tableSaid = -1;
+
+    // The nearest spouse or friend who would feed this dot-man and has a meal to spare at home: a spouse or a
+    // generous friend gives their last meal, anyone else only from two up. Their feeling toward us is what counts.
+    Walker? FriendsTable(Walker w)
+    {
+        Walker? best = null;
+        int bestD = int.MaxValue, own = HomeOf(w);
+        foreach (var f in Walkers)
+        {
+            if (f == w || f.Gone || f.Kind != "" || f.Goal is Goal.Leave or Goal.Taken) continue;
+            bool wed = f.Spouse == w.Id;
+            var bond = BondOf(f, w.Id, "friend");
+            if (!wed && (bond == null || bond.Str < ShareFriendAt)) continue;
+            int h = HomeOf(f);
+            if (h < 0 || h == own || h >= Visible || Burning(h)) continue;
+            double need = wed || Is(f, "generous") ? 1 : 2;
+            if (Is(f, "greedy") && !wed) need = 3;
+            if (Stock[h, (int)Good.Meals] < need) continue;
+            var (dx, dy) = DoorOf(h);
+            int d = Math.Abs(dx - w.X) + Math.Abs(dy - w.Y);
+            if (d < bestD) { bestD = d; best = f; }
+        }
+        return best;
+    }
+
+    // A meal eaten at a friend's table binds the two a little closer; the crier tells of it now and then.
+    void SharedMeal(Walker guest, Walker host)
+    {
+        SharedMeals++;
+        AddBond(guest, host, "friend", 0.1, $"{CitizenName(host)} fed them when they had nothing");
+        AddBond(host, guest, "friend", 0.05, $"they shared a table at {CitizenFirst(host)}'s house");
+        if (TickNo - shareSaid < DayMs / TickMs) return;
+        shareSaid = TickNo;
+        string g = CitizenName(guest), h = CitizenName(host);
+        Say(Pick(new[] { $"{h} sets a place for {g}, who had nothing to eat.", $"{g} eats at {h}'s table today.", $"With the counters bare, {h} feeds {g} from their own pantry." }), false);
+    }
+
+    // A generous dot-man opens their pantry to the hungriest of the street. Each fed remembers who fed them, and
+    // the town is a little warmer for it. Under the junta and the party state the guards may break it up as an
+    // unlawful gathering, and the host does not forget it.
+    void StreetTable()
+    {
+        var hosts = Walkers.Where(w => !w.Gone && w.Kind == "" && w.Kid == 0 && !w.Lead && !w.Sick && w.Goal is not (Goal.Leave or Goal.Taken)
+                                       && Is(w, "generous") && HomeOf(w) is var h && h >= 0 && h < Visible && Stock[h, (int)Good.Meals] >= 2).ToList();
+        if (hosts.Count == 0) return;
+        var host = Pick(hosts);
+        int home = HomeOf(host);
+        string hn = CitizenName(host);
+        StreetTables++;
+        if (G.Guards > 0 && G.Harsh >= 0.8 && Chance() < 0.35)
+        {
+            TablesBroken++;
+            if (LeaderWalker is { } lw) AddBond(host, lw, "grudge", 0.2 * GrudgeGain(host), $"{LeaderTitle}'s guards broke up their table for the hungry");
+            Say($"Guards break up {hn}'s table for the hungry: no gatherings without leave.", false);
+            return;
+        }
+        int give = Math.Min(StreetMeals, (int)Stock[home, (int)Good.Meals] - 1), fed = 0;
+        foreach (var w in Walkers.Where(x => !x.Gone && x.Kind == "" && x != host && x.Food < HungryAt && HomeOf(x) != home).OrderBy(x => x.Food).Take(give).ToList())
+        {
+            Stock[home, (int)Good.Meals] -= 1;
+            w.Food = Math.Min(1, w.Food + MealValue);
+            AddBond(w, host, "friend", 0.15, $"{hn} fed them when the stores were bare");
+            fed++;
+        }
+        if (fed == 0) return;
+        StreetFed += fed;
+        Nudge(0.004 * fed, "neighbours feeding the hungry");
+        if (TickNo - tableSaid < DayMs / TickMs / 2) return;
+        tableSaid = TickNo;
+        string n = fed == 1 ? "one hungry neighbour" : $"{fed} hungry neighbours";
+        Say(Pick(new[] { $"{hn} opens their pantry to the street: {n} eat.", $"{hn} lays a table outside for the hungry; {n} eat.", $"{hn} feeds {n} from their own stores." }));
     }
 
     // Days until the next harvest is mostly in (reaping takes about two days of autumn).

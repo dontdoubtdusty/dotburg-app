@@ -111,7 +111,8 @@ partial class Sim
         string kind = c.Role == "foe" ? "grudge" : "friend";
         var mine = BondOf(w, lw.Id, kind);              // what they feel about the leader
         var theirs = mine == null ? BondOf(lw, w.Id, kind) : null;   // or what the leader feels about them
-        string why = mine != null ? WhyAs(mine.Why, lw, true) : theirs != null ? WhyAs(theirs.Why, w, false) : "";
+        string why = mine != null ? WhyAs(mine.Why, w, lw, true) : theirs != null ? WhyAs(theirs.Why, w, lw, false) : "";
+        if (VoicePal(c, w, "pal.hello", "", why, mine != null)) return;
         string line;
         if (w.Id == PrevLeader && Age - (Leader?.Since ?? 0) < DayMs)
             line = c.Role == "foe" ? CPick(new[] { "Enjoy the chair while it lasts :@", "You'll get yours, {first}. (6)", "Don't get comfortable." }) : CPick(new[] { "The chain is yours now. Look after them (L)", "Good luck, {first}. You'll need it ;)", "Hah, your turn now. Call me if you need me :)" });
@@ -126,13 +127,16 @@ partial class Sim
     }
 
     // How a bond began, told by the contact to the leader. A bond's origin is written about its holder ("Odo shoved
-    // them at the inn"); speakerHolds says whether the contact holds it (then "them" is "me" and the leader "you")
-    // or the leader does (then "them" is "you" and the contact "I").
-    string WhyAs(string why, Walker other, bool speakerHolds)
+    // them at the inn"); speakerHolds says whether the contact holds it (then "them" is "me") or the leader does
+    // (then "them" is "you"). Either one's name, plain or possessive ("Juno's house"), becomes I/my or you/your.
+    string WhyAs(string why, Walker speaker, Walker leader, bool speakerHolds)
     {
         string s = " " + why + " ";
-        if (speakerHolds) s = s.Replace(" " + CitizenName(other) + " ", " you ").Replace(" them ", " me ").Replace(" their ", " my ");
-        else s = s.Replace(" " + CitizenName(other) + " ", " I ").Replace(" them ", " you ").Replace(" their ", " your ");
+        foreach (var (w, me, mine) in new[] { (speaker, "I", "my"), (leader, "you", "your") })
+            foreach (var n in new[] { CitizenName(w), CitizenFirst(w) })
+                s = s.Replace(" " + n + "'s ", " " + mine + " ").Replace(" " + n + " ", " " + me + " ");
+        s = speakerHolds ? s.Replace(" them ", " me ").Replace(" their ", " my ")
+                         : s.Replace(" them ", " you ").Replace(" their ", " your ");
         s = s.Trim();
         return s.StartsWith("they ") ? "we " + s[5..] : s;
     }
@@ -171,24 +175,26 @@ partial class Sim
             var w = ById(PalId(c));
             if (w == null || w.Sleep || chatRng.NextDouble() >= PerDay(0.6)) continue;
             string v = VoiceOf(w);
-            string? trouble = PalTrouble(w, lw);
+            var (key, trouble) = PalTrouble(w, lw);
+            if (VoicePal(c, w, key != null ? "pal.trouble." + key : "pal.small", WarOn?.Foe ?? "")) continue;
             PalSay(c, trouble ?? CPick(PalSmall.TryGetValue(v, out var s) ? s : PalSmall["calm"]));
             if (chatRng.NextDouble() < 0.6) PalReply(c, trouble != null ? "trouble" : "small");
         }
     }
 
-    // What a friend would write about first: their own trouble, the leader's, then the town's.
-    string? PalTrouble(Walker w, Walker lw)
+    // What a friend would write about first: their own trouble, the leader's, then the town's. The key names it
+    // for Voices ("pal.trouble.<key>"); the line is the old table's, used when the phrase file lacks it.
+    (string? key, string? line) PalTrouble(Walker w, Walker lw)
     {
-        if (w.Sick) return CPick(new[] { "In bed with a fever +o( Bring soup?", "Sick as a dog. Don't visit (puke)" });
-        if (w.Food < HungryAt) return CPick(new[] { "Haven't eaten since yesterday :(", "Any bread at your end? (meal)" });
-        if (lw.Sick || lw.Hurt) return CPick(new[] { "Heard you're poorly. Get well soon (F)", "Rest, {first}. The town can wait :(" });
-        if (WarOn != null) return CPick(new[] { $"Any news from the front? :S", $"Is it true about {WarOn.Foe}? :-O" });
-        if (Fires.Count > 0) return CPick(new[] { "Can you see the smoke from yours? :-O", "Fire! Are you all right? :S" });
-        if (Ill != null) return CPick(new[] { "Is the sickness bad at your end? +o(", "Washing my hands every hour now :S" });
-        if (Famine || Panic > 0.5) return CPick(new[] { "Queues everywhere. Is there going to be enough? :S", "Everyone's hoarding. Should I? :$" });
-        if (Festival) return CPick(new[] { "Coming to the square? (jester)", "Save me a dance! :D" });
-        return null;
+        if (w.Sick) return ("sick", CPick(new[] { "In bed with a fever +o( Bring soup?", "Sick as a dog. Don't visit (puke)" }));
+        if (w.Food < HungryAt) return ("hungry", CPick(new[] { "Haven't eaten since yesterday :(", "Any bread at your end? (meal)" }));
+        if (lw.Sick || lw.Hurt) return ("leaderill", CPick(new[] { "Heard you're poorly. Get well soon (F)", "Rest, {first}. The town can wait :(" }));
+        if (WarOn != null) return ("war", CPick(new[] { $"Any news from the front? :S", $"Is it true about {WarOn.Foe}? :-O" }));
+        if (Fires.Count > 0) return ("fire", CPick(new[] { "Can you see the smoke from yours? :-O", "Fire! Are you all right? :S" }));
+        if (Ill != null) return ("plague", CPick(new[] { "Is the sickness bad at your end? +o(", "Washing my hands every hour now :S" }));
+        if (Famine || Panic > 0.5) return ("queue", CPick(new[] { "Queues everywhere. Is there going to be enough? :S", "Everyone's hoarding. Should I? :$" }));
+        if (Festival) return ("festival", CPick(new[] { $"Coming to {FestPlace}? (jester)", "Save me a dance! :D" }));
+        return (null, null);
     }
 
     // Small talk by voice.
@@ -259,6 +265,7 @@ partial class Sim
         foreach (var c in Convos.Where(c => c.Kind == "pal" && c.Role == "friend").ToList())
         {
             var w = ById(PalId(c))!;
+            if (VoicePal(c, w, "pal.small")) continue;
             PalSay(c, CPick(PalSmall[VoiceOf(w)]));
             PalReply(c, "small");
         }

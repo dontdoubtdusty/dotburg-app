@@ -173,8 +173,8 @@ partial class Sim
         Say(BuiltLine(w.To, w.Up));
         // The first of each kind of public building is a milestone for the chronicle.
         if (w.Up != "ruin" && !Content.IsHome(w.To) && Built.Count(t => t == w.To) == 1) Note($"{Name} has its first {Content.Label(w.To)}.");
-        // A finished public building (not a house) is worth a festival on the square.
-        if (!Quiet && w.Up == null && !Content.IsHome(w.To)) StartFestival($"{Name} celebrates its new {Content.Label(w.To)}.");
+        // A finished public building (not a house) is worth a festival, held round the new building itself.
+        if (!Quiet && w.Up == null && !Content.IsHome(w.To)) StartFestival($"{Name} celebrates its new {Content.Label(w.To)}.", null, w.Rank);
     }
 
     string BuiltLine(string to, string? up)

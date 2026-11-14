@@ -20,7 +20,8 @@ partial class Sim
 {
     const int MaxBonds = 3;
     const double MeetsPerDay = 2.5;          // chances a day (awake, indoors, in company) to do something notable: about one a day in practice
-    const double GrudgeAt = 0.6;             // a grudge this strong is said aloud once, and can drive a dot-man to the knife
+    const double WedBond = 0.4;              // a living spouse's friendship never fades below this (0.78)
+    const double GrudgeAt = 0.6;            // a grudge this strong is said aloud once, and can drive a dot-man to the knife
     readonly List<Walker> roomMates = new(); // reused
     int bondStep;
     const double MotiveK = 0.1;             // per day, times the grudge, that a deep grudge against the leader turns to the knife
@@ -60,7 +61,7 @@ partial class Sim
         {
             if (w.Bonds.Count >= MaxBonds)
             {
-                var weakest = w.Bonds.OrderBy(x => x.Str).First();
+                var weakest = w.Bonds.Where(x => !(x.Kind == "friend" && x.Who == w.Spouse)).OrderBy(x => x.Str).First();   // a spouse is never pushed out
                 if (weakest.Str > by) return weakest;   // nothing new is as strong as what they already carry
                 w.Bonds.Remove(weakest);
             }
@@ -105,6 +106,8 @@ partial class Sim
             {
                 var b = w.Bonds[i];
                 b.Str -= (b.Kind == "friend" ? (Is(w, "loyal") ? 0.01 : 0.03) : 0.012 * (1 - b.Str) * fade) * step;
+                // A living spouse stays a friend (0.78): the bond settles at Wed and fades no further.
+                if (b.Kind == "friend" && b.Who == w.Spouse && b.Str < WedBond && ById(w.Spouse) != null) b.Str = WedBond;
                 if (b.Str <= 0.02) w.Bonds.RemoveAt(i);
             }
             if (w.Kid == 0 && !w.Lead && w.Goal is not (Goal.Leave or Goal.Taken)) Wildcard(w, step);
@@ -258,6 +261,7 @@ partial class Sim
             string who = w.Lead ? LeaderTitle : w.Kid != 0 ? $"{CitizenName(w)} (a dotlet)" : $"{CitizenName(w)}, {YearsOfDot(w)}";
             var top = w.Bonds.OrderByDescending(b => b.Str).FirstOrDefault();
             string feel = top == null ? "" : top.Kind == "grudge" ? $"; hates {NameOfId(top.Who)} ({top.Why})" : $"; friends with {NameOfId(top.Who)}";
+            if (SpouseOf(w) is { } sp && (top == null || top.Kind != "grudge")) feel = $"; married to {NameOfId(sp.Id)}";
             yield return $"{who}: {string.Join(", ", tr.Where(Traits.Exists).Select(k => Traits.Get(k).Name))}{feel}.";
         }
     }

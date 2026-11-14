@@ -233,7 +233,7 @@ partial class Sim
         Ruins.Add(new Ruin { Rank = f.Rank, Was = t, At = EvClock + DayMs * (1 + Chance()) * speed });
         Pay(-4);
         Nudge(-0.03, "a building burnt down");
-        if (Gold < 8) AskAid(false); // a poor town asks its friends for help rebuilding
+        if (Gold < 8) AskAid(false, "fire"); // a poor town asks its friends for help rebuilding
         StaticDirty = true;
         string lost = f.Deaths > 0 ? $"; {f.Deaths} {(f.Deaths == 1 ? "life is" : "lives are")} lost" : "";
         Say($"The {Content.Label(t)} burns down{lost}.");

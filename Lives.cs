@@ -19,9 +19,9 @@ partial class Sim
     int livesStep;
     public int OrdinaryDead;                   // died of age or an accident since the app started (not saved)
 
-    // A dot-man's first name, from their id: the same person after a reload, nothing stored.
-    public static string CitizenFirst(Walker w) => Govs.First[(int)(Trait01(w.Id, 777) * Govs.First.Length) % Govs.First.Length];
-    public static string CitizenName(Walker w) => $"{CitizenFirst(w)} {Govs.By[(int)(Trait01(w.Id, 778) * Govs.By.Length) % Govs.By.Length]}";
+    // A dot-man's names, given once when they arrive or are born (Christen in Names.cs) and saved.
+    public static string CitizenFirst(Walker w) { if (w.First == "") LegacyName(w); return w.First; }
+    public static string CitizenName(Walker w) => $"{CitizenFirst(w)} {w.Last}";
     public int YearsOfDot(Walker w) => double.IsNaN(w.Born) ? 0 : (int)Math.Floor((Age - w.Born) / YearMs);
 
     // Someone without an age gets one: a newborn is 0; a settler, newcomer or dot-man from an older save 18 to 58.

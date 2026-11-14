@@ -20,6 +20,8 @@
     <None Include="resources\avatars.png" CopyToOutputDirectory="PreserveNewest" />
     <!-- Messenger sounds (missing ones are made in code, see Sounds.cs) -->
     <None Include="resources\sounds\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The Voices phrase file (Voices.cs) -->
+    <None Include="resources\voices.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- The pixel font used by the side panels -->
     <None Include="resources\fonts\PixelifySans.ttf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

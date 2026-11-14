@@ -17,7 +17,7 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | `Walkers.cs` | 249 | Dot-men: `NewWalker`, `SetId`/`Trait01` (habits from a stable id), homes, routes on roads, `Decide`, `Arrive`, `StepWalker`. |
 | `Growth.cs` | 187 | Units to buildings, newcomers, upgrades and tiers, scaffolding (`Works`), `Cost`, `HomeCap`, `PopCap`, `Headcount`. |
 | `Life.cs` | 364 | Weather (Markov sky by scheme and season), snow cover, puddles, lightning, smoke, cat, ducks, fireflies, birds, aurora, festivals and rallies (rain or snow puts a festival off, `StepFestWeather`). Cosmetic or mood only; not saved except weather amounts. |
-| `Gov.cs` | 191 | `Gov` records (nine rules and the hamlet rules: `Govs.All`, `Govs.Hamlet`), `Leader`, `Trait` records and `Traits` (32 traits in heart, work, spirit and wildcard groups, clashes, weights by rule, leader effect columns), names, succession and festival lines. |
+| `Gov.cs` | 177 | `Gov` records (nine rules and the hamlet rules: `Govs.All`, `Govs.Hamlet`), `Leader`, `Trait` records and `Traits` (32 traits in heart, work, spirit and wildcard groups, clashes, weights by rule, leader effect columns), succession and festival lines. |
 | `Politics.cs` | 608* | Rule and leader state, odds helpers (`PerDay`, `Odds`, `OncePer`), Settlers (`FormRule`), `Appoint` (`LeaderFit`), `SetGov`, mood (`UpdateMood`, `MoodParts`, `Nudge`), `Politics()` (revolution, coup, assassination attempts, elections, step down, scandal, reforms, emigration, arrests), `Death` and `Murdered` (succession after a named death), guards. |
 | `Region.cs` | 641* | Charter and sister towns, migration, treasury (`Gold`, `Pay`, `Purse`), relations and attitude (`RelParts`, `BaseRel`, `Bump`), envoys, letters, aid, refugees, fairs, spies, caravans, pacts, fates (absorb, collapse), visitors, `Region()` and `Events()`. |
 | `Rulers.cs` | 118 | Sister rulers: a lighter leader for every sister (name, age, traits, epithet, regnal number), their deaths and successors. |
@@ -26,10 +26,11 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | `Health.cs` | 557* | Leader health (RimWorld style): `Part`, `Hurt`, `Cond`, `Body` records; bodies for leaders and former leaders (`EnsureBody`, `Retire`), ages (`YearMs`, `AgeRate`), wounds, bleeding, tending, infection, poison, age complaints (heart, growth, stroke, frailty, falls), `Attempt` (assassination), `BurnBody`, `StepHealth`, death lines with causes (`BodyDies`, `BodyCause`), health words and charts for the panels, test hooks. |
 | `Lives.cs` | 134 | Citizen health (0.67): ages, ordinary causes of death and accidents, going home to die, the burial summary every 4 days (`Mourn`, `BurialSummary`). |
 | `Bonds.cs` | 264 | Character and bonds (0.68): `Bond`, `CitizenTraits` (three traits from a hash of the id), `Meet` (roommates make grudges and friendships), fading, grudge news, motives against the leader, wildcards (firebug, doomsayer), `PeopleAt`. |
-| `Births.cs` | 149 | Weddings and births: `Wedding`, `Birth`, `Population()` (rolled from `Events()`; curfew towns marry 1.5x); children grow up after a day. The youth brigade: `JoinBrigade`, `StepBrigade`, `Release`, `TestBrigade`. |
+| `Births.cs` | 237 | Weddings and births: `Wedding` (friends marry, strict rules arrange, a neighbour's match), `Marry`, `MoveIn`, `SpouseOf`, `Birth` (to a couple, with a family name), `Population()` (rolled from `Events()`; curfew towns marry 1.5x); children grow up after a day. The youth brigade: `JoinBrigade`, `StepBrigade`, `Release`, `TestBrigade`. |
 | `Fires.cs` | 309 | Fires: `Fire` and `Ruin` records, `Fuel` table, `StepFires` (grow, rain, fighters, spread, burn down), ignition (`FireDice`, `Strike`, `Arson`), `SendFighters`, `RebuildRuins`, `FireLine`, `TestFire`. |
 | `War.cs` | 276 | War with a sister (soldiers out of the west gate, news, raids, victory or defeat), war between two sisters, plague and famine across the region (`BlightOn`, `StepBlight`), `Struck`, `Refugees` callers, `WarLine`, test hooks. |
-| `Food.cs` | 982* | Food and hunger: goods, barn and stores, fields and harvest, mill and bakery, carriers' jobs, eating, starvation, rot, panic and hoarding, queues at counters, rule food policy (`FoodRules`), sales and seed, ledger and hover lines (`GetFoodReport`), `TestHunger`, `SoakFood`. |
+| `Food.cs` | 1068* | Food and hunger: goods, barn and stores, fields and harvest, mill and bakery, carriers' jobs, eating, starvation, rot, panic and hoarding, queues at counters, rule food policy (`FoodRules`), sharing (`FriendsTable`, `SharedMeal`, `StreetTable`), sales and seed, ledger and hover lines (`GetFoodReport`), `TestHunger`, `SoakFood`. |
+| `Names.cs` | 440* | The name maker (0.78): `Names` (five tongues, `Lean` per town, `Person`, `Given`, `Family`, the lists and generators, checks) and the town side: `Christen` (unique names, kin), `GivenFrom`, `LegacyName`, `RenameDuplicates`, `NameSamples` for `--names`. |
 | `Info.cs` | 73 | Hover: `RankAtPixel`, `LotBox`, `InfoFor` (building tooltip lines). |
 | `Content.cs` | 106 | Data only: build order, sprites, palettes, schemes, seasons, town names. |
 | `Messenger.cs` | 500* | Messenger data and talk: `ChatLine`, `Convo`, `Toast`, `Presence`; `Post` (writes each line in its writer's hand), `Tell`, `Gossip`, `Npc`, `SignIn`, `SignOff`, `Pop` (toasts, nudge), `Chatter2`, statuses and personal messages, the dialogue tables (`TheySay`, `WeSay`, `GossipSay`, `NpcSay`, `Mottos`), `TestChat`. |
@@ -38,6 +39,7 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | `Chronicler.cs` | 257 | The chronicler (0.69): who keeps the chronicle (`EnsureChronicler`), their voice and remarks, slant toward or against the leader, crier lines they choose to write down (`MaybeChronicle`). |
 | `Routine.cs` | 150 | Routine voices (0.65): the steward's morning report, the baker and the grocer, daily counts and voice caps, `RoutineSay`. |
 | `Hands.cs` | 268 | Writing hands (0.76): `Hand` (a person's 2006 typing quirks), `HandFor` (rolled from a seed, leaning on traits), `WriteIn` (applies it to a line, bursts, grave lines plainer), `Styled`, `WriterOf`; the shared emoticon codes `Sim.EmoCodes`; `WriteHandSamples` for `--hands`. |
+| `Voices.cs` | 461* | Voices, the dialogue generator (0.79): `VoicePart`, `VoiceBook` (reads `resources/voices.txt`), `Voices` (`Score`, `Pick`, `Message`, `ReplyKey`, `Conversation`, the known tags, events and grave events), the town side (`Book`, `MomentTags`, `SisterTags`, `LeaderTags`, `PostTurns`, `VoiceSister` for `Tell`, `VoiceNpc` for `Npc`, `VoicePal` for the leader's friends and enemies), `WriteVoiceSamples` and `SampleA` for `--voices`. |
 | `Sounds.cs` | 233 | Messenger sounds (message, nudge, sign-in, chronicle ding, start-up chord, minimise and restore whooshes): loads `resources/sounds` or makes them in code, picks one per frame (`ListenForSounds`), mute (`ToggleMute`, M, `SpeakerButton`). |
 | `Restart.cs` | 123 | Restart button in the town title bar, XP confirm dialog, `Restart()` (backup, archived chronicle, new region). |
 | `XpText.cs` | 165 | Text drawn by Windows GDI as XP drew it (`GetGlyphOutline`, gasp-table smoothing), copied into the ImGui font atlas as custom glyphs (`Add`, `Paint`). |
@@ -48,9 +50,10 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | File | What it is |
 |---|---|
 | `CLAUDE.md` | Rules, run and test, gotchas. Loaded every session; kept short. |
-| `claude/` | This folder: file map, session log, vision, systems (`systems.md`, how each system works, read by section), next-session plan, versioning rules (a copy of the GitHub root's), instructions slot, and the mechanics tool (`mechanics-page.html`, data block inside; update it with every feature, see CLAUDE.md). |
+| `claude/` | This folder: file map, session log, vision (plus `voices-vision.md`, the planned dialogue generator), systems (`systems.md`, how each system works, read by section), next-session plan, versioning rules (a copy of the GitHub root's), instructions slot, and the mechanics tool (`mechanics-page.html`, data block inside; update it with every feature, see CLAUDE.md). |
 | `Build Dotburg.bat` | Publishes Release to `..\Dotburg Town` and makes the Desktop and Start menu shortcuts. Run after meaningful changes (close the app first). |
 | `DotburgApp.csproj` | .NET 10, Raylib-cs 8, ImGui.NET, rlImgui-cs; copies `resources/`. |
+| `resources/voices.txt` | The Voices phrase file: tagged hand-written parts (format at its top). Check it with `--voices`. |
 | `resources/` | `dotburg.ico`, `dotburg.png`, `dotburg-512.png` (icon), `make-icon.mjs` (draws it), `fonts/PixelifySans.ttf`. |
 | `resources/avatars.png`, `resources/make-photo-avatars.ps1`, `resources/avatar-photos/` | Display pictures (0.75: 64 cells, 8 across, 96 px): 58 Pexels photos and 6 kept cartoons, listed with crop and 2005-style treatment in `avatar-photos/avatars.txt`; the script builds the atlas from that list. |
 | `resources/make-avatars.ps1`, `resources/avatar-sheets/` | The old AI icon sheets and the script that cut them (0.57); kept as the source of the 6 cartoon cells. |
@@ -62,6 +65,7 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 
 ## Where to find things
 - How wars and blights start, run and end: `MaybeWar`, `StepWar`, `StepSisterWar`, `StepBlight` in `War.cs` (called from `Events()` in `Region.cs`); what a struck sister suffers: `Struck`.
+- What someone says in the Messenger: `resources/voices.txt` for events moved to Voices (sister aid, notables, the leader's friends and enemies), else the tables at the bottom of `Messenger.cs`; how a part is picked: `Voices.Score` and `Pick` in `Voices.cs`.
 - How fires start, spread and are fought: `Fuel` and `StepFires` in `Fires.cs`; how often they start: `FireDice`.
 - Event frequencies: the `OncePer(n)` / `Odds(rate)` calls in `Politics()`, `Region()`, `Events()` and `MaybeOutbreak`.
 - How deadly or catching an illness is: the `Diseases` table in `Disease.cs`; care levels in `Care()`.

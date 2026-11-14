@@ -47,6 +47,9 @@ class Walker
     public double Born = double.NaN;   // town clock at birth (Lives.cs); NaN until given an age; saved as years
     public string Fading = "";    // dying of an ordinary cause: they go home and die there (Lives.cs); not saved
     public int InLine = -1;       // standing in the queue at this counter, or -1; not saved
+    public string First = "", Last = "";   // their name (Names.cs, 0.78); saved
+    public int Spouse;            // the id of the one they married, 0 if never; a dead spouse leaves them free (0.78); saved
+    public int FedBy;             // walking to this friend's pantry for a meal (0.78); not saved
     public int Bag;               // meals bought to hoard, carried home in their arms; not saved
     public List<Bond> Bonds = new();   // grudges and friendships, at most three (Bonds.cs); saved
 }

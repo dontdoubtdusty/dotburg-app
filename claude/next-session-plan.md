@@ -6,7 +6,7 @@
 
 ## 1. Next steps, in order
 
-1. **Wanderers (a hero could beat back fires), feuds, market day, floods, comets** from the mod's Pass 3. Floods share the weather and seasons links; wanderers can use war and blight (a hero marches with soldiers, a prophet in a plague). Feuds are the same idea as the bonds-to-births one on the mechanics page (a grudge inherited between two houses): build them as one. Every one must pass the two questions under "The player" in `vision.md`.
+1. **Wanderers (a hero could beat back fires), feuds, market day, floods, comets** from the mod's Pass 3. Floods share the weather and seasons links; wanderers can use war and blight (a hero marches with soldiers, a prophet in a plague). Feuds are the other half of the bonds-to-births idea: weddings between friends and family names are built (0.78), so a feud is a grudge inherited between two family names (`Walker.Last`). Every one must pass the two questions under "The player" in `vision.md`.
 2. Fix `--pals`: it no longer seats a leader since Settlers (0.73), so it shows no friends.
 3. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
 4. **Land** (designed 2026-11-13, not built; order against step 1 not decided). See below.

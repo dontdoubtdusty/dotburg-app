@@ -172,20 +172,6 @@ static class Govs
         ["party"] = new[] { "A rally on the square. Attendance is required.", "The Party holds a rally." },
     };
 
-    public static readonly string[] First =
-    {
-        "Ada", "Bram", "Cora", "Dell", "Edda", "Finn", "Greta", "Hob", "Ivo", "Juno", "Kit", "Lark", "Mabel", "Ned", "Odo", "Pim",
-        "Quill", "Rosa", "Sim", "Tilda", "Ulf", "Vera", "Wynn", "Yara", "Zeb",
-        "Agnes", "Bertil", "Clem", "Dora", "Esme", "Fenn", "Gil", "Hester", "Isolde", "Jory", "Kester", "Lotte", "Merry", "Nell", "Osric",
-    };
-
-    // Family names for citizens (0.68), so a town of a hundred is not full of namesakes.
-    public static readonly string[] By =
-    {
-        "Thatch", "Miller", "Ashby", "Crook", "Fell", "Barley", "Cobb", "Hale", "Rook", "Marsh", "Tanner", "Wick", "Penny", "Hart",
-        "Moss", "Ware", "Brook", "Quarry", "Flint", "Sorrel", "Pike", "Lamb", "Cotter", "Drum", "Kettle", "Reed", "Holt", "Birch",
-        "Gage", "Nettle", "Sparrow", "Combe",
-    };
     static readonly string[] Roman = { "", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X" };
     public static string RomanOf(int n) => n < Roman.Length ? Roman[n] : n.ToString();
 }

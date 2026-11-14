@@ -161,7 +161,7 @@ partial class Sim
         Say($"Defeat: {foe.Name} wins the war{(lost > 0 ? $", and {lost} did not come home" : "")}.");
         Npc("captain", "lost");
         Tell(foe, "warlost");
-        AskAid(false);
+        AskAid(false, "war");
         var lw = LeaderWalker;
         if (lw != null && G.Harsh >= 0.5 && Chance() < 0.3) Revolution(lw);
         else if (G.Harsh < 0.5 && Chance() < 0.2) SetGov("junta", $"After the defeat, the army takes over {Name}.", false);
@@ -222,7 +222,7 @@ partial class Sim
             BlightOn = new Blight { Kind = kind, Towns = new() { start }, Until = EvClock + DayMs * (3 + 3 * Chance()) };
             lastDisaster = EvClock;
             if (start == Name && kind == "plague") CatchPlague(false);
-            else if (start == Name) { Say($"Famine in {Name}."); Hear(0.3); if (AskAid(false)) AidGrain(); }
+            else if (start == Name) { Say($"Famine in {Name}."); Hear(0.3); if (AskAid(false, "hungry")) AidGrain(); }
             else { Say(kind == "plague" ? $"Plague breaks out in {start}." : $"Famine in {start}."); if (kind == "famine") Hear(0.1); Tell(SisterNamed(start), kind); }
             return;
         }
@@ -241,7 +241,7 @@ partial class Sim
             string t = Pick(clean);
             b.Towns.Add(t);
             if (t == Name && b.Kind == "plague") CatchPlague(true);
-            else if (t == Name) { Say($"Famine spreads to {Name}."); Hear(0.3); if (AskAid(false)) AidGrain(); }
+            else if (t == Name) { Say($"Famine spreads to {Name}."); Hear(0.3); if (AskAid(false, "hungry")) AidGrain(); }
             else { Say(b.Kind == "plague" ? $"The plague reaches {t}." : $"Famine spreads to {t}."); if (b.Kind == "famine") Hear(0.1); Tell(SisterNamed(t), b.Kind); }
         }
         // Sister towns lose people. Here plague runs through the sickness, and famine through the fields: it thins

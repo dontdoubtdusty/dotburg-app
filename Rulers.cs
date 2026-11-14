@@ -13,7 +13,7 @@ partial class Sim
     public static string Slug(string s) => new string(s.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
     // The sister's ruler. Every sister gets one when made or loaded, so this never rolls anything.
-    public Leader RulerOf(Sister s) => s.Lord ??= new Leader { Name = Govs.First[(s.Name.Sum(c => c) * 7 + 3) % Govs.First.Length], Traits = new[] { "able" } };
+    public Leader RulerOf(Sister s) => s.Lord ??= new Leader { Name = GivenFrom(Names.Seed(s.Name), LeanOf(s.Name)), Traits = new[] { "able" } };
 
     // The sister's chat address: "mayor.ada@oakford".
     public string HandleOf(Sister s) => $"{Slug(Govs.Get(s.Gov).Title)}.{Slug(RulerOf(s).Name)}@{Slug(s.Name)}";
@@ -37,6 +37,14 @@ partial class Sim
         return $"{RulerTitle(s)}, {RulerYears(s)}, {tr}; {(days < 1 ? "new to office" : days == 1 ? "in office 1 day" : $"in office {days} days")}";
     }
 
+    // A name for a new sister ruler, in that town's own lean, not the same as the one before.
+    string RulerName(Sister s, string? old)
+    {
+        string n = "";
+        for (int i = 0; i < 8 && (n == "" || n == old); i++) n = GivenFrom(Rng.Next(), LeanOf(s.Name));
+        return n;
+    }
+
     // A new ruler for a sister. An heir (a crown passing on) is younger, keeps the number going and often a parent's trait.
     void NewRuler(Sister s, bool heir = false)
     {
@@ -44,7 +52,7 @@ partial class Sim
         double harsh = Govs.Get(s.Gov).Harsh;
         s.Lord = new Leader
         {
-            Name = Pick(Govs.First.Where(n => n != old?.Name).ToList()),
+            Name = RulerName(s, old?.Name),
             Gen = heir && old != null ? old.Gen + 1 : 1,
             Since = EvClock,
             Born = EvClock - StartAge(s.Gov, heir) * YearMs,

@@ -228,10 +228,11 @@ partial class Sim
             }
         }
 
-        // Bunting round the centre lot during a festival, the colours stepping along.
+        // Bunting round the festival lot during a festival, the colours stepping along.
         if (Festival && v > 0)
         {
-            int x0 = lx(0) + 1, x1 = lx(0) + TileW + 1, y0 = ly(0) + 1, y1 = ly(0) + TileH + 1;
+            int fl = festLot < Lots.Count ? festLot : 0;
+            int x0 = lx(fl) + 1, x1 = lx(fl) + TileW + 1, y0 = ly(fl) + 1, y1 = ly(fl) + TileH + 1;
             int shift = (int)(TickNo >> 3), k = 0;
             void Flag(int x, int y)
             {

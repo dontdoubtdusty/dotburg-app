@@ -1,0 +1,747 @@
+# Voices phrase file (Voices.cs, design in claude/voices-vision.md).
+#
+# [event slot | tag, tag]   then one phrase per line below it.
+# event: sister.aid (her message), sister.aid.re (our leader's reply), or * for any event (not for news).
+# slot:  open, news, feel, aside, close. A message is news plus up to two others, in that order.
+# tags:  t:<trait> only leans (likelier from someone with that trait, rare from anyone else). Every other
+#        tag must hold, and a/b means either. !tag rules the phrase out. Untagged phrases fit everyone.
+#        roles: sister leader ...  rule: g:<rule>, harsh kind  bond: warm cool hostile
+#        moment: morning day evening night, spring summer autumn winter, clear cloudy rain storm fog snow,
+#        festival hungry fire war  weight: grave light
+# Placeholders: {us} our town, {them} her town, {me} our leader, {gov} her rule, {tier} our tier, {fest} where our festival is ("the square" or "the new library").
+# Facts must stay true: aid is grain and timber (and grain again in a famine). Tone can bend.
+# Run Dotburg with --voices to check this file and read sample conversations.
+
+# ---------- a sister sends aid ----------
+[sister.aid news]
+Wagons are on the way.
+Grain and timber, on us.
+We heard. Help is coming.
+Our carts are on the road to {us}.
+Wagons left at first light. Grain and timber.
+
+[sister.aid news | hungry]
+Grain is on the road. Feed the dotlets first.
+Flour and grain are on their way. Eat.
+We heard you're going hungry. Wagons of grain are coming.
+
+[sister.aid news | fire]
+Timber is on the way, for the rebuilding.
+We saw the smoke from here. Timber and grain are coming.
+
+[sister.aid news | war]
+We heard about the war. Wagons are coming, no questions asked.
+Whatever happened out there, you still have to eat. Wagons are coming.
+
+[sister.aid news | harsh]
+Supplies dispatched.
+Wagons sent. Count them when they arrive.
+
+[sister.aid news | g:commune]
+What's ours is yours. Wagons are coming.
+[sister.aid news | g:council]
+The council voted. Unanimously. Wagons are coming :)
+[sister.aid news | g:mayor, light]
+Wagons are coming. Do tell your people who sent them ;)
+[sister.aid news | g:guild]
+Wagons leave at dawn. Consider it an investment.
+[sister.aid news | g:temple]
+We prayed for you. Then we loaded the wagons (A)
+[sister.aid news | g:crown]
+By the crown's grace, wagons ride for {us}.
+[sister.aid news | g:junta]
+A supply column is en route. Escorted.
+[sister.aid news | g:party]
+The Party sends fraternal grain to the people of {us}.
+
+[sister.aid news | t:generous]
+Take all of it. Don't you dare send anything back.
+[sister.aid news | t:greedy]
+Wagons are coming. Don't get used to it.
+[sister.aid news | t:proud]
+Our wagons are on the way. Best grain in the region, you'll see.
+[sister.aid news | t:cheerful, light]
+Help is on the way! Big wagons, full ones :D
+[sister.aid news | t:gloomy]
+Wagons are coming. Won't fix everything, but it's something.
+[sister.aid news | t:cunning]
+Wagons are on the way. Friends remember friends ;)
+[sister.aid news | t:pious]
+Wagons are coming. Light a candle when they reach you.
+
+[sister.aid open | sister]
+We heard.
+{us}, it's us.
+[* open | sister, warm, light]
+Hey {us} :)
+Hi!
+[* open | sister, morning]
+Morning.
+[* open | sister, night]
+Sorry to write so late.
+[* open | sister, harsh]
+{us}.
+
+[sister.aid feel | sister]
+Don't mention it.
+No need to thank us.
+It's what neighbours are for.
+[sister.aid feel | sister, light]
+Chin up.
+Hang in there.
+[sister.aid feel | sister, grave]
+We're so sorry.
+We know what that's like.
+[sister.aid feel | sister, harsh]
+Use it well.
+
+[sister.aid aside | sister]
+The drivers will want a hot meal.
+Send the carts back when they're empty.
+[sister.aid aside | sister, fire]
+Mind the embers when you clear the ground.
+[sister.aid aside | sister, hungry]
+Make it last.
+[* aside | sister, rain]
+The roads are mud, so give them time.
+[* aside | sister, snow]
+Snow on the road. Wrap up warm.
+[* aside | sister, winter, !snow]
+Bad season for it, this.
+[* aside | sister, festival, light]
+Heard there's a festival on. Save us a dance ;)
+
+[* close | sister, warm]
+Take care.
+Write soon.
+(F)
+[* close | sister, warm, light]
+Chin up (L)
+[* close | sister, warm, t:cheerful, light]
+xx :)
+[* close | sister, harsh]
+That is all.
+
+# ---------- our leader thanks her ----------
+[sister.aid.re news | kind]
+Thank you, friends (L)
+We won't forget this.
+Thank you. Truly.
+[sister.aid.re news | kind, light]
+You're the best :'(
+[sister.aid.re news | harsh]
+Acceptable.
+Received.
+Noted. We'll remember it.
+[sister.aid.re news | kind, hungry]
+The dotlets will eat tonight. Thank you (L)
+[sister.aid.re news | fire]
+Timber is exactly what we need. Thank you.
+[sister.aid.re news | war]
+After what the war has cost us, this means a great deal.
+
+[sister.aid.re news | t:proud]
+We'd have managed. But thank you.
+[sister.aid.re news | t:cunning]
+Very generous. We'll keep it in mind ;)
+[sister.aid.re news | t:cheerful, light]
+You're amazing! :D
+[sister.aid.re news | t:gloomy]
+Thank you. We needed it more than I'd like to say.
+[sister.aid.re news | t:cruel]
+Good. Keep them coming.
+[sister.aid.re news | t:humble]
+We didn't expect this. Thank you.
+[sister.aid.re news | g:junta]
+Column received.
+[sister.aid.re news | g:party]
+The Party thanks its friends in {them}.
+[sister.aid.re news | g:crown]
+The crown is grateful.
+
+[sister.aid.re open | leader, kind]
+{them}!
+Oh!
+[sister.aid.re feel | leader, kind]
+It means a lot.
+We were in a bad way.
+[sister.aid.re feel | leader, grave]
+It has been a hard few days.
+
+[* close | leader, kind]
+Take care.
+(L)
+[sister.aid.re close | harsh]
+That is all.
+
+# =====================================================================================================
+# Notables (npc.<role>.<event>). They write to the leader; no reply yet. {me} is the leader's title and
+# name, {a} the detail the code passes (a building, a town, a count, a whole line from the physician).
+# Under a harsh rule (junta, party) every notable but the ringleader is "fearful": they flatter more and
+# complain less openly. Use !fearful on lines that complain or demand.
+# =====================================================================================================
+
+[* open | fearful]
+With respect, {me}.
+Forgive the interruption, {me}.
+Begging your pardon.
+[* open | captain, !fearful]
+Captain here.
+{me}.
+[* open | physician, !fearful, !grave]
+{me}, a word.
+[* open | steward, !fearful]
+A word from the stores.
+[* open | baker, morning, light]
+Morning from the ovens!
+[* open | grocer, morning, light]
+Morning!
+[* open | ringleader]
+Psst.
+It's me. You know who.
+
+# Feelings and asides are tied to the news they fit (a header can list several events).
+[npc.captain.warthey,npc.captain.loss,npc.captain.raid,npc.captain.lost feel | !fearful]
+The lads are shaken.
+It's grim out here.
+[npc.captain.warthey,npc.captain.loss,npc.captain.raid,npc.captain.lost feel | fearful]
+Morale holds, {me}. It will hold.
+[npc.captain.warwe,npc.captain.hold,npc.captain.won feel]
+Spirits are good.
+[npc.captain.won,npc.captain.gone feel]
+The lads want their beds.
+[npc.physician.leader,npc.physician.week feel]
+I did everything I could.
+[npc.physician.start feel]
+I'll go house to house.
+[npc.physician.noweek,npc.physician.surgery,npc.physician.over feel]
+A good week for once.
+[npc.warden.great,npc.warden.down,npc.warden.death feel]
+My hands are still shaking.
+[npc.warden.out feel]
+Close one.
+[npc.steward.fails,npc.steward.seed,npc.steward.low,npc.steward.hungry,npc.steward.death,npc.steward.rotting,npc.steward.queue feel | !fearful]
+It worries me.
+I won't sleep tonight.
+[npc.steward.fails,npc.steward.seed,npc.steward.low,npc.steward.hungry,npc.steward.rotting,npc.steward.queue feel | fearful]
+We will manage, of course.
+[npc.steward.harvest,npc.steward.bumper,npc.steward.sold,npc.steward.caravan feel]
+A good day for the ledgers.
+[npc.baker.back,npc.baker.small,npc.baker.winter feel]
+Smells wonderful, if I say so myself.
+[npc.baker.out,npc.baker.noflour,npc.baker.rush feel]
+What a day.
+[npc.grocer.restock,npc.grocer.small,npc.grocer.greens feel]
+Business is business :)
+[npc.grocer.bare,npc.grocer.line,npc.grocer.hoard,npc.grocer.nogreens feel]
+I'm doing my best here.
+[npc.ringleader.grumble,npc.ringleader.arrest feel]
+They can't watch us all.
+[npc.ringleader.won feel]
+I can't stop smiling.
+
+[npc.captain.warwe,npc.captain.hold,npc.captain.won,npc.captain.lost,npc.captain.gone aside | rain]
+Rain all night. Everyone's soaked.
+[npc.captain.warwe,npc.captain.hold,npc.captain.won,npc.captain.lost,npc.captain.gone aside | snow]
+Snow on the road. Hard marching.
+[npc.physician.start,npc.physician.noweek aside | winter]
+Winter coughs everywhere. Keep warm.
+[npc.warden.fire,npc.warden.out aside | storm]
+Lightning about. Keep an eye on the roofs.
+[npc.warden.fire,npc.warden.out aside | summer, clear]
+Dry as tinder out there.
+[npc.steward.harvest,npc.steward.bumper,npc.steward.report aside | rain]
+The rain is good for the fields, at least.
+[npc.baker.back,npc.baker.small aside | rain]
+Wet out. Wipe your feet.
+[npc.grocer.restock,npc.grocer.small aside | festival]
+The festival crowd buys everything sweet.
+[npc.ringleader.grumble aside | night]
+Night is safest.
+
+[* close | fearful]
+Long may you lead.
+At your service, as always.
+As you command.
+[* close | captain, !fearful]
+Captain out.
+[npc.physician.heart,npc.physician.fall,npc.physician.wound,npc.physician.surgery close]
+Doctor's orders :)
+[npc.warden.out close]
+Mind your candles.
+[* close | steward]
+Your steward.
+[npc.baker.back,npc.baker.small,npc.baker.winter close]
+Come by for a roll :)
+[npc.grocer.restock,npc.grocer.greens,npc.grocer.small close]
+Come early!
+[npc.ringleader.grumble,npc.ringleader.arrest close]
+Burn this.
+
+# ---------- the captain ----------
+[npc.captain.warwe news]
+:@ We march on {a} at dawn.
+Boots on. We're off to {a}.
+The column forms up. Next stop, {a}.
+[npc.captain.warwe news | fearful]
+Your orders reached us. We march on {a}.
+
+[npc.captain.warthey news]
+:-O {a} has declared war! Mustering now.
+War! {a} is coming. Everyone to the gate!
+{a} has declared war. I'm calling everyone to the gate.
+
+[npc.captain.loss news]
+:'( We lost one today.
+Bad news. A soldier won't be coming home :(
+One of ours fell today. I'll tell the family myself.
+[npc.captain.loss news | fearful]
+We lost one today. The line held.
+
+[npc.captain.hold news]
+The front holds 8-)
+Skirmish on the road. No losses (H)
+Muddy. Cold. Holding :|
+Quiet day at the front.
+[npc.captain.hold news | rain]
+Rain at the front. Holding, and wet :|
+[npc.captain.hold news | snow]
+Snow at the front. Holding. Cold hands :|
+
+[npc.captain.raid news]
+:@ Raiders slipped past us. Check the town!
+Raiders got through. I'm sorry. Check the houses!
+
+[npc.captain.won news]
+(trophy) Victory! We're coming home.
+We won! Put the kettle on :D
+[npc.captain.won news | fearful]
+Victory, {me}. Your victory.
+
+[npc.captain.lost news]
+:'( We're beaten. Coming home.
+It's over. I'm sorry :(
+[npc.captain.lost news | fearful]
+We're beaten. The fault is mine, {me}, not yours.
+
+[npc.captain.gone news]
+{a} is gone. Nobody left to fight. Coming home :|
+There's no {a} left to fight. We're heading home.
+
+# ---------- the physician ----------
+[npc.physician.start news]
+(puke) {a}
+Bad news. {a}
+(!) {a}
+
+[npc.physician.leader news]
+:'( I couldn't save {a}.
+{a} is gone. I'm so sorry.
+[npc.physician.leader news | fearful]
+{a} is gone. Nothing could be done. Nothing.
+
+[npc.physician.over news]
+(*) {a}
+It's over. {a}
+
+[npc.physician.wound news]
+:-O I'm on my way. Keep pressing on the wound!
+Stitched and bandaged. Now we watch for fever :|
+
+[npc.physician.heart news]
+:S That was your heart. No more stairs, please.
+Rest. I mean it this time :@
+Your heart gave out for a moment there. Please slow down :S
+
+[npc.physician.stroke news]
+:( One side is weak now. It may come back a little.
+The stroke has taken some strength from one side. We'll work on it.
+
+[npc.physician.growth news]
+:( I've found a growth in your {a}. I can't reach it.
+There's a swelling in your {a}. I'm sorry :'(
+
+[npc.physician.surgery news]
+(*) The growth is out of your {a}. Keep the wound clean!
+It's out of your {a}, and it went well. Now rest.
+
+[npc.physician.fall news]
+:S Mind the steps! That's {a} to mend.
+A fall, and {a}. Rest it :|
+
+[npc.physician.week news]
+:( {a} these last days. I did what I could.
+(bouquet) {a} since I last wrote. Flowers at the churchyard.
+:| {a}. The old go, the young carry on.
+
+[npc.physician.noweek news]
+(*) Not a single funeral in four days!
+:D Nobody buried this week. I'll take it.
+(apple) Clean bill of health for the whole town.
+
+# ---------- the fire warden ----------
+[npc.warden.fire news]
+:-O Fire at the {a}! Buckets!
+Smoke over the {a}! On my way!
+The {a} is burning! Everyone with a bucket!
+
+[npc.warden.great news]
+:@ It's spreading! Everyone to the buckets!
+(!) Three fires at once. We need every hand!
+
+[npc.warden.out news]
+Fire's out at the {a} (Y)
+Got it. The {a} is safe (H)
+The {a} fire is out. Soot everywhere, but it stands.
+
+[npc.warden.down news]
+:'( We lost the {a}.
+The {a} is gone. I'm sorry :(
+We couldn't hold the {a}. It's ash now.
+
+[npc.warden.death news]
+:'( {a} didn't make it out.
+We lost {a} in the fire.
+
+# ---------- the steward ----------
+[npc.steward.harvest news]
+(hen) The harvest is in: {a} sacks in the barn.
+Harvest home! {a} sacks. Now to get them into the granary :)
+{a} sacks in. A fair year.
+
+[npc.steward.bumper news]
+(clover) A bumper year! {a} sacks and counting.
+:D {a} sacks! We'll need a bigger granary.
+
+[npc.steward.fails news | !fearful]
+:'( The harvest has failed. {a} sacks, no more. Hold on to what we have.
+(!) Only {a} sacks this year. It will be a hungry winter.
+[npc.steward.fails news | fearful]
+The harvest came in at {a} sacks. Lean, but we'll stretch it, {me}.
+
+[npc.steward.rotting news]
+(!) {a} sacks rotting in the fields. We needed more hands :(
+{a} sacks left to rot. Not enough hands at the reaping :|
+
+[npc.steward.seed news]
+(!) We had to eat the seed corn. The fields are half sown :S
+The seed corn's been eaten. Next year's fields will be thin.
+
+[npc.steward.low news | !fearful]
+(!) Our stores will last about {a} days. We should stop selling grain.
+:S {a} days of food left, if nobody hoards.
+[npc.steward.low news | fearful]
+About {a} days in the stores. All in hand, of course.
+
+[npc.steward.queue news]
+:S Queues at every counter. People are buying for the week.
+(!) The shelves are empty by noon. Everyone is hoarding.
+
+[npc.steward.ration news]
+(cop) Rationing is in force. One meal a head.
+:| Ration cards are out. Grumbling, but no queues.
+
+[npc.steward.hungry news | !fearful]
+:( {a} of our people have nothing to eat today.
+(meal) Empty bowls in {a} houses.
+[npc.steward.hungry news | fearful]
+{a} went without today. It will pass.
+
+[npc.steward.death news]
+:'( {a} starved last night.
+[npc.steward.death news | !fearful]
+(!) {a} died of hunger. We have to do something.
+[npc.steward.death news | fearful]
+(!) {a} died of hunger in the night.
+
+[npc.steward.sold news]
+(case) Sold {a} sacks of surplus grain. The treasury thanks us.
+{a} sacks sold to the region (Y)
+
+[npc.steward.caravan news]
+(horse) Wagons of grain from {a}. Bless them.
+(food) {a} sent grain. We eat tonight :)
+
+[npc.steward.report news]
+Morning report: {a}
+(case) Good morning. {a}
+Today's numbers: {a}
+(meal) The day's tally: {a}
+[npc.steward.report news | fearful]
+Your morning report, {me}: {a}
+
+# ---------- the ringleader ----------
+[npc.ringleader.grumble news]
+They can't keep this up forever :-#
+Meeting tonight. Usual place :-#
+Watch out for the (cop) on the corner
+Delete this after reading 8-)
+One day {us} will be free :@
+[npc.ringleader.grumble news | night]
+Lights out on our street. Good. :-#
+
+[npc.ringleader.arrest news]
+:( They took another one. (jail)
+Another neighbour gone. Remember their name :'(
+
+[npc.ringleader.won news]
+(H) WE DID IT. The {a} has fallen!
+:D Free! Free at last!
+
+# ---------- the baker ----------
+[npc.baker.out news]
+:S Sold out of bread already!
+Not a crumb left on my racks :(
+(!) Out of bread. More in an hour, if the flour comes.
+Gone by noon, every loaf :S
+
+[npc.baker.back news]
+(food) Fresh bread! The ovens are hot again :D
+Loaves out of the oven. Come and get them :)
+(Y) Back in business. Racks are full.
+
+[npc.baker.noflour news]
+:| No flour from the mill today. I'm grinding by hand (hammer)
+Where is my flour? The ovens are cold :@
+
+[npc.baker.rush news]
+:S They're buying loaves by the armful. I can't bake fast enough!
+(!) Six loaves each! Who eats six loaves?
+
+[npc.baker.small news]
+Up at four, as always (zz)
+Rye today (food)
+Smells good out there, doesn't it? :)
+Burnt my thumb on the oven again :(
+Seed loaves this morning (clover)
+[npc.baker.small news | morning]
+First batch is out (food)
+
+[npc.baker.winter news]
+Warmest spot in town is my bakery :)
+Cold out. Come in by the ovens (food)
+
+# ---------- the grocer ----------
+[npc.grocer.bare news]
+:( The shelves are bare. Nothing but crumbs.
+(!) Sold out. Tell them not to queue.
+Empty counter. Waiting on the carriers :|
+
+[npc.grocer.restock news]
+(Y) Restocked! Bread and greens on the counter.
+Shelves full again :)
+(food) Fresh in. Come early.
+
+[npc.grocer.line news]
+:S {a} in line and out the door.
+(!) There's a line of {a} outside. I'm going as fast as I can.
+
+[npc.grocer.hoard news]
+:@ Someone just bought {a} meals in one go. Leave some for the rest!
+(case) {a} meals to one family. They're scared, and it's catching.
+
+[npc.grocer.greens news]
+(clover) First greens of the year on the counter!
+Fresh greens are in :D
+
+[npc.grocer.nogreens news]
+:| No greens till spring. Bread and porridge it is.
+Last of the greens is gone. Winter :(
+
+[npc.grocer.small news]
+Slow day (zz)
+The usual crowd, the usual gossip :)
+(apple) Apples are good this week.
+Someone's cat is in the cabbages again :@
+Prices steady. Nobody's complaining... yet 8-)
+[npc.grocer.small news | rain]
+Rainy day, nobody shopping (zz)
+
+# =====================================================================================================
+# The leader's friends and enemies (pal.*). {first} is the leader's name, {title} their title and name.
+# Tags: friend or enemy; oldleader (they led before); newleader (our leader is under a day in office);
+# mine (they hold the feeling; {why} says how it began, "you" being the leader) or yours (the leader holds
+# it; "I" is the speaker). Without mine or yours there is no {why}: never use it then.
+# An enemy is Blocked after the first message, so only hello is written for enemies, and gets no reply.
+# =====================================================================================================
+
+# ---------- a new contact says hello ----------
+[pal.hello news | friend, oldleader, newleader]
+The chain is yours now. Look after them (L)
+Good luck, {first}. You'll need it ;)
+Hah, your turn now. Call me if you need me :)
+[pal.hello news | enemy, oldleader, newleader]
+Enjoy the chair while it lasts :@
+You'll get yours, {first}. (6)
+Don't get comfortable.
+[pal.hello news | enemy, mine, !newleader]
+{Why}. I haven't forgotten :@
+I remember the day {why}. Every day. :@
+[pal.hello news | enemy, yours, !newleader]
+Still angry that {why}? Grow up :P
+So you're still sore that {why}. Fine.
+[pal.hello news | enemy, !mine, !yours]
+Don't write to me again :@
+We're done, {first}.
+[pal.hello news | friend, newleader, !oldleader]
+You're {title} now?! (crown) Don't forget us little people :D
+Congratulations, {first}! (*) Drinks on you.
+Look at you! I always knew :)
+[pal.hello news | friend, mine/yours, !newleader]
+Remember when {why}? :)
+I still smile about the time {why} :D
+[pal.hello news | friend, !mine, !yours, !newleader]
+Hi {first} :)
+Thought I'd say hello (F)
+Hello, stranger! (F)
+
+[pal.hello.re news | warm]
+Hi :)
+Good to hear from you (F)
+[pal.hello.re news | warm, t:cheerful]
+:D Hi!!
+(L)
+[pal.hello.re news | warm, t:cynical]
+What do you want? ;)
+[pal.hello.re news | warm, t:hotheaded]
+Hm. Hello.
+[pal.hello.re news | warm, newleader, !oldleader]
+Ha, thank you! :$
+Drinks are on me, then (Y)
+[pal.hello.re news | warm, newleader, oldleader]
+I'll try. Thank you for everything (L)
+
+# ---------- small talk ----------
+[pal.small news]
+How are things?
+Anything new at your end? :)
+[pal.small news | t:cheerful]
+Guess what, I found a four-leaf clover (clover)
+Guess what, my hens laid twins (hen)
+Life is good (L)
+Saw a rainbow over the mill (R)
+[pal.small news | t:cheerful, clear/cloudy]
+Lovely day! :D
+[pal.small news | t:gloomy]
+Rain again, probably :(
+My back hurts. Everything hurts.
+Is it always this grey? :|
+[pal.small news | t:pious]
+Prayed for you today (A)
+See you at service? (A)
+Blessings on your house.
+[pal.small news | t:cynical]
+Heard the latest rumour? Don't believe it ;)
+Taxes again? :|
+Nobody tells us anything 8-|
+[pal.small news | t:curious]
+Did you know the mill wheel has 24 paddles? I counted :D
+Who was that stranger at the inn? :-O
+What's past the hills, do you think?
+[pal.small news | t:hotheaded]
+My neighbour's goat ate my cabbages AGAIN :@
+Don't get me started on the baker :@
+I nearly hit someone today. Nearly.
+[pal.small news | t:calm]
+Quiet day. Nice.
+Sitting by the pond (F)
+All well here :)
+[pal.small news | t:brave]
+Need a hand with anything? (Y)
+Going for a swim in the pond. Cold! :D
+[pal.small news | t:craven]
+Did you hear that noise last night? :S
+I'm staying in today :$
+[pal.small news | t:doomsayer]
+The crows are gathering. A sign (6)
+Mark my words, the end is near.
+I dreamt of fire again :S
+[pal.small news | rain]
+Raining. Staying in with something hot :)
+[pal.small news | snow, light]
+Snowball fight on the square later. You in? :D
+[pal.small news | night]
+Can't sleep. You up? |-)
+[pal.small news | summer, clear]
+Too hot to do anything. Pond?
+
+[pal.small.re news]
+:)
+Ha, yes.
+Speak soon (F)
+[pal.small.re news | t:cheerful]
+Haha :D
+Same here!
+(L)
+[pal.small.re news | t:gloomy]
+Mm.
+If you say so :|
+[pal.small.re news | t:cynical]
+Sure ;)
+Right.
+[pal.small.re news | harsh]
+Hm.
+
+# ---------- trouble: their own, the leader's, the town's ----------
+[pal.trouble.sick news]
+In bed with a fever +o( Bring soup?
+Sick as a dog. Don't visit (puke)
+Coughing my lungs out over here +o(
+
+[pal.trouble.hungry news]
+Haven't eaten since yesterday :(
+Any bread at your end? (meal)
+My stomach is making noises at the neighbours :S
+
+[pal.trouble.leaderill news]
+Heard you're poorly. Get well soon (F)
+Rest, {first}. The town can wait :(
+Want me to bring soup round? (meal)
+
+[pal.trouble.war news]
+Any news from the front? :S
+Is it true about {a}? :-O
+Can't sleep for worrying about the war :S
+
+[pal.trouble.fire news]
+Can you see the smoke from yours? :-O
+Fire! Are you all right? :S
+I can smell it from here :-O
+
+[pal.trouble.plague news]
+Is the sickness bad at your end? +o(
+Washing my hands every hour now :S
+
+[pal.trouble.queue news]
+Queues everywhere. Is there going to be enough? :S
+Everyone's hoarding. Should I? :$
+
+[pal.trouble.festival news]
+Coming to {fest}? (jester)
+Save me a dance! :D
+
+[pal.trouble.re news]
+Doing what I can :S
+Thanks. Stay safe (F)
+[pal.trouble.re news | t:cheerful]
+We'll get through it (Y)
+[pal.trouble.re news | t:calm]
+Hang in there :)
+[pal.trouble.re news | t:brave]
+We'll get through it (Y)
+[pal.trouble.re news | t:gloomy]
+I know :(
+[pal.trouble.re news | t:doomsayer]
+It's bad.
+
+[pal.trouble.festival.re news]
+Wouldn't miss it :D
+Save one for me (L)
+[pal.trouble.festival.re news | harsh]
+Perhaps.
+
+[pal.trouble.leaderill.re news]
+Thank you. I'll be fine (F)
+Soup would be lovely :)
+[pal.trouble.leaderill.re news | t:proud]
+I'm fine. Really.

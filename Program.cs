@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.77.1";
+    const string Version = "Dotburg 0.80.3";
 
     [STAThread]
     static void Main(string[] args)
@@ -78,6 +78,18 @@ public partial class Program
             (int w, int h)? forceSize = null;   // --size WxH: a screenshot at this window size instead of the fitted one
             // --hands: write sample chat hands (Hands.cs) to hands.txt next to the exe and exit.
             if (Array.IndexOf(args, "--hands") >= 0) { Sim.WriteHandSamples(Path.Combine(AppContext.BaseDirectory, "hands.txt")); return; }
+            // --voices: check resources/voices.txt and write sample conversations (Voices.cs) to voice-samples.txt next to the exe, then exit.
+            if (Array.IndexOf(args, "--voices") >= 0) { Sim.WriteVoiceSamples(Path.Combine(AppContext.BaseDirectory, "voice-samples.txt")); return; }
+            // --names: sample names to names.txt; with a save in DOTBURG_DIR, also load it and list its townsfolk (never saves).
+            if (Array.IndexOf(args, "--names") >= 0)
+            {
+                var lines = Sim.NameSamples().ToList();
+                var ns = new Sim(1);
+                Storage.Load(ns);
+                lines.Add($"save: {ns.Name}, leader {ns.Leader?.Name}; " + string.Join(", ", ns.Walkers.Where(w => w.Kind == "").Select(w => Sim.CitizenName(w) + (ns.SpouseOf(w) != null ? " (wed)" : ""))));
+                File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "names.txt"), lines);
+                return;
+            }
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "--soak" && i + 1 < args.Length) soak = int.Parse(args[++i]);
@@ -284,11 +296,13 @@ public partial class Program
             var live = sim.Walkers.Where(w => !w.Gone && w.Kind == "").ToList();
             var all = live.SelectMany(w => w.Bonds).ToList();
             int lid = sim.LeaderWalker?.Id ?? -1;
-            string[] story = { "never forgive", "trade words", "Fists fly", "went back to day", "running from", "was near the", "crying that", "assassin" };
+            string[] story = { "marry", "married", "match is made", "table", "pantry", "born to", "name their", "never forgive", "trade words", "Fists fly", "went back to day", "running from", "was near the", "crying that", "assassin" };
             var wild = live.SelectMany(Sim.CitizenTraits).Where(k => Traits.Get(k).Cat == 3).GroupBy(k => k).Select(g => $"{g.Key} {g.Count()}");
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"),
                 $"\n--- bonds ---\n{live.Count} dot-men; grudges {all.Count(b => b.Kind == "grudge")} (deep {all.Count(b => b.Kind == "grudge" && b.Str >= 0.6)}, against the leader {all.Count(b => b.Kind == "grudge" && b.Who == lid)}), friendships {all.Count(b => b.Kind == "friend")}; named assassins {sim.AssassinsKnown}; checks {sim.MeetChecks}, alone {sim.MeetAlone}, meetings {sim.Meetings}, bonds made {sim.BondsMade}\n" +
                 $"wildcards now: {string.Join(", ", wild)}\n" +
+                $"weddings: friends {sim.FriendWeddings}, arranged {sim.ArrangedWeddings}, matched {sim.MatchWeddings}; married now {live.Count(w => sim.SpouseOf(w) != null)}; meals at a friend's table {sim.SharedMeals}; street tables {sim.StreetTables} (broken up {sim.TablesBroken}), fed {sim.StreetFed}\n" +
+                $"names: {live.Count} living, {live.Select(w => w.First).Distinct().Count()} distinct first names, {live.Select(w => w.First + " " + w.Last).Distinct().Count()} distinct full names, {live.Select(w => w.Last).Distinct().Count()} families\n" +
                 string.Join("\n", sim.SayLog!.Where(l => story.Any(l.Contains)).Take(60)) + "\n");
         }
         // Food over whole years: several regions grown from a hamlet by the own clock, with a timeline every two days
@@ -328,6 +342,8 @@ public partial class Program
                 int fled = s.SayLog!.Count(l => l.Contains("hungry family"));
                 deadAll += dead; fledAll += fled;
                 o.Add($"  starved {dead}, left hungry {fled}, panics {s.SayLog!.Count(l => l.StartsWith("Queues at"))}, grain withheld {s.SayLog!.Count(l => l.Contains("keeps its harvest at home"))}");
+                o.Add($"  births {s.SayLog!.Count(l => l.Contains("baby") || l.Contains("dotlet is born") || l.Contains("name their") || l.Contains("welcomes a dotlet") || l.Contains("A new ") && l.Contains("born to"))}, weddings {s.SayLog!.Count(l => l.Contains("marr") || l.Contains("Wedding bells") || l.Contains("match is made"))}, pop {s.Walkers.Count(w => !w.Gone && w.Kind == "")}");
+                o.Add($"  weddings: friends {s.FriendWeddings}, arranged {s.ArrangedWeddings}, matched {s.MatchWeddings}; meals at a friend's table {s.SharedMeals}; street tables {s.StreetTables} (broken up {s.TablesBroken}), fed {s.StreetFed}; names {s.Walkers.Where(w => !w.Gone && w.Kind == "").Select(w => w.First + " " + w.Last).Distinct().Count()} of {s.Walkers.Count(w => !w.Gone && w.Kind == "")} distinct");
                 o.AddRange(s.SayLog!.Where(l => l.Contains("harvest") || l.Contains("seed") || l.Contains("rot") || l.Contains("sells") || l.Contains("Famine")).Take(25).Select(l => "    " + l));
             }
             o.Add($"all: starved {deadAll}, left hungry {fledAll}, mean hungry share {hungryAll / Math.Max(1, samples):P1}, mean panic {panicAll / Math.Max(1, samples):F2}, panic over 0.5 {(double)panicHigh / Math.Max(1, samples):P1} of the time, a line of 3+ {(double)lineSamples / Math.Max(1, samples):P1} of the time, longest {maxQueue}");

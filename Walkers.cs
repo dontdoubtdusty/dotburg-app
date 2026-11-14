@@ -7,6 +7,7 @@ partial class Sim
     {
         var w = new Walker { C = c, H = home, X = -1, Y = 0 };
         SetId(w, NextId++);
+        Christen(w);
         return w;
     }
 

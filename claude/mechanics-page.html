@@ -11,8 +11,8 @@
   "eyebrow": "Dotburg design tool",
   "accent": { "light": "#3a63b8", "dark": "#8fb0f0" },
   "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then republish the page (claude/mechanics-page.html). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Summaries checked against claude/systems.md on Nov 13 (0.77): stale trait and age wording fixed. Links are hand-kept per feature and not yet verified line by line against the code. Every idea must pass the two questions in vision.md (The player): could the leader know it, and does it give the player a lever?",
-  "updated": "2026-11-13",
-  "version": "0.80.0",
+  "updated": "2026-11-14",
+  "version": "0.81.0",
   "levels": [
     { "level": 0, "name": "None", "percent": 0 },
     { "level": 1, "name": "Flavor", "percent": 33 },
@@ -204,7 +204,10 @@
     { "from": "food", "to": "treasury", "level": 2, "why": "0.61: grain above the next harvest plus the rule's reserve is sold to the region, a little gold at a time." },
     { "from": "food", "to": "health", "level": 1, "why": "0.61: a leader or former leader who starves dies of hunger by name; the seat eats first, so it is rare." },
     { "from": "food", "to": "messenger", "level": 2, "why": "0.61: Steward (a notable) writes about the harvest, failed crops, seed corn, low stores, queues, rationing, hunger, deaths, grain sold and grain caravans. 0.65: a morning report from the steward with yesterday's numbers; a baker and a grocer post sell-outs, restocks, lines at the door, hoarders, the first greens and small talk." },
-    { "from": "food", "to": "festivals", "level": 1, "why": "0.61: a bumper harvest brings a harvest-home festival." },
+    { "from": "food", "to": "festivals", "level": 2, "why": "0.81: every harvest that does not fail holds a harvest-home festival in wheat bunting; hunger as bad as the steward reports calls a festival off." },
+    { "from": "illness", "to": "festivals", "level": 2, "why": "0.81: an announced outbreak with 3 or more sick, or the grey plague, calls a festival off (a rally still goes ahead)." },
+    { "from": "blight", "to": "festivals", "level": 2, "why": "0.81: a plague or famine on the town calls a festival off." },
+    { "from": "seasons", "to": "festivals", "level": 1, "why": "0.81: the harvest home comes once a year, in autumn or early winter." },
     { "from": "gov", "to": "food", "level": 3, "why": "0.61: each rule holds back a number of days of grain (guild 2, party 10), lets people hoard or rations them in a panic, and opens the granary to the hungry or keeps it shut (crown, junta, party, guild, mayor). 0.62: hamlet rules too (elders 8 days, founding family 7 and hoards, shrine keepers 6 and hoards little, headman 5). The ledger tooltip shows the days against the held-back marker." },
     { "from": "fires", "to": "food", "level": 2, "why": "0.61: a building that burns down loses its stores." },
     { "from": "visitors", "to": "food", "level": 2, "why": "0.61: a caravan brings grain when stores are under four days. 0.63: less of it and dearer when the region is pressed, never if we cannot pay. 0.64: a grain caravan is drawn with a gold wagon piled with sacks." },
@@ -231,7 +234,7 @@
     { "from": "politics", "to": "bonds", "level": 2, "why": "How a leader leaves becomes a bond with the new one: a coup leaves a deep grudge, a lost vote a grudge or a handshake, a hand-over a friendship." }
   ],
   "ideas": [
-    { "from": "festivals", "to": "illness", "level": 2, "fits": "Illness polish", "idea": "A festival crowd is a shared room: it spreads illness; a festival could be called off in an outbreak." },
+    { "from": "festivals", "to": "illness", "level": 2, "fits": "Illness polish", "idea": "A festival crowd is a shared room: it spreads illness (calling off in an outbreak is built, 0.81)." },
     { "from": "births", "to": "gov", "level": 2, "fits": "Births follow-up", "idea": "A monarch heir is a child born in town and takes the throne when grown." },
     { "from": "births", "to": "growth", "level": 1, "fits": "Births follow-up", "idea": "A school makes children grow up sooner." },
     { "from": "sisters", "to": "illness", "level": 2, "fits": "Undecided in vision", "idea": "A sick newcomer or caravan carries illness to or from a sister (refugees from a plague town already do, 0.77)." },
@@ -241,7 +244,7 @@
     { "from": "fires", "to": "illness", "level": 1, "fits": "Fires follow-up", "idea": "Burnt-out families crowd into other homes, so illness spreads faster after a fire." },
     { "from": "war", "to": "births", "level": 1, "fits": "War follow-up", "idea": "Soldiers away mean fewer weddings; a victory brings a crop of babies." },
     { "from": "guards", "to": "war", "level": 2, "fits": "War follow-up", "idea": "A junta or party state sends more soldiers than a council can." },
-    { "from": "blight", "to": "festivals", "level": 2, "fits": "Blight follow-up", "idea": "A festival is called off in a plague or famine; a harvest festival ends one." },
+    { "from": "blight", "to": "festivals", "level": 2, "fits": "Blight follow-up", "idea": "The first harvest home after a famine is a big one and lifts the town more (calling off in a plague or famine is built, 0.81)." },
     { "from": "festivals", "to": "weather", "level": 1, "fits": "Weather follow-up", "idea": "A festival in good weather lasts longer and draws bigger crowds." },
     { "from": "health", "to": "war", "level": 2, "fits": "Health polish", "idea": "A junta general or a Proud leader rides with the soldiers and can come home wounded or not at all." },
     { "from": "health", "to": "festivals", "level": 1, "fits": "Health polish", "idea": "A leader who survives an attempt or a heart attack throws a thanksgiving festival." },
@@ -265,7 +268,7 @@
     { "from": "seasons", "to": "messenger", "level": 1, "fits": "Voices (voices-vision.md)", "idea": "Voices, the rest: the town's mood joins the moment tags for every event (season, weather and time of day already colour aid in 0.79), and parts can call back to a named shared event (\"since the fire\", \"after the grain you sent in spring\")." }
   ],
   "onPurpose": [
-    { "id": "wildlife", "why": "Small life stays cosmetic by design: it makes the town look alive and changes nothing." },
+    { "id": "wildlife", "why": "Small life stays cosmetic by design: it makes the town look alive and changes nothing. It is never harmed (owner rule, 2026-11-14): no famine, fire, war or illness kills, eats or drives off a duck, cat or bird. It may hide from weather or join in, never suffer." },
     { "id": "crier", "why": "The crier is a mirror of what happened, not a mechanic that acts." },
     { "id": "messenger", "why": "Read only for good (0.77, vision: The player): the player witnesses and never steers, so no reply buttons. It reads the town and never changes it (its own random generator)." }
   ]

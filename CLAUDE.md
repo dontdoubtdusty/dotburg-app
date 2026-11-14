@@ -1,7 +1,7 @@
 # Dotburg app: notes for Claude
 The shared rules in `D:\My Documents\rpret\GitHub\CLAUDE.md` also apply; this file wins where they disagree.
 
-A standalone C# / .NET 10 / Raylib-cs + ImGui.NET port of the `/town` Claude Code mod in `../dotburg` (same stack as birb-box and srd-desk). The mod is **frozen at v0.6.0** (the user's choice) and is the spec: when in doubt, read `../dotburg/hooks/register.tsx` and `../dotburg/CLAUDE.md`. The app is powered by its own clock only (one growth unit per 20 s while open, `OwnClock` in `Program.cs`, behind the `IPowerSource` interface so another source could be added); no Claude link.
+A standalone C# / .NET 10 / Raylib-cs + ImGui.NET port of the `/town` Claude Code mod in `../dotburg` (same stack as birb-box and srd-desk). The mod was frozen at v0.6.0 and is the spec; since its 0.7.0 (2026-11-14) a few finished app features are ported back to it (list in `../dotburg/CLAUDE.md`, "Ported from the app"). New work still starts in the app. When in doubt, read `../dotburg/hooks/register.tsx` and `../dotburg/CLAUDE.md`. The app is powered by its own clock only (one growth unit per 20 s while open, `OwnClock` in `Program.cs`, behind the `IPowerSource` interface so another source could be added); no Claude link.
 
 ## Words
 - The townsfolk are dot-men; one is a dot-man or dot-woman; children are dotlets and dotlettes. Use these in every player-facing line (no "mouths", "people" counts or "children"). There is no sex field yet, so a lone child is "a dotlet".
@@ -9,6 +9,7 @@ A standalone C# / .NET 10 / Raylib-cs + ImGui.NET port of the `/town` Claude Cod
 ## Version
 - `Version` in `Program.cs` is the one version number (window title and `crash.txt`); never write the number anywhere else. Stages 1 to 4 were 0.1 to 0.4.
 - Versions follow `claude/versioning.md` (`major.minor.patch`): a finished feature bumps minor, a small tweak bumps patch, in the same change (not at wrap up). Bigger jumps only when the owner says. The Win98 UI pass made it `0.50.0` (0.49 had been bumped in code only). Note the new number in the change summary and in the session log row.
+- `README.md` follows `claude/readme-format.md` (user-facing only, Drowse format); convert an old README the next time you work here.
 - After raising it, run `Build Dotburg.bat` so the published copy matches.
 
 ## The claude/ folder

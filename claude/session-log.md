@@ -1,6 +1,6 @@
 # Session Log
 
-Session count: 4.
+Session count: 5.
 
 **Writing this log:** one row per session, one or two lines: what was built or decided, anything left open. Design decisions go in `vision.md`; the systems themselves are described in `systems.md`.
 
@@ -8,7 +8,7 @@ Session count: 4.
 
 **Testing:** Claude can check by `--soak` numbers and `--shot` screenshots, not by watching the app for hours; the owner's play is the real test. Open bugs are steps in `next-session-plan.md`.
 
-**Committed:** 0.77.1 committed and pushed (fcf8103, Nov 13); this wrap-up's log edits are not committed. 0.77.1 is published to `Dotburg Town`.
+**Committed:** 0.81.0 committed and pushed (Nov 14) with this wrap-up. 0.81.0 is published to `Dotburg Town`.
 
 **Workspace tooling:** `dotnet build -c Release` here; `--shot` works (the PC has a GPU). Tests must not touch the real save: use `--shot` (never saves) or set `DOTBURG_DIR` to a scratch folder. No Python on this PC; use PowerShell or C# for scripts.
 
@@ -34,3 +34,4 @@ Session count: 4.
 - **This folder lives in `dotburg-app`, not the mod.** The mod is frozen at v0.6.0; all new work is in the app.
 - **Real photos, inconsistent on purpose (0.75).** The owner wanted the AI cartoon icons gone and asked that the photos not match in tone; some get a 2005 treatment so the list looks like real people chose them. Cartoons kept only where a photo reads worse at 96 px (a smiling sun, a moon with stars, a heart, a clover, a snowflake). Source: Pexels, because Unsplash's search is behind a bot wall. Rejected: cut-out photos on the pastel squares (rough edges, looks pasted). Revisit if photos make the list too busy next to the pixel portraits.
 - **Hands lean on traits but chance decides (0.76).** People don't always write the way they act (the owner's point), so a trait only makes a fitting quirk four times as likely; about 1 in 5 type plainly. Grave lines drop the playful quirks so a plague line never reads as a joke. Rejected: the same style every time regardless of the news (funny once, then wrong), and pure chance (traits would mean nothing). The chronicle stays plain because it is the history.
+| 5 | 2026-11-14 | 0.80.3 to 0.81.0 | (0.78 to 0.80.2, weddings, family names, sharing food and Voices, were built in sessions not logged here; `systems.md` and `vision.md` describe them.) Committed and pushed everything since 0.77.1 (60f6270). 0.80.3: a friend recalling a bond says "my house" not their own name (`WhyAs` now swaps both names, plain and possessive). 0.81.0: every harvest that does not fail holds a harvest home in wheat bunting; an announced outbreak with 3+ sick or the grey plague, a plague blight, or steward-level hunger calls a festival off (rallies go ahead). Calling off for any outbreak lost half of all festivals in soaks, hence the floor; about 3 festivals are held per 60 days. Owner rule: small life is never harmed (rejected: ducks vanishing in a famine). Mechanics page republished (0.81.0). | Next: decide Land vs stage 5 events (recommended Land first: floods and wanderers need it). Fix `--pals`. Convert the README to the new shared format (`claude/readme-format.md`). |

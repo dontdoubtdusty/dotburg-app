@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.80.3";
+    const string Version = "Dotburg 0.81.0";
 
     [STAThread]
     static void Main(string[] args)
@@ -301,6 +301,7 @@ public partial class Program
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"),
                 $"\n--- bonds ---\n{live.Count} dot-men; grudges {all.Count(b => b.Kind == "grudge")} (deep {all.Count(b => b.Kind == "grudge" && b.Str >= 0.6)}, against the leader {all.Count(b => b.Kind == "grudge" && b.Who == lid)}), friendships {all.Count(b => b.Kind == "friend")}; named assassins {sim.AssassinsKnown}; checks {sim.MeetChecks}, alone {sim.MeetAlone}, meetings {sim.Meetings}, bonds made {sim.BondsMade}\n" +
                 $"wildcards now: {string.Join(", ", wild)}\n" +
+                $"festivals: held {sim.FestsHeld}, called off for sickness {sim.FestsOffIll}, for hunger {sim.FestsOffHunger}\n" +
                 $"weddings: friends {sim.FriendWeddings}, arranged {sim.ArrangedWeddings}, matched {sim.MatchWeddings}; married now {live.Count(w => sim.SpouseOf(w) != null)}; meals at a friend's table {sim.SharedMeals}; street tables {sim.StreetTables} (broken up {sim.TablesBroken}), fed {sim.StreetFed}\n" +
                 $"names: {live.Count} living, {live.Select(w => w.First).Distinct().Count()} distinct first names, {live.Select(w => w.First + " " + w.Last).Distinct().Count()} distinct full names, {live.Select(w => w.Last).Distinct().Count()} families\n" +
                 string.Join("\n", sim.SayLog!.Where(l => story.Any(l.Contains)).Take(60)) + "\n");

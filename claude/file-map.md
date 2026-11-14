@@ -10,13 +10,13 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 
 | File | Lines | What it does |
 |---|---|---|
-| `Program.cs` | 504* | Window (starts hidden, fitted to the panels after frame 1, then snapped on resize), main loop (fixed 110 ms ticks, pacing by attention), texture upload, test flags (each described in `CLAUDE.md` under its system), `Version`. |
+| `Program.cs` | 521* | Window (starts hidden, fitted to the panels after frame 1, then snapped on resize), main loop (fixed 110 ms ticks, pacing by attention), texture upload, test flags (each described in `CLAUDE.md` under its system), `Version`. |
 | `Panels.cs` | 1054* | The Windows XP (Luna) UI: window, field, button, progress-bar and bold-text helpers, window fitting (`ChromeSizes`, `FittedSize`, `FitWindow`, `ScaleRange`, `SnapWindow`, `RefitHeight`), the frameless maximised window and its own buttons (`FrameOnMaximize`, `WindowButtons`), `DrawUi` layout filling the whole window (town window with government band and the picture, ledger, Messenger), town picture and hover outline, hover tips (building, `MoodTip`, `FoodTip`, `SisterTip`, `ReasonRow`), font and theme. |
 | `Sim.cs` | 319 | `Walker` and `Works` classes; sim tuning, state, helpers (`Round`, `Hash`, `Mix`, `Tint`), day and night, seasons, crier (`Say`, `Chatter`) and chronicle queue (`Note`, `Major`), `Tick`, `FreshRegion`. |
 | `Layout.cs` | 186 | Roads and lots, `Build`, `DoorOf`, `Entrance`, `PaintStatic` (buildings, banners, statues, street lamps by tier into the static picture). |
 | `Walkers.cs` | 249 | Dot-men: `NewWalker`, `SetId`/`Trait01` (habits from a stable id), homes, routes on roads, `Decide`, `Arrive`, `StepWalker`. |
 | `Growth.cs` | 187 | Units to buildings, newcomers, upgrades and tiers, scaffolding (`Works`), `Cost`, `HomeCap`, `PopCap`, `Headcount`. |
-| `Life.cs` | 364 | Weather (Markov sky by scheme and season), snow cover, puddles, lightning, smoke, cat, ducks, fireflies, birds, aurora, festivals and rallies (rain or snow puts a festival off, `StepFestWeather`). Cosmetic or mood only; not saved except weather amounts. |
+| `Life.cs` | 400* | Weather (Markov sky by scheme and season), snow cover, puddles, lightning, smoke, cat, ducks, fireflies, birds, aurora, festivals and rallies (rain or snow puts a festival off, `StepFestWeather`; sickness or hunger calls one off, `FestCalledOff`, 0.81). Cosmetic or mood only; not saved except weather amounts. |
 | `Gov.cs` | 177 | `Gov` records (nine rules and the hamlet rules: `Govs.All`, `Govs.Hamlet`), `Leader`, `Trait` records and `Traits` (32 traits in heart, work, spirit and wildcard groups, clashes, weights by rule, leader effect columns), succession and festival lines. |
 | `Politics.cs` | 608* | Rule and leader state, odds helpers (`PerDay`, `Odds`, `OncePer`), Settlers (`FormRule`), `Appoint` (`LeaderFit`), `SetGov`, mood (`UpdateMood`, `MoodParts`, `Nudge`), `Politics()` (revolution, coup, assassination attempts, elections, step down, scandal, reforms, emigration, arrests), `Death` and `Murdered` (succession after a named death), guards. |
 | `Region.cs` | 641* | Charter and sister towns, migration, treasury (`Gold`, `Pay`, `Purse`), relations and attitude (`RelParts`, `BaseRel`, `Bump`), envoys, letters, aid, refugees, fairs, spies, caravans, pacts, fates (absorb, collapse), visitors, `Region()` and `Events()`. |
@@ -35,7 +35,7 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | `Content.cs` | 106 | Data only: build order, sprites, palettes, schemes, seasons, town names. |
 | `Messenger.cs` | 500* | Messenger data and talk: `ChatLine`, `Convo`, `Toast`, `Presence`; `Post` (writes each line in its writer's hand), `Tell`, `Gossip`, `Npc`, `SignIn`, `SignOff`, `Pop` (toasts, nudge), `Chatter2`, statuses and personal messages, the dialogue tables (`TheySay`, `WeSay`, `GossipSay`, `NpcSay`, `Mottos`), `TestChat`. |
 | `MessengerUi.cs` | 703* | The Messenger panel (sign-in page, me, contact groups, MSN 7.5 conversation), `Rich` text with emoticons, display pictures (photo atlas or pixel portrait, `PicFrame`, `Portrait`) and buddy icons, toasts over the town picture, nudge shake. |
-| `Pals.cs` | 284 | The leader's own contacts (0.69): Friends and Blocked from the leader's bonds, the previous leader, `StepPals`, `NewLeader` (how the old leader fell becomes a bond), their chatter and the leader's replies. |
+| `Pals.cs` | 291 | The leader's own contacts (0.69): Friends and Blocked from the leader's bonds, the previous leader, `StepPals`, `NewLeader` (how the old leader fell becomes a bond), their chatter and the leader's replies. |
 | `Chronicler.cs` | 257 | The chronicler (0.69): who keeps the chronicle (`EnsureChronicler`), their voice and remarks, slant toward or against the leader, crier lines they choose to write down (`MaybeChronicle`). |
 | `Routine.cs` | 150 | Routine voices (0.65): the steward's morning report, the baker and the grocer, daily counts and voice caps, `RoutineSay`. |
 | `Hands.cs` | 268 | Writing hands (0.76): `Hand` (a person's 2006 typing quirks), `HandFor` (rolled from a seed, leaning on traits), `WriteIn` (applies it to a line, bursts, grave lines plainer), `Styled`, `WriterOf`; the shared emoticon codes `Sim.EmoCodes`; `WriteHandSamples` for `--hands`. |
@@ -60,7 +60,7 @@ Line counts are rough (refreshed Nov 13, 2026, version 0.77.0). Files over ~400 
 | `resources/sounds/` | `type.mp3` (MSN message), `nudge.mp3` (MSN nudge), `newalert.mp3` (Windows XP ding), copied into the build. |
 | `resources/add-emoticons.ps1`, `resources/msn-emoticon-sheet.png` | Adds 26 extra emoticons (rows 4 to 6 of the atlas) cut from the owner's MSN screenshot. |
 | `resources/make-emoticons.ps1`, `resources/emoticons.png` | Cuts the 40 classic emoticons out of a reference sheet into the atlas the Messenger draws from (PowerShell, System.Drawing). |
-| `../dotburg/` | The frozen mod (v0.6.0): `hooks/register.tsx` is the spec for the remaining stage 5 events. |
+| `../dotburg/` | The mod (v0.7.0: the 0.6.0 spec plus a few app features ported back): `hooks/register.tsx` is the spec for the remaining stage 5 events. |
 | `%APPDATA%\Dotburg\` | `town.json` (save), `chronicle.txt` (the chronicle), `chronicles\` (chronicles of towns before a restart), `town-before-restart.json` (backup), `muted` (sound off). |
 
 ## Where to find things

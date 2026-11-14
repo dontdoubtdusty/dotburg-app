@@ -14,6 +14,7 @@ partial class Sim
     const double WxFadeMs = 12_000;       // how long the sky takes to change over
     const double FestMs = 25_000;         // how long a festival lasts
     static readonly int[] Bunting = { 0xd9432f, 0xf2c14e, 0x2f62c9, 0xf5f5f5 };
+    static readonly int[] Sheaves = { 0xe0b040, 0x8a5a2a, 0xf2d68a, 0xc08a30 };   // harvest bunting
     static readonly int[] CatColors = { 0xd8873a, 0x2e2e2e, 0x9a9aa2, 0xf0ece4 };
 
     // How much each scheme leans toward rain, fog and snow (index = scheme).
@@ -276,6 +277,12 @@ partial class Sim
         if (Quiet || Lots.Count == 0) return;
         var g = G;
         bool rally = g.Harsh >= 0.8 && colors == null; // harsh rule turns a festival into a rally
+        // Sickness or hunger calls a festival off (a rally is ordered, so it goes ahead).
+        if (!rally && FestCalledOff() is { } off)
+        {
+            if (EvClock - festOffSaid > DayMs / 2) { festOffSaid = EvClock; Say(off, false); }
+            return;
+        }
         // Rain or snow on the square puts a festival off until it clears (a rally is ordered, so it goes ahead).
         if (!rally && Stormy)
         {
@@ -291,6 +298,7 @@ partial class Sim
             return;
         }
         bool fresh = TickNo >= festUntil;
+        if (fresh) FestsHeld++;
         festUntil = Math.Max(festUntil, TickNo + Round(FestMs * Math.Max(0.4, g.Fest) / TickMs));
         Rally = rally;
         festLot = at < Lots.Count ? at : 0;
@@ -303,6 +311,28 @@ partial class Sim
             if (w.Mode == Mode.Inside && w.At >= 0 && w.At < Lots.Count) (w.X, w.Y) = DoorOf(w.At);
             JoinFestival(w);
         }
+    }
+
+    // Why the town will not dance now, as the crier says it, or null. Only what the town knows: an outbreak the
+    // crier has announced that is the grey plague or has 3 or more sick (a couple of coughs do not stop a dance),
+    // a plague on the town, or hunger as the steward reports it (a famine, two weak, or the
+    // 30% hungry at which the steward speaks up).
+    double festOffSaid = -1e9;
+    public int FestsHeld, FestsOffIll, FestsOffHunger;   // soak counters
+    string? FestCalledOff()
+    {
+        string? why = FestOffWhy();
+        if (why != null && why.StartsWith("No dancing while")) FestsOffHunger++;
+        else if (why != null) FestsOffIll++;
+        return why;
+    }
+    string? FestOffWhy()
+    {
+        if (Ill is { Told: true } && (Diseases[Ill.D].Key == "plague" || Walkers.Count(w => !w.Gone && w.Sick) >= 3)) return $"{Cap(Diseases[Ill.D].Name)} in {Name}: no dancing on the square until it passes.";
+        if (BlightOn?.Kind == "plague" && BlightOn.Towns.Contains(Name)) return $"Sickness in {Name}: the square stays empty, no dancing.";
+        int pop = Walkers.Count(w => !w.Gone && w.Kind == "");
+        if (Famine || WeakCount >= 2 || HungryCount > 0.3 * pop) return "No dancing while the bread runs short: the festival is called off.";
+        return null;
     }
 
     // A festival put off by bad weather, run when the sky clears (if that is within two days), and a running

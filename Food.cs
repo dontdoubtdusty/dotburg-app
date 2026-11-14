@@ -331,8 +331,8 @@ partial class Sim
         double need = Eaters * NeedPerDay * 16;   // a year of meals
         string sacks = Math.Round(harvestIn).ToString();
         if (harvestIn < need * 0.5 || CropQ < 0.55) { Say($"The harvest fails in {Name}: {sacks} sacks."); Npc("steward", "fails", true, sacks); Hear(0.25); }
-        else if (CropQ > 1.1) { Say($"A bumper harvest in {Name}: {sacks} sacks."); Npc("steward", "bumper", false, sacks); StartFestival("Harvest home! Sheaves and dancing on the square."); }
-        else { Say($"The harvest is in: {sacks} sacks."); Npc("steward", "harvest", false, sacks); }
+        else if (CropQ > 1.1) { Say($"A bumper harvest in {Name}: {sacks} sacks."); Npc("steward", "bumper", false, sacks); StartFestival("Harvest home! Sheaves and dancing on the square.", Sheaves); }
+        else { Say($"The harvest is in: {sacks} sacks."); Npc("steward", "harvest", false, sacks); StartFestival("Sheaves go up on the square for the harvest home.", Sheaves); }
         harvestIn = 0;
     }
 

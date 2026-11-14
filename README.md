@@ -5,7 +5,7 @@ the leader's seat but pull no levers: the townsfolk live, marry, fall ill, quarr
 Each town has its own landscape and land (groves, ponds, rocks, marsh), a rule that can change hands, sister towns,
 and a Messenger where the leader's friends, rivals and the chronicle talk.
 
-![A city in summer, with groves among the houses](docs/screenshot.png)
+![A city in summer, with a marsh and pond joined by a boardwalk](docs/screenshot.png)
 
 ## Install
 There is no release download. Dotburg runs on the owner's PC only.

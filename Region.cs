@@ -84,9 +84,11 @@ partial class Sim
     string RandomSisterGov() => Weighted(Govs.All.Where(g => !Govs.IsHamlet(g.Key)).ToList(), g => g.Lean).Key;
 
     // How a sister town regards this one, as a word and a colour for the legend.
-    public (string word, int col) Attitude(Sister s)
+    public (string word, int col) Attitude(Sister s) => AttitudeAt(s, RelOf(s));
+
+    // The attitude word and colour for a given regard (the true one, or the one the leader believes, Hearsay.cs).
+    public (string word, int col) AttitudeAt(Sister s, double r)
     {
-        double r = RelOf(s);
         if (r >= 0.6) return ("allied", 0x58c8b0);
         if (r >= 0.25) return ("friendly", 0x6cc070);
         if (r > -0.1) return ("cordial", 0xa8c878);

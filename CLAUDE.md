@@ -21,7 +21,7 @@ A standalone C# / .NET 10 / Raylib-cs + ImGui.NET port of the `/town` Claude Cod
 
 ## Run and test
 - Normal use: the Dotburg shortcut (Desktop and Start menu), made by `Build Dotburg.bat`, which publishes to `..\Dotburg Town` (not `Dotburg`: that would clash with the `dotburg` mod folder, since Windows ignores case). Run the bat again after every meaningful change (close the app first). For development: `dotnet build -c Release`.
-- `--shot out.png [--units N] [--ticks N]`: render a few frames after pre-growing the town and save a screenshot, then exit (never touches the save). `--soak N`: headless run of N ticks, writes `soak.txt` next to the exe. `--fresh`: ignore the save.
+- `--shot out.png [--units N] [--ticks N]`: render a few frames after pre-growing the town and save a screenshot, then exit (never touches the save). `--soak N`: headless run of N ticks, writes `soak.txt` next to the exe. `--fresh`: ignore the save. `--truth`: tips show the real numbers instead of hearsay (with `--mood-tip`, `--sister-tip`, `--hover`).
 - Files: `%APPDATA%\Dotburg\town.json` (save, every 30 s and on exit; on start the town carries on exactly where it was left: no growth while closed, the owner's choice in 0.55 so new features can be watched as they happen) and `chronicle.txt` (major events, appended, plain text).
 
 ## Layout (partial class `Sim`)

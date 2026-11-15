@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.86.0";
+    const string Version = "Dotburg 0.87.0";
 
     [STAThread]
     static void Main(string[] args)
@@ -126,6 +126,7 @@ public partial class Program
                 else if (args[i] == "--scheme" && i + 1 < args.Length) forceScheme = int.Parse(args[++i]);
                 else if (args[i] == "--season" && i + 1 < args.Length) forceSeason = int.Parse(args[++i]);
                 else if (args[i] == "--skin" && i + 1 < args.Length) forceSkin = args[++i];
+                else if (args[i] == "--truth") Sim.Truth = true;   // tips show the real numbers, not hearsay (Hearsay.cs)
             }
             if (soak > 0) { Soak(soak, preUnits); SoakTraits(); if (args.Contains("--ill")) SoakIllness(preUnits > 0 ? preUnits : 150); if (args.Contains("--fires")) SoakFires(preUnits > 0 ? preUnits : 150); if (args.Contains("--wars")) SoakWars(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--health")) SoakHealth(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--food")) SoakFood(soak); if (args.Contains("--rules")) SoakRules(150); if (args.Contains("--events")) SoakEvents(preUnits > 0 ? preUnits : 400, soak); return; }
             bool testing = shot != null;   // screenshot runs never touch the saved town
@@ -309,6 +310,7 @@ public partial class Program
                 string.Join("\n", sim.SayLog!.Where(l => Illness.Any(k => l.Contains(k)))) +
                 $"\n--- sister rulers ---\n{sim.SayLog!.Count(Sim.RulerDeathLine)} ruler deaths in {ticks * Sim.TickMs / Sim.DayMs:F0} days\n" +
                 string.Join("\n", sim.SayLog!.Where(Sim.RulerDeathLine).Take(30)));
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), $"\n--- hearsay ---\n{sim.HearsayLine()}\n");
             // How chatty the Messenger is: lines per town day over the last 10 days, by kind of chat, and a sample.
             double days = Math.Min(10, Math.Max(1, sim.Age / Sim.DayMs));
             var kinds = sim.Convos.GroupBy(c => c.Kind).Select(g =>

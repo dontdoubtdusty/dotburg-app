@@ -290,6 +290,7 @@ partial class Sim
         StepBrigade(Daylight());
         StepVisitors();
         if (TickNo % 27 == 0) StepPals();   // the leader's own contacts and the chronicler's pen, every 3 s or so
+        if (TickNo % 27 == 13) StepHearsay();   // what reaches the leader (Hearsay.cs), also every 3 s or so
         double p = Phase;
         if (lastPhase >= 0 && lastPhase < 0.25 && p >= 0.25) Say($"Day {DayNumber} dawns over {Name}.");
         lastPhase = p;

@@ -8,9 +8,23 @@
 
 **No scope creep (owner, 2026-11-14).** The next few sessions build the major features already planned below, in order. A new idea that comes up mid-session goes to the mechanics page as an idea and is mentioned to the owner, not built, unless the owner explicitly says to build it now.
 
-1. **Hearsay tooltips** (vision, The player): mood, sister and people tips in words and reported reasons instead of exact numbers. Owner's choice: words, reasons without amounts, only those the leader has heard, some late, missing or wrong; friends, spies and the chronicler hear better.
-2. **Council** (vision, Rule and people): design it with the owner first (seats, who appoints, votes, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
-3. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
+**Session cycle (owner, 2026-11-15).** Work runs in three kinds of session, each with one job:
+- **Build:** one planned feature, to "works and is visible". Run the checks (section 3), bump minor, commit. No polish. Anything noticed along the way goes on a "noticed" list in the session log row, not into the code.
+- **Hone:** the feature just built, after the owner has watched it run in the real app for a while. Work only from a hone list written at the start of the session (the noticed list plus what the owner saw). Patch bumps. Anything that adds a mechanic goes to the mechanics page.
+- **Bug and health:** after every third build. Long soaks with the stress flags, an old save loaded, `crash.txt` and the chronicle read for oddities, frame rate checked, the known stand-ins cleared. Nothing new is added.
+- Rule: a bug fix never carries a new mechanic. If a fix needs a design change, that change becomes a planned step here.
+- Rough split: 40% build, 35% hone, 25% bugs. Builds since the last bug session: 1 (hearsay, 0.87.0; count resets after each bug session).
+
+1. **Hone: hearsay tooltips** (built in 0.87.0; how it works in `systems.md`, Hearsay). Watch it in the real app first. Noticed during the build:
+   - The believed mood can sit far from the truth: a spiteful sovereign believed 59 when it was 42 (soak). Intended, but check it does not read as a bug; maybe cap the bias or let a crisis (riot, coup attempt) snap the estimate back.
+   - Sister tips are thin (often one or two reasons) and every sister reason arrives "21 hours ago" after a pre-grown start.
+   - Strangers with no repute and no deep feelings show only a name and age; check a full house reads well.
+   - The feared band (dread 0.66+) has not been measured yet: the soak's town never had one. Run soaks until one does, or add a test flag.
+   - "Lately" rows still come from everyone's eyes (no teller); fine for public events, but some may deserve one.
+3. **Build: council** (vision, Rule and people): a councillor is a named source of information plus rare stories; four seats decided (2026-11-15, see vision). Settle the rest with the owner first (who appoints, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
+4. **Hone: council.**
+5. **Bug and health session.** Known stand-ins to clear: patrols trimmed by a rule change vanish; a caught spy is not walked out.
+6. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
 
 ## 2. Patterns to follow
 

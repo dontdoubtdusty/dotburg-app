@@ -550,11 +550,92 @@ public partial class Program
             RightAlign(labW + barW + wordW + sty.ItemSpacing.X * 2);
             ImGui.Text("Townsfolk:");
             ImGui.SameLine();
-            bool hov = BarItem(barW, (float)sim.Mood, MoodCol(sim.Mood));
+            // The bar is the mood as the leader believes it (Hearsay.cs), in steps of 5: an estimate, not a reading.
+            double hm = Sim.Truth ? sim.Mood : Math.Round(sim.HeardMood * 20) / 20;
+            bool hov = BarItem(barW, (float)hm, MoodCol(hm));
             ImGui.SameLine();
-            ImGui.TextColored(V(Darken(MoodCol(sim.Mood), 0.8f)), MoodWord(sim.Mood));
+            ImGui.TextColored(V(Darken(MoodCol(hm), 0.8f)), MoodWord(hm));
             hov |= ImGui.IsItemHovered();
-            if (hov || showMoodTip) MoodTip();
+            if (hov || showMoodTip) { if (Sim.Truth) MoodTipTrue(); else MoodTip(); }
+        }
+
+        // How much a reason weighs, in a word, for the hearsay tips (no amounts: the leader is told words).
+        static string Weighs(double d) { double a = Math.Abs(d); return a < 0.03 ? "a little" : a < 0.08 ? "somewhat" : a < 0.15 ? "much" : "greatly"; }
+
+        // One "reason ... weight" row of a hearsay table: the weight as a word, green when it helps, red when it hurts,
+        // and under it in grey who said so and when.
+        static void HeardRow(string why, double d, string under)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.PushTextWrapPos(0);   // 0: wrap at the column's right edge, not the tooltip's
+            ImGui.TextWrapped(Esc(why));
+            if (under != "") ImGui.TextDisabled(Esc(under));
+            ImGui.PopTextWrapPos();
+            ImGui.TableNextColumn();
+            string s = Weighs(d);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X - ImGui.CalcTextSize(s).X);
+            ImGui.TextColored(V(d > 0 ? 0x207020 : 0xb00000), s);
+        }
+
+        // The mood tooltip as the leader knows it: how they seem, which way word says it is going, every reason the
+        // leader has been told with who told it and when (late, missing or wrong as it reached the seat), what lately
+        // moved it at once, and what low spirits lead to. --truth shows MoodTipTrue instead.
+        void MoodTip()
+        {
+            double hm = sim.HeardMood;
+            float w = ImGui.CalcTextSize("0").X * 46, wordW = ImGui.CalcTextSize("somewhat").X;
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + w);
+
+            // Headline: the word, then which way word says it is drifting.
+            ImGui.PushStyleColor(ImGuiCol.Text, V(Darken(MoodCol(hm), 0.8f)));
+            BoldItem($"The townsfolk seem {MoodWord(hm)}");
+            ImGui.PopStyleColor();
+            double to = sim.HeardTarget;
+            ImGui.TextDisabled(to > hm + 0.05 ? "Word is their spirits are rising." : to < hm - 0.05 ? "Word is their spirits are sinking." : "Settled, by all accounts.");
+
+            // Standing reasons as told, weightiest first.
+            // (The rule's own level is the baseline everything moves from, not a reason, so it is left out.)
+            var heard = sim.MoodHeard.Values.Where(r => r.Arrived(sim.Age) && !r.Text.StartsWith("The rule:") && !r.Text.StartsWith("No rule yet"))
+                .OrderByDescending(r => Math.Abs(r.D)).ToList();
+            ImGui.Spacing();
+            BoldItem("Why, as you have heard it");
+            if (heard.Count == 0) ImGui.TextDisabled("Nobody has told you anything.");
+            else if (ImGui.BeginTable("moodheard", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+            {
+                ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - wordW - 12);
+                ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, wordW);
+                foreach (var r in heard) HeardRow(r.Text, r.D, r.Teller == "" ? "" : $"{char.ToUpperInvariant(r.Teller[0])}{r.Teller[1..]}, {sim.HeardWhen(r)}");
+                ImGui.EndTable();
+            }
+
+            // Lately: what everyone saw move the mood at once, newest first, alike ones together.
+            var recent = sim.MoodEvents.Where(e => sim.Age - e.At <= Sim.DayMs).GroupBy(e => e.Why)
+                .Select(g => (Why: g.Count() > 1 ? $"{g.Key} (x{g.Count()})" : g.Key, D: g.Sum(e => e.D), At: g.Max(e => e.At)))
+                .OrderByDescending(e => e.At).Take(8).ToList();
+            if (recent.Count > 0)
+            {
+                ImGui.Spacing();
+                BoldItem("Lately");
+                if (ImGui.BeginTable("moodlately", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+                {
+                    ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - wordW - 12);
+                    ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, wordW);
+                    foreach (var e in recent)
+                    {
+                        int hours = (int)((sim.Age - e.At) / Sim.DayMs * 24);
+                        HeardRow($"{char.ToUpperInvariant(e.Why[0])}{e.Why[1..]}, {(hours < 1 ? "just now" : hours == 1 ? "an hour ago" : $"{hours} hours ago")}", e.D, "");
+                    }
+                    ImGui.EndTable();
+                }
+            }
+
+            // Footnote: what the mood does, and what this list is.
+            ImGui.Separator();
+            ImGui.TextDisabled("What you have been told, not the whole truth. An angry town breeds plots and coups, and under harsh rule, revolt. Low spirits also slow weddings.");
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
         }
 
         // A signed whole number on the 0 to 100 scale the panels use ("+4", "-8", "0").
@@ -572,9 +653,9 @@ public partial class Program
             ImGui.TextColored(V(s == "0" ? Shade : d > 0 ? 0x207020 : 0xb00000), s);
         }
 
-        // The mood tooltip: how they feel now, where it is heading and why (each standing reason with its amount),
-        // what lately moved it at once, and what low spirits lead to.
-        void MoodTip()
+        // The true mood tooltip, for --truth: how they feel now, where it is heading and why (each standing reason with
+        // its amount), what lately moved it at once, and what low spirits lead to.
+        void MoodTipTrue()
         {
             var parts = sim.MoodParts();
             double target = sim.MoodTarget, sum = parts.Sum(p => p.D);
@@ -879,9 +960,72 @@ public partial class Program
             if (hov) Tip(string.Join("\n", order.Select(c => $"{counts[c],3} {Content.DotNames[c]}")));
         }
 
-        // A sister town's tooltip: who she is, how she regards us (-100 to 100) and why (the standing reasons she
-        // drifts toward, then what lately moved her), and what each level of regard leads to.
+        // A rough count, as news of a sister carries it: "about 40".
+        static string About(int n) => n < 10 ? $"{n}" : $"about {(int)Math.Round(n / 10.0) * 10}";
+
+        // A sister town's tooltip as the leader knows it: who she is, how she seems to regard us and why, as letters and
+        // travellers told it (late, missing or wrong), what lately moved her, and what regard leads to. --truth shows
+        // SisterTipTrue instead.
         void SisterTip(Sister s)
+        {
+            if (Sim.Truth) { SisterTipTrue(s); return; }
+            var (word, wc) = sim.HeardAttitude(s);
+            var lord = sim.RulerOf(s);
+            float w = ImGui.CalcTextSize("0").X * 46, wordW = ImGui.CalcTextSize("somewhat").X;
+            ImGui.BeginTooltip();
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + w);
+
+            // Headline: her regard as it seems, in its colour, then what is known of her.
+            ImGui.PushStyleColor(ImGuiCol.Text, V(Darken(wc, 0.55f)));
+            BoldItem($"{s.Name} seems {word}");
+            ImGui.PopStyleColor();
+            ImGui.TextDisabled(Esc($"{About(s.Total)} dot-men, {Govs.Get(s.Gov).Name}, {Sim.WealthWord(sim.GoldOf(s))}, ruled by {lord.Name}."));
+
+            // Standing reasons as told.
+            var heard = sim.SisHeard.Where(kv => kv.Key.StartsWith(s.Name + "|") && kv.Value.Arrived(sim.Age)).Select(kv => kv.Value)
+                .OrderByDescending(r => Math.Abs(r.D)).ToList();
+            ImGui.Spacing();
+            BoldItem("Why, as you have heard it");
+            if (heard.Count == 0) ImGui.TextDisabled("Old neighbourly ties; no other word has come.");
+            else if (ImGui.BeginTable("relheard", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+            {
+                ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - wordW - 12);
+                ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, wordW);
+                foreach (var r in heard) HeardRow(r.Text, r.D, r.Teller == "" ? "" : $"{char.ToUpperInvariant(r.Teller[0])}{r.Teller[1..]}, {sim.HeardWhen(r)}");
+                ImGui.EndTable();
+            }
+
+            // Lately: what moved her regard at once (gifts, spies, aid: things the town saw), newest first.
+            var recent = s.RelEvents.GroupBy(e => e.Why)
+                .Select(g => (Why: g.Count() > 1 ? $"{g.Key} (x{g.Count()})" : g.Key, D: g.Sum(e => e.D), At: g.Max(e => e.At)))
+                .OrderByDescending(e => e.At).Take(8).ToList();
+            if (recent.Count > 0)
+            {
+                ImGui.Spacing();
+                BoldItem("Lately");
+                if (ImGui.BeginTable("rellately", 2, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoHostExtendX))
+                {
+                    ImGui.TableSetupColumn("why", ImGuiTableColumnFlags.WidthFixed, w - wordW - 12);
+                    ImGui.TableSetupColumn("n", ImGuiTableColumnFlags.WidthFixed, wordW);
+                    foreach (var e in recent)
+                    {
+                        int days = (int)((sim.EvClock - e.At) / Sim.DayMs);
+                        HeardRow($"{char.ToUpperInvariant(e.Why[0])}{e.Why[1..]}, {(days < 1 ? "today" : days == 1 ? "yesterday" : $"{days} days ago")}", e.D, "");
+                    }
+                    ImGui.EndTable();
+                }
+            }
+
+            // Footnote: what regard leads to, in words.
+            ImGui.Separator();
+            ImGui.TextDisabled("What you have been told, not the whole truth. A friendly sister sends gifts and aid, holds fairs and may propose a wedding; an ally stands by us. A cold, harsh sister sends spies; a colder one demands tribute; a hostile one blocks us. Wars follow harsh rule, not regard.");
+            ImGui.PopTextWrapPos();
+            ImGui.EndTooltip();
+        }
+
+        // The true sister tooltip, for --truth: who she is, how she regards us (-100 to 100) and why (the standing
+        // reasons she drifts toward, then what lately moved her), and what each level of regard leads to.
+        void SisterTipTrue(Sister s)
         {
             var parts = sim.RelParts(s);
             double rel = sim.RelOf(s), sum = parts.Sum(p => p.D), settle = Math.Clamp(sum, -1, 1);
@@ -978,9 +1122,9 @@ public partial class Program
             ImGui.Dummy(new Vector2(Math.Max(1, icons * step), row));
             // The newest sister by name and how she feels about us; the rest is in the icon tips.
             var ns = sim.Sisters[^1];
-            var (word, wc) = sim.Attitude(ns);
+            var (word, wc) = sim.HeardAttitude(ns);
             ImGui.AlignTextToFramePadding();
-            ImGui.Text($"{ns.Name} {ns.Total},");
+            ImGui.Text(Sim.Truth ? $"{ns.Name} {ns.Total}," : $"{ns.Name} {About(ns.Total)},");
             bool hov = ImGui.IsItemHovered();
             ImGui.SameLine(0, 8);
             ImGui.TextColored(V(Darken(wc, 0.55f)), word);

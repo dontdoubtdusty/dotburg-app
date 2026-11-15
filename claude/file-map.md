@@ -2,7 +2,7 @@
 
 One entry per file: what it does today. Read this first each session, then open only the files the task needs. Update it when a file is added, split, renamed or deleted, and when a file's job changes. Describe the current state only; history lives in the session log.
 
-Line counts are rough (refreshed Nov 14, 2026, version 0.86.0). Files over ~400 lines are marked *. Length only flags a file to look at; a long file with one job is fine.
+Line counts are rough (refreshed Nov 14, 2026, version 0.86.0; Hearsay.cs added in 0.87.0). Files over ~400 lines are marked *. Length only flags a file to look at; a long file with one job is fine.
 
 ---
 
@@ -11,7 +11,7 @@ Line counts are rough (refreshed Nov 14, 2026, version 0.86.0). Files over ~400 
 | File | Lines | What it does |
 |---|---|---|
 | `Program.cs` | 612* | Window (starts hidden, fitted to the panels after frame 1, then snapped on resize), main loop (fixed 110 ms ticks, pacing by attention), texture upload, test flags (each described in `CLAUDE.md` under its system), `Version`. |
-| `Panels.cs` | 1059* | The Windows XP (Luna) UI: window, field, button, progress-bar and bold-text helpers, window fitting (`ChromeSizes`, `FittedSize`, `FitWindow`, `ScaleRange`, `SnapWindow`, `RefitHeight`), the frameless maximised window and its own buttons (`FrameOnMaximize`, `WindowButtons`), `DrawUi` layout filling the whole window (town window with government band and the picture, ledger, Messenger), town picture and hover outline, hover tips (building, `MoodTip`, `FoodTip`, `SisterTip`, `ReasonRow`), font and theme. |
+| `Panels.cs` | 1059* | The Windows XP (Luna) UI: window, field, button, progress-bar and bold-text helpers, window fitting (`ChromeSizes`, `FittedSize`, `FitWindow`, `ScaleRange`, `SnapWindow`, `RefitHeight`), the frameless maximised window and its own buttons (`FrameOnMaximize`, `WindowButtons`), `DrawUi` layout filling the whole window (town window with government band and the picture, ledger, Messenger), town picture and hover outline, hover tips (building, `MoodTip` and `SisterTip` from hearsay with `HeardRow`, `MoodTipTrue` and `SisterTipTrue` for `--truth`, `FoodTip`, `ReasonRow`), font and theme. |
 | `Sim.cs` | 340 | `Walker` and `Works` classes; sim tuning, state, helpers (`Round`, `Hash`, `Mix`, `Tint`), day and night, seasons, crier (`Say`, `Chatter`) and chronicle queue (`Note`, `Major`), `Tick`, `FreshRegion`. |
 | `Layout.cs` | 195 | Roads and lots, `Build`, `LayLots` (land left out), `DoorOf`, `Entrance`, `PaintStatic` (buildings, banners, statues, street lamps by tier into the static picture). |
 | `Land.cs` | 363 | Land (0.82): grove, pond, rocks, marsh tiles; `NewLand`, `PaintLand`, `DrawLand`, effects helpers (`LandBy`, `AcrossGrove`, `StoneK`), hover (`LandInfo`). |
@@ -38,6 +38,7 @@ Line counts are rough (refreshed Nov 14, 2026, version 0.86.0). Files over ~400 
 | `War.cs` | 279 | War with a sister (soldiers out of the west gate, news, raids, victory or defeat), war between two sisters, plague and famine across the region (`BlightOn`, `StepBlight`), `Struck`, `Refugees` callers, `WarLine`, test hooks. |
 | `Food.cs` | 1085* | Food and hunger: goods, barn and stores, fields and harvest, mill and bakery, carriers' jobs, eating, starvation, rot, panic and hoarding, queues at counters, rule food policy (`FoodRules`), sharing (`FriendsTable`, `SharedMeal`, `StreetTable`), sales and seed, ledger and hover lines (`GetFoodReport`), `TestHunger`, `SoakFood`. |
 | `Names.cs` | 440* | The name maker (0.78): `Names` (five tongues, `Lean` per town, `Person`, `Given`, `Family`, the lists and generators, checks) and the town side: `Christen` (unique names, kin), `GivenFrom`, `LegacyName`, `RenameDuplicates`, `NameSamples` for `--names`. |
+| `Hearsay.cs` | 320 | Hearsay (0.87): `Report`, the leader's reports (`MoodHeard`, `SisHeard`), `StepHearsay`, tellers and delays (`MoodTopic`, `Gossip`, `Delay`), `Dread`, the believed mood and regard (`EstMood`, `HeardMood`, `HeardAttitude`), people known or by repute (`KnownAs`, `Repute`), `--truth`, soak line. |
 | `Info.cs` | 73 | Hover: `RankAtPixel`, `LotBox`, `InfoFor` (building tooltip lines). |
 | `Content.cs` | 106 | Data only: build order, sprites, palettes, schemes, seasons, town names. |
 | `Messenger.cs` | 517* | Messenger data and talk: `ChatLine`, `Convo`, `Toast`, `Presence`; the Town crier chat (`CrierLine`); `Post` (writes each line in its writer's hand), `Tell`, `Gossip`, `Npc`, `SignIn`, `SignOff`, `Pop` (toasts, nudge), `Chatter2`, statuses and personal messages, the dialogue tables (`TheySay`, `WeSay`, `GossipSay`, `NpcSay`, `Mottos`), `TestChat`. |
@@ -82,6 +83,7 @@ Line counts are rough (refreshed Nov 14, 2026, version 0.86.0). Files over ~400 
 - How a village picks its rule and the reason the crier gives: `ChooseGovWhy` and `RuleDraw` in `Politics.cs`; whether the leader stays on: `MaybeChooseGov`.
 - How often wanderers, markets, floods and the comet come: `WanderEvery`, `MaybeMarket`, `MaybeFloodDamage`, `CometEvery`; feud numbers: the constants at the top of `Feuds.cs`.
 - Why the mood or a sister's regard is what it is: `MoodParts` in `Politics.cs`, `RelParts` in `Region.cs`.
+- What the leader is told of it, by whom, how late and how wrong: `MoodTopic`, `Delay`, `Dread` and `NewMoodReport` in `Hearsay.cs`; for people, `KnownAs` and `Repute`.
 - Food numbers (hunger, harvest, mill, bakery, rot, stores) and each rule's food policy: the constants and `FoodRules` at the top of `Food.cs`.
 - What a rule is like: `Govs.All` in `Gov.cs` (harshness, banner, term, cost, curfew, guards, mood).
 - Growth speed and caps: `Costs`, `PopCaps` in `Sim.cs`; `OwnClock` in `Program.cs` (one unit per 20 s).

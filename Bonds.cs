@@ -262,19 +262,22 @@ partial class Sim
 
     // Who a dot-man loves, likes and hates, for the hover tip: the spouse, the closest friend and the deepest grudge,
     // each shown (until 0.86 only the single strongest bond was, which was nearly always a grudge).
-    string Feelings(Walker w)
+    // For a stranger (known false) only what gossip carries: the spouse (weddings are public), a close friendship and a
+    // deep grudge (Hearsay.cs).
+    string Feelings(Walker w, bool known = true)
     {
         var parts = new List<string>();
         var sp = SpouseOf(w);
         if (sp != null) parts.Add($"loves {NameOfId(sp.Id)}, their spouse");
         var friend = w.Bonds.Where(b => b.Kind == "friend" && (sp == null || b.Who != sp.Id)).OrderByDescending(b => b.Str).FirstOrDefault();
-        if (friend != null) parts.Add($"{(friend.Str >= 0.6 ? "close to" : friend.Str >= 0.3 ? "friends with" : "fond of")} {NameOfId(friend.Who)}");
+        if (friend != null && (known || friend.Str >= 0.6)) parts.Add($"{(friend.Str >= 0.6 ? "close to" : friend.Str >= 0.3 ? "friends with" : "fond of")} {NameOfId(friend.Who)}");
         var foe = w.Bonds.Where(b => b.Kind == "grudge").OrderByDescending(b => b.Str).FirstOrDefault();
-        if (foe != null) parts.Add($"{(foe.Str >= 0.5 ? "hates" : "has words with")} {NameOfId(foe.Who)} ({foe.Why})");
+        if (foe != null && (known || foe.Str >= 0.5)) parts.Add($"{(foe.Str >= 0.5 ? "hates" : "has words with")} {NameOfId(foe.Who)} ({foe.Why})");
         return parts.Count == 0 ? "" : "; " + string.Join("; ", parts);
     }
 
-    // Lines for a building's hover tip: who is in or at it, with traits and the strongest feeling they carry.
+    // Lines for a building's hover tip: who is in or at it. People the leader knows show their traits and feelings;
+    // strangers show what is said of them (Hearsay.cs).
     public IEnumerable<string> PeopleAt(int rank)
     {
         int n = 0;
@@ -282,9 +285,19 @@ partial class Sim
         {
             if (w.Gone || w.Kind != "" || w.At != rank || w.Mode == Mode.Walk) continue;
             if (++n > 4) yield break;
-            var tr = TraitsOf(w);
+            string how = KnownAs(w);
             string who = w.Lead ? LeaderTitle : w.Kid != 0 ? $"{CitizenName(w)} (a dotlet)" : $"{CitizenName(w)}, {YearsOfDot(w)}";
-            yield return $"{who}: {string.Join(", ", tr.Where(Traits.Exists).Select(k => Traits.Get(k).Name))}{Feelings(w)}.";
+            if (how is not ("" or "known" or "you")) who += $" ({how})";
+            if (how != "")
+            {
+                var tr = TraitsOf(w);
+                yield return $"{who}: {string.Join(", ", tr.Where(Traits.Exists).Select(k => Traits.Get(k).Name))}{Feelings(w)}.";
+            }
+            else
+            {
+                string rep = Repute(w), feel = Feelings(w, false);
+                yield return rep == "" && feel == "" ? $"{who}." : $"{who}: {(rep == "" ? feel.TrimStart(';', ' ') : rep + feel)}.";
+            }
         }
     }
 }

@@ -1066,7 +1066,7 @@ partial class Sim
         if (Content.IsHome(t))
         {
             double m = Stock[rank, (int)Good.Meals];
-            yield return m >= 0.5 ? $"Pantry: {Math.Round(m)} meals." : "The pantry is empty.";
+            yield return m >= 0.5 ? $"Pantry: {Math.Round(m)} meal{(Math.Round(m) == 1 ? "" : "s")}." : "The pantry is empty.";
             int hungry = Walkers.Count(w => !w.Gone && w.Kind == "" && HomeOf(w) == rank && w.Food < HungryAt);
             if (hungry > 0) yield return hungry == 1 ? "Someone here is hungry." : $"{hungry} here are hungry.";
         }

@@ -309,7 +309,8 @@ partial class Sim
             int x = v.X;
             if (WalkStep(v))
             {
-                if (v.Goal == Goal.Leave) v.Gone = true;
+                if (v.Held) { v.Mode = Mode.Wait; v.Until = long.MaxValue; }   // a caught spy waits for the guard
+                else if (v.Goal is Goal.Leave or Goal.Taken) v.Gone = true;
                 else { v.Mode = Mode.Wait; v.Until = TickNo + (v.Kind == "cart" ? Secs(20, 40) : Secs(2, 8)); }
             }
             if (v.Kind == "cart" && v.X != x) v.Lane = v.X > x ? 1 : 0; // remembers which way the horse faces
@@ -489,7 +490,7 @@ partial class Sim
         double caught = guards.Count > 0 ? 0.7 : 0.3;
         if (Chance() < caught)
         {
-            foreach (var v in vs) v.Stay = TickNo + Secs(4, 8);
+            foreach (var v in vs) Hold(v);   // held where caught until a guard leads them out (0.87.2)
             Bump(s, -0.1, "we caught their spy");
             Nudge(0.01, "a spy caught");
             Say($"Guards catch a spy from {s.Name}.");

@@ -31,6 +31,8 @@ partial class Sim
     string? hearStamp;                                              // town and leader the store belongs to
     double hearLast;
     public static bool Truth;                                       // --truth: the tips show the real numbers
+    public static double ForceDread = -1;                           // --dread: every leader this feared (soak testing, 0.87.2)
+    public double PlainSince = -1;                                  // Age of the last survived attempt (HearCrisis); not saved
     public int HearMade, HearSilent, HearWrong;                     // soak counters
 
     const double HourMs = DayMs / 24;
@@ -39,6 +41,7 @@ partial class Sim
     // tolerant and merciful ones hear more.
     public double Dread()
     {
+        if (ForceDread >= 0) return ForceDread;
         double f = G.Harsh * 0.75;
         foreach (var k in Leader?.Traits ?? Array.Empty<string>())
             f += k is "cruel" or "proud" or "vengeful" ? 0.15 : k is "humble" or "tolerant" or "merciful" ? -0.1 : 0;
@@ -65,6 +68,7 @@ partial class Sim
             // A new leader starts with their own blind spots; after a load the leader already knows what they knew.
             bool warm = hearStamp == null;
             MoodHeard.Clear(); SisHeard.Clear(); estRel.Clear();
+            PlainSince = -1;
             hearStamp = stamp;
             StepMoodHeard(warm); StepSisHeard(warm);
             EstMood = Clamp(MoodTarget + MoodBias(), 0, 1);
@@ -168,8 +172,26 @@ partial class Sim
             }
         }
         else if (HearRoll(k, 2) < wrong * 0.5) { r.Wrong = true; r.D = d * 1.6; }   // good news grows in the telling
-        if (!warm) r.Heard = Age + Delay(teller, k, 3);
+        r.Heard = warm ? Age - Delay(teller, k, 3) : Age + Delay(teller, k, 3);   // already known after a load or a pre-grown start: heard a while back (0.87.2)
         return Made(r);
+    }
+
+    // A survived attempt on the leader (0.87.2): whatever was kept from them, softened or still on the way comes out at
+    // once, and flattery stops, so the believed mood snaps to the truth. News after this is bent again as usual.
+    void HearCrisis()
+    {
+        var truth = MoodParts().Where(p => Math.Abs(p.D) >= 0.005).GroupBy(p => KeyOf(p.Why)).ToDictionary(g => g.Key, g => (why: g.First().Why, d: g.Sum(p => p.D)));
+        foreach (var (k, r) in MoodHeard.ToList())
+        {
+            if (r.Ended >= 0) continue;
+            if (!truth.TryGetValue(k, out var t)) { MoodHeard.Remove(k); continue; }   // made up: the praise of a well-wisher
+            if (!r.Silent && !r.Wrong && r.Heard <= Age) continue;
+            (r.Silent, r.Wrong, r.Text, r.D, r.Teller) = (false, false, t.why, t.d, "");
+            r.Heard = Math.Min(r.Heard, Age);
+        }
+        foreach (var (k, t) in truth) if (!MoodHeard.ContainsKey(k)) MoodHeard[k] = new Report { Text = t.why, D = t.d, Heard = Age };
+        PlainSince = Age;
+        EstMood = Clamp(Mood + MoodBias(), 0, 1);
     }
 
     // Count a report for the soak and hand it back; told bad news is also counted by how feared the leader is
@@ -250,13 +272,13 @@ partial class Sim
                         var alike = t == null ? Array.Empty<Trait>() : Traits.InCat(t.Cat).Where(x => x.Key != t.Key).ToArray();
                         if (alike.Length > 0) { r.Wrong = true; r.Text = $"Their ruler is {alike[(int)(HearRoll(k, 4) * alike.Length)].Name.ToLowerInvariant()}"; }
                     }
-                    if (!warm) r.Heard = Age + (12 + 36 * HearRoll(k, 3)) * HourMs;
+                    r.Heard = Age + (warm ? -1 : 1) * (12 + 36 * HearRoll(k, 3)) * HourMs;
                 }
                 else if (why != "We live under the same rule")
                 {
                     r.Teller = "their letters";
                     if (HearRoll(k, 1) < 0.1 + 0.4 * cold) r.Silent = true;
-                    if (!warm) r.Heard = Age + (12 + 36 * HearRoll(k, 3)) * HourMs;
+                    r.Heard = Age + (warm ? -1 : 1) * (12 + 36 * HearRoll(k, 3)) * HourMs;   // backdated when warm, so times differ (0.87.2)
                 }
                 SisHeard[k] = Made(r);
             }

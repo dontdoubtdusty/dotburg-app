@@ -11,8 +11,8 @@
   "eyebrow": "Dotburg design tool",
   "accent": { "light": "#3a63b8", "dark": "#8fb0f0" },
   "about": "Mechanic Intersectionality Tool data for Dotburg. Hand-kept: add a mechanic, link or idea here, then reopen the local page (claude/mechanics-page.html; not published). A link means the player can SEE mechanic 'from' change mechanic 'to' (code links with no visible effect do not count). Direct effects only. Levels: 1 flavor (a cosmetic touch), 2 nudge (changes odds or choices), 3 drives (B depends on A). Ideas are proposed links, not built. Summaries checked against claude/systems.md on Nov 13 (0.77): stale trait and age wording fixed. Links are hand-kept per feature and not yet verified line by line against the code. Every idea must pass the two questions in vision.md (The player): could the leader know it, and does it give the player a lever?",
-  "updated": "2026-11-15",
-  "version": "0.87.0",
+  "updated": "2026-11-16",
+  "version": "0.87.2",
   "levels": [
     { "level": 0, "name": "None", "percent": 0 },
     { "level": 1, "name": "Flavor", "percent": 33 },
@@ -109,7 +109,8 @@
     { "from": "mood", "to": "births", "level": 2, "why": "Content towns marry more." },
     { "from": "politics", "to": "gov", "level": 3, "why": "Revolutions, coups and reforms change the rule." },
     { "from": "politics", "to": "leader", "level": 3, "why": "Deaths, elections, step downs and coups change who leads." },
-    { "from": "politics", "to": "mood", "level": 2, "why": "Events dip or lift mood." },
+    { "from": "politics", "to": "mood", "level": 2, "why": "Events dip or lift mood. 0.87.2 (hearsay): a survived attempt on the leader brings out everything kept from them or softened; the believed mood snaps to the truth and the mood tip says so for a day." },
+    { "from": "guards", "to": "visitors", "level": 1, "why": "0.87.2: a caught spy stands where caught until a guard (a free patrol, or one from the gate) walks them out by the west gate." },
     { "from": "politics", "to": "walkers", "level": 3, "why": "Arrests, exiles and emigrants leave; escorts walk." },
     { "from": "politics", "to": "migration", "level": 3, "why": "Emigrants and exiles join a named sister." },
     { "from": "politics", "to": "crier", "level": 1, "why": "Each turn of events is announced and the big ones chronicled." },
@@ -283,6 +284,10 @@
     { "from": "comet", "to": "bonds", "level": 1, "why": "0.85: doomsayers cry out three times as often while it hangs in the sky." }
   ],
   "ideas": [
+    { "from": "weather", "to": "fires", "level": 3, "fits": "Owner idea (2026-11-15), not scheduled", "idea": "Dryness: a saved town-wide level that builds over dry weather and drains slowly with rain (replacing the hidden dryDays, capped at 2 days and reset by one wet spell). Drier means more fires, faster growth and further spread; could also weaken wells and ponds, thin the crop and blunt floods. Heard through the steward and captain, shown as browned grass. Real droughts need weather with memory." },
+    { "from": "leader", "to": "politics", "level": 3, "fits": "Owner idea (2026-11-15), after the council", "idea": "The leader has levers, the player none: granary, rationing, curfew, quarantine, festivals, aid, war and peace, arrests, refugees, a drought fire ban. Each decided by the leader's personality (traits), history (saved memories: a burnt street, an attempt, a refused plea, a friend lost) and current society (mood, rule, council advice, panic), inside the rule's limits. The player sees the leader's own reasons; the advice behind them arrives as hearsay." },
+    { "from": "blight", "to": "leader", "level": 2, "fits": "Leader levers follow-up", "idea": "Memories: big events leave a saved mark on the sitting leader (survived an attempt, lost a war, a fire in their street) that leans later decisions and shows in their lines." },
+    { "from": "leader", "to": "chronicler", "level": 1, "fits": "Owner idea (2026-11-15), not scheduled", "idea": "A new settlement starts with only the Town crier in the Messenger; the Chronicle contact and its keeper (a real dot-man, chosen by EnsureChronicler as now) appear only when the first leader is chosen. Open question: the founding events before that (settling, the first rule) are the most chronicle-worthy, so the first keeper could open with a short entry on how the place began, else chronicle.txt starts mid-story. Passes The player: the leader would know who keeps the record; no lever." },
     { "from": "bonds", "to": "gov", "level": 3, "fits": "Council (planned, vision)", "idea": "A council of four real dot-men (steward, captain, physician, spymaster; two elders in a hamlet), each a named source of information and of rare stories: reports are as good as their traits, their bond with the leader and their time in the seat; their reports are the source of the hearsay tooltips; a dropped councillor bears a grudge." },
     { "from": "sisters", "to": "messenger", "level": 1, "fits": "Council follow-up", "idea": "A fifth seat, the envoy, as the named source for sister news. Left out of the first council (2026-11-15) because the sisters' own letters, caravans and migrants already carry it; revisit if sister tooltips feel thin." },
     { "from": "bonds", "to": "messenger", "level": 2, "fits": "Council follow-up (CK3 reading)", "idea": "A clumsy or loose-lipped spymaster leaks the leader's own grudges, illness or failures into town gossip and to the sisters: hearsay flowing out of the seat, not only in." },

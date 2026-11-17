@@ -558,6 +558,7 @@ partial class Sim
         }
         if (dead) { Murdered(lw, line); Feud(); return; }
         Nudge(-0.05, "an attempt on the leader");
+        HearCrisis();   // the leader learns what was kept from them (Hearsay.cs, 0.87.2)
         Say(line);
         Note(line);
         Feud();
@@ -716,6 +717,15 @@ partial class Sim
     // Where a held dot-man will stand: the end of the walk they were on, or where they are.
     static (int x, int y) HeldSpot(Walker w) => w.Mode == Mode.Walk && w.Path.Count > 0 ? w.Path[^1] : (w.X, w.Y);
 
+    // A guard no longer needed walks out by the west gate (0.87.2; a patrol cut by a rule change used to vanish).
+    void StandDown(Walker g)
+    {
+        var (gx, gy) = Entrance();
+        g.Path = Route(g.X, g.Y, gx, gy, g.Lane);
+        g.Goal = Goal.Taken;
+        g.Mode = Mode.Walk;
+    }
+
     // A guard walking in at the west gate, not yet doing anything.
     Walker NewGuard()
     {
@@ -739,11 +749,11 @@ partial class Sim
     {
         int want = Lots.Count > 0 ? G.Guards : 0;
         var patrol = guards.Where(g => g.Goal is Goal.Stroll or Goal.Visit).ToList();
-        for (int i = want; i < patrol.Count; i++) patrol[i].Gone = true;
+        for (int i = want; i < patrol.Count; i++) StandDown(patrol[i]);   // walk out, not vanish (0.87.2)
         for (int i = patrol.Count; i < want; i++) NewGuard();
 
         // Each held prisoner needs a guard on the way: the nearest free patrol, or a new one from the gate.
-        foreach (var w in Walkers)
+        foreach (var w in Walkers.Concat(Visitors))   // visitors too: a caught spy (0.87.2)
         {
             if (!w.Held || w.Gone || guards.Any(g => g.Prisoner == w)) continue;
             var (hx, hy) = HeldSpot(w);
@@ -803,9 +813,7 @@ partial class Sim
         if (w == null || w.Gone || !w.Held)
         {
             g.Prisoner = null;
-            g.Path = Route(g.X, g.Y, gx, gy, g.Lane);
-            g.Goal = Goal.Taken;
-            g.Mode = Mode.Walk;
+            StandDown(g);
             return;
         }
         if (w.Mode == Mode.Walk) return;   // still finishing their walk to where they will be held

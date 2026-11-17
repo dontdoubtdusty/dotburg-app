@@ -418,7 +418,7 @@ public partial class Program
             float rbtn = title - 6;
             float verW = ImGui.CalcTextSize(VersionTag).X;
             float caps = chron ? 0 : CapsW;   // the window buttons go in the rightmost title bar
-            XpWindow(bg, mA, mB, title, $"{sim.Name} - {Sim.TierNames[sim.Tier - 1]}", true, caps + rbtn + 4 + verW + 10);
+            XpWindow(bg, mA, mB, title, sim.TownStyle, true, caps + rbtn + 4 + verW + 10);
             RestartButton(bg, Px(mB.X - Bd - caps - rbtn - 2, mA.Y + (Bd + title - rbtn) / 2), rbtn);
             bg.AddText(Px(mB.X - Bd - caps - rbtn - 10 - verW, mA.Y + (Bd + title - ImGui.GetFontSize()) / 2), U(0x9cc0ff), VersionTag);
             if (!chron) WindowButtons(bg, mB.X, mA.Y);
@@ -594,6 +594,8 @@ public partial class Program
             ImGui.PopStyleColor();
             double to = sim.HeardTarget;
             ImGui.TextDisabled(to > hm + 0.05 ? "Word is their spirits are rising." : to < hm - 0.05 ? "Word is their spirits are sinking." : "Settled, by all accounts.");
+            // For a day after a survived attempt, say why the picture just cleared (0.87.2, Hearsay.cs HearCrisis).
+            if (sim.PlainSince >= 0 && sim.Age - sim.PlainSince < Sim.DayMs) ImGui.TextDisabled("Since the attempt on your life, people speak plainly.");
 
             // Standing reasons as told, weightiest first.
             // (The rule's own level is the baseline everything moves from, not a reason, so it is left out.)

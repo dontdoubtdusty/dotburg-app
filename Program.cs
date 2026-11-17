@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.87.0";
+    const string Version = "Dotburg 0.87.2";
 
     [STAThread]
     static void Main(string[] args)
@@ -127,6 +127,7 @@ public partial class Program
                 else if (args[i] == "--season" && i + 1 < args.Length) forceSeason = int.Parse(args[++i]);
                 else if (args[i] == "--skin" && i + 1 < args.Length) forceSkin = args[++i];
                 else if (args[i] == "--truth") Sim.Truth = true;   // tips show the real numbers, not hearsay (Hearsay.cs)
+                else if (args[i] == "--dread") Sim.ForceDread = 0.8;   // every leader feared (Hearsay.cs), to measure the feared band
             }
             if (soak > 0) { Soak(soak, preUnits); SoakTraits(); if (args.Contains("--ill")) SoakIllness(preUnits > 0 ? preUnits : 150); if (args.Contains("--fires")) SoakFires(preUnits > 0 ? preUnits : 150); if (args.Contains("--wars")) SoakWars(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--health")) SoakHealth(preUnits > 0 ? preUnits : 1500, soak); if (args.Contains("--food")) SoakFood(soak); if (args.Contains("--rules")) SoakRules(150); if (args.Contains("--events")) SoakEvents(preUnits > 0 ? preUnits : 400, soak); return; }
             bool testing = shot != null;   // screenshot runs never touch the saved town

@@ -135,17 +135,25 @@ public partial class Program
                 var pw = sim.Walkers.FirstOrDefault(x => x.Id == id);
                 uint ph = PicHash(id * 31 + 7);
                 if (IconPic(dl, at, px * 12, ph)) return;
-                Portrait(dl, at, px, ph, 0xe4ecf4, Darken(pw != null ? Content.DotColors[pw.C] : 0x909090, 0.8f), Array.Empty<string>(), 0);
+                Portrait(dl, at, px, ph, 0xe4ecf4, -1, Array.Empty<string>(), 0, pw != null ? Content.DotColors[pw.C] : 0x909090);
                 return;
             }
             if (key == "me")
             {
-                int dot = sim.LeaderWalker is { } lw ? Content.DotColors[lw.C] : 0xd9a441;
-                uint h = PicHash((sim.LeaderWalker?.Id ?? 0) * 31 + 7);
+                // No leader yet: the default MSN picture, a blue buddy behind a green one (0.87.1).
+                if (sim.LeaderWalker is not { } lw)
+                {
+                    dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(0xf4f8fc));
+                    Art(dl, at + new Vector2(px * 1, px * 1), px, Buddy, c => c == 'h' ? 0x6aa0f0 : 0x2a6fd6);
+                    Art(dl, at + new Vector2(px * 4, px * 4), px, Buddy, c => c == 'h' ? 0x7ad35a : 0x3fae29);
+                    return;
+                }
+                int dot = Content.DotColors[lw.C];
+                uint h = PicHash(lw.Id * 31 + 7);
                 if (IconPic(dl, at, px * 12, h)) return;
                 // A crown for a monarch; anyone else wears the chain of office.
                 var prop = sim.GovKey == "crown" ? new[] { "....y.y.y...", "....yyyyy..." } : new[] { "", "", "", "", "", "", "...y....y...", "....yyyy...." };
-                Portrait(dl, at, px, h, Lighten(sim.G.Banner & 0xffffff, 0.6f), Darken(dot, 0.8f), prop, 0xf2c14e);
+                Portrait(dl, at, px, h, Lighten(sim.G.Banner & 0xffffff, 0.6f), -1, prop, 0xf2c14e, dot);
                 return;
             }
             if (key == "bot")
@@ -204,7 +212,7 @@ public partial class Program
                 Art(dl, at, px, extra, _ => ec);
                 return;
             }
-            Portrait(dl, at, px, nh, bg, body, extra, ec);
+            Portrait(dl, at, px, nh, bg, body, extra, ec, sim.TownDot);   // notables keep the job's colours, in the town's own dot colour
         }
 
         // ---------- display pictures ----------
@@ -214,7 +222,8 @@ public partial class Program
         Texture2D avatarTex;
         const int AvatarCell = 96, AvatarAcross = 8;
         static readonly int[] Pastels = { 0xcfe3f7, 0xd8f0d0, 0xf7e3c8, 0xf2d4e4, 0xe4dcf4, 0xf4f0c8, 0xd4ecec, 0xe8e8e8 };
-        static readonly int[] Skins = { 0xf1c8a0, 0xe0b080, 0xc68a5a, 0x8d5a3a };
+        // Everyday clothes for portraits (0.87.1): muted, so they never pass for a dot colour.
+        static readonly int[] Clothes = { 0x7a5a3a, 0x34446a, 0x56703a, 0x7a3440, 0x5a6470, 0xa08a3a };
         static readonly int[] Hairs = { 0x2a1a10, 0x6a4020, 0xc89040, 0xa03a20, 0xb8b8b8 };
         static readonly string[][] HairCuts =
         {
@@ -254,12 +263,16 @@ public partial class Program
 
         // A pixel portrait: skin, hair colour and cut from the hash, eyes, the body in the job's colour, then the prop
         // (crown, helmet, red cross) on top.
-        static void Portrait(ImDrawListPtr dl, Vector2 at, float px, uint h, int bg, int body, string[] prop, int propCol)
+        // Since 0.87.1 the skin is the dot-man's own colour (as on the town picture) and body -1 means everyday clothes
+        // from Clothes, picked by the hash; eyes turn light on a dark dot-man so they still show.
+        static void Portrait(ImDrawListPtr dl, Vector2 at, float px, uint h, int bg, int body, string[] prop, int propCol, int skin)
         {
-            int skin = Skins[(h >> 4) % (uint)Skins.Length], hair = Hairs[(h >> 12) % (uint)Hairs.Length];
+            int hair = Hairs[(h >> 12) % (uint)Hairs.Length];
+            if (body < 0) body = Clothes[(h >> 24) % (uint)Clothes.Length];
+            int luma = (((skin >> 16) & 255) * 3 + ((skin >> 8) & 255) * 6 + (skin & 255)) / 10;
             dl.AddRectFilled(at, at + new Vector2(px * 12, px * 12), U(bg));
             Art(dl, at, px, Person, c => c == 'h' ? skin : body);
-            Art(dl, at, px, new[] { "", "", "", "....e..e...." }, _ => 0x2a1a10);
+            Art(dl, at, px, new[] { "", "", "", "....e..e...." }, _ => luma < 0x60 ? 0xe8e8e8 : 0x2a1a10);
             Art(dl, at, px, HairCuts[(h >> 16) % (uint)HairCuts.Length], _ => hair);
             Art(dl, at, px, prop, _ => propCol);
         }
@@ -364,7 +377,7 @@ public partial class Program
             Rich(bg, new Vector2(tx, y + line + 6), 0, sim.MeMessage(), sk.Motto);
             bg.PopClipRect();
             if (ImGui.IsMouseHoveringRect(new Vector2(x0, y), new Vector2(x1, y + pic)))
-                Tip($"You are signed in as {sim.LeaderTitle}, {sim.G.Name.ToLower()} of {sim.Name}.\nStatus: {PresenceWord(me)}. Colour scheme: {sk.Name}, the leader's choice.\nThe leader answers for the town; you read along.");
+                Tip((sim.Leader == null ? $"You are signed in as {sim.MeName}: no leader sits yet." : $"You are signed in as {sim.LeaderTitle}, {sim.G.Name.ToLower()} of {sim.Name}.") + $"\nStatus: {PresenceWord(me)}. Colour scheme: {sk.Name}, the leader's choice.\nThe leader answers for the town; you read along.");
             y += pic + Gap;
 
             // Contacts: a white pane, about 40% of what is left (a little less when the toolbar fits under it).

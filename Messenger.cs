@@ -41,7 +41,23 @@ partial class Sim
     long Typing() => TickNo + (long)((3 + chatRng.NextDouble() * 6) * 1000 / TickMs);
 
     // Our leader's short name for the chat ("Mayor Ada"), or the town while nobody leads.
-    public string MeName => Leader != null ? $"{G.Title} {Leader.Name}" : Name;
+    public string MeName => Leader != null ? $"{G.Title} {Leader.Name}" : $"{Name} public account";   // 0.87.1: no leader yet
+
+    // The town's style for the town window's title (0.87.1): one of three per tier, fixed by the town's name.
+    public string TownStyle
+    {
+        get
+        {
+            var styles = Tier switch
+            {
+                1 => new[] { "The Hamlet of {n}", "The Settlement of {n}", "The Folk of {n}" },
+                2 => new[] { "The Village of {n}", "The Parish of {n}", "The Good Folk of {n}" },
+                3 => new[] { "The Town of {n}", "The Township of {n}", "The Burghers of {n}" },
+                _ => new[] { "The City of {n}", "The Free City of {n}", "The Citizens of {n}" },
+            };
+            return styles[(int)((uint)Names.Seed(Name) % (uint)styles.Length)].Replace("{n}", Name);
+        }
+    }
 
     // ---------- the crier's chat (0.86) ----------
     const int CrierKeep = 600;   // lines kept (and saved): about two weeks of calls

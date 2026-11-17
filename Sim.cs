@@ -154,6 +154,7 @@ partial class Sim
     }
 
     Scheme Sc => Content.Schemes[Scheme];
+    public int TownDot => Content.DotColors[Sc.Dot];   // the town's own dot colour (notables' portraits, 0.87.1)
 
     // ---------- day, night and seasons ----------
     public double Phase => (Age % DayMs) / DayMs;   // 0 midnight, .5 noon

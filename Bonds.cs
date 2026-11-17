@@ -276,6 +276,18 @@ partial class Sim
         return parts.Count == 0 ? "" : "; " + string.Join("; ", parts);
     }
 
+    // What anyone could see of a stranger (0.87.2): what they are at right now, and where they live.
+    string Seen(Walker w, int rank)
+    {
+        var p = new List<string>();
+        if (w.Goal == Goal.Build) p.Add("works on the building site");
+        else if (w.Good >= 0) p.Add($"carries {((Good)w.Good).ToString().ToLowerInvariant()}");
+        int h = HomeOf(w);
+        if (h == rank) p.Add("lives here");
+        else if (h >= 0) p.Add($"lives in the {Content.Label(Built[h])} on lot {h + 1}");
+        return string.Join("; ", p);
+    }
+
     // Lines for a building's hover tip: who is in or at it. People the leader knows show their traits and feelings;
     // strangers show what is said of them (Hearsay.cs).
     public IEnumerable<string> PeopleAt(int rank)
@@ -295,8 +307,8 @@ partial class Sim
             }
             else
             {
-                string rep = Repute(w), feel = Feelings(w, false);
-                yield return rep == "" && feel == "" ? $"{who}." : $"{who}: {(rep == "" ? feel.TrimStart(';', ' ') : rep + feel)}.";
+                string body = string.Join("; ", new[] { Repute(w), Seen(w, rank) }.Where(s => s != "")) + Feelings(w, false);
+                yield return body == "" ? $"{who}." : $"{who}: {body.TrimStart(';', ' ')}.";
             }
         }
     }

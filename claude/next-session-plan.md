@@ -15,16 +15,9 @@
 - Rule: a bug fix never carries a new mechanic. If a fix needs a design change, that change becomes a planned step here.
 - Rough split: 40% build, 35% hone, 25% bugs. Builds since the last bug session: 1 (hearsay, 0.87.0; count resets after each bug session).
 
-1. **Hone: hearsay tooltips** (built in 0.87.0; how it works in `systems.md`, Hearsay). Watch it in the real app first. Noticed during the build:
-   - The believed mood can sit far from the truth: a spiteful sovereign believed 59 when it was 42 (soak). Intended, but check it does not read as a bug; maybe cap the bias or let a crisis (riot, coup attempt) snap the estimate back.
-   - Sister tips are thin (often one or two reasons) and every sister reason arrives "21 hours ago" after a pre-grown start.
-   - Strangers with no repute and no deep feelings show only a name and age; check a full house reads well.
-   - The feared band (dread 0.66+) has not been measured yet: the soak's town never had one. Run soaks until one does, or add a test flag.
-   - "Lately" rows still come from everyone's eyes (no teller); fine for public events, but some may deserve one.
-3. **Build: council** (vision, Rule and people): a councillor is a named source of information plus rare stories; four seats decided (2026-11-15, see vision). Settle the rest with the owner first (who appoints, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
-4. **Hone: council.**
-5. **Bug and health session.** Known stand-ins to clear: patrols trimmed by a rule change vanish; a caught spy is not walked out.
-6. Optional: cap the hovered frame rate at 30 if 7.8% of a core while hovering matters.
+1. **Build: council** (vision, Rule and people): a councillor is a named source of information plus rare stories; four seats decided (2026-11-15, see vision). Settle the rest with the owner first (who appoints, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
+2. **Hone: council.**
+3. **Bug and health session.** The known stand-ins (vanishing patrols, a spy walking out alone) were cleared in the 0.87.2 hone.
 
 ## 2. Patterns to follow
 

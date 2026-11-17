@@ -117,6 +117,8 @@ partial class Sim
                     Px(4, 4, Stock[r, (int)Good.Bread] >= 12 ? bread : bare);
                 }
             }
+            // A hoarding home: one sack at the corner, where the mill stacks its first (0.87.3).
+            if (Hoarding(r)) Px(6, 5, Mix(grain, 0x8a6a20, 0.3));
             // The mill's granary spills over into sacks either side of the door.
             if (t == "mill" && pileN++ == 0)
             {

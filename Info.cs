@@ -44,7 +44,7 @@ partial class Sim
             lines.Add($"Home: {live} of {cap} places filled.");
         }
         int inside = Walkers.Count(w => !w.Gone && w.Mode == Mode.Inside && w.At == rank);
-        if (inside > 0) lines.Add($"{inside} dot-men inside now ({Walkers.Count(w => !w.Gone && w.Mode == Mode.Inside && w.At == rank && w.Sleep)} asleep).");
+        if (inside > 0) lines.Add($"{inside} {(inside == 1 ? "dot-man" : "dot-men")} inside now ({Walkers.Count(w => !w.Gone && w.Mode == Mode.Inside && w.At == rank && w.Sleep)} asleep).");
         int outside = Walkers.Count(w => !w.Gone && w.Mode != Mode.Inside && w.At == rank);
         if (outside > 0) lines.Add($"{outside} standing outside.");
         lines.AddRange(PeopleAt(rank));

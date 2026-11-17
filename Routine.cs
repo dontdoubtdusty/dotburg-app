@@ -14,6 +14,10 @@ partial class Sim
     int bakedToday, soldToday, tripsToday, turnedToday, longestToday;
     int reportDay;
     readonly Dictionary<string, int> voiceCount = new();
+    readonly HashSet<string> saidToday = new();   // "role.event" said today: each kind of news once a day (0.87.3)
+    readonly List<double> storeLog = new();      // days of food at each morning report since the last trend was told (0.87.3)
+    int hungerDay = -99, hungerSaid, millDay = -99;   // when hunger and the idle mill were last reported, and how many hungry then
+    string lastCrop = "";                        // the crop word at the last report
     readonly Dictionary<string, long> voiceLast = new();
     bool breadOut, shelvesBare, greensSeen = true;
 
@@ -30,8 +34,10 @@ partial class Sim
         if (Quiet) return;
         int n = voiceCount.GetValueOrDefault(role);
         if (n >= VoiceCap) return;
+        if (ev != "small" && ev != "winter" && saidToday.Contains($"{role}.{ev}")) return;   // no repeat alerts the same day
         if (!urgent && TickNo - voiceLast.GetValueOrDefault(role, -1_000_000) < VoiceGapDays * DayMs / TickMs) return;
         voiceCount[role] = n + 1;
+        saidToday.Add($"{role}.{ev}");
         voiceLast[role] = TickNo;
         Npc(role, ev, false, a);
     }
@@ -51,6 +57,7 @@ partial class Sim
             reportDay = DayNumber;
             bakedToday = soldToday = tripsToday = turnedToday = longestToday = 0;
             voiceCount.Clear();
+            saidToday.Clear();
         }
         if (d < 0.3) return;   // shops are shut at night
         int v = Visible;
@@ -102,35 +109,47 @@ partial class Sim
         if (bought >= 3) Voice("grocer", "hoard", bought.ToString());
     }
 
-    // The steward's morning report: two or three facts from yesterday and today, picked so it does not read the same.
+    // The steward's morning report (0.87.3): one headline about the stores, the fields or the coffers, with its reason,
+    // and only when something changed; a quiet morning says nothing. Lines, hoarding and the counters are the grocer's;
+    // running low has its own alarm ("low" in Food.cs).
     void MorningReport()
     {
-        var facts = new List<string>();
-        double days = Math.Max(0, Math.Round(FoodDays));
-        facts.Add(days < 4 ? $"only {days} days of food left (!)" : $"{days} days of food in store");
-        if (bakedToday > 0 && soldToday > 0) facts.Add($"the ovens baked {bakedToday} loaves and the counters sold {soldToday} meals");
-        else if (soldToday > 0) facts.Add($"the counters sold {soldToday} meals");
-        if (tripsToday >= 5) facts.Add($"carriers made {tripsToday} trips");
-        if (turnedToday >= 3) facts.Add($"{turnedToday} went home hungry from empty counters :S");
-        if (longestToday >= 4) facts.Add($"the longest line was {longestToday} at the door");
-        double th = DaysToHarvest();
-        if (SeasonNo <= 1 && th > 0) facts.Add($"{Math.Round(th)} days to the reaping, and the crop looks {CropWord}");
-        if (SeasonNo == 2 && Standing > 0) facts.Add($"{Math.Round(Standing)} sacks still standing in the fields");
+        double days = Math.Max(0, Math.Round(FoodDays)), th = DaysToHarvest();
+        storeLog.Add(days);
+        if (storeLog.Count > 8) storeLog.RemoveAt(0);
+        double then = storeLog[0];
+        int span = storeLog.Count - 1;
+        string Days(double n) => n == 1 ? "1 day" : $"{n} days";
+        static string Ago(int n) => n switch { 3 => "three days ago", 4 => "four days ago", 5 => "five days ago", 6 => "six days ago", _ => "a week ago" };
         int mill = Built.FindIndex(t => t == "mill");
-        if (mill >= 0 && mill < Visible && Stock[mill, (int)Good.Grain] < 5 && GrainTotal() > 20) facts.Add("the mill stood idle for want of grain");
-        if (Gold < 8) facts.Add($"the treasury is down to {Math.Round(Gold)} gold");
-        // The first fact is always the stores; then up to two more, chosen at random.
-        var pick = new List<string> { facts[0] };
-        var rest = facts.Skip(1).OrderBy(_ => chatRng.Next()).Take(2);
-        pick.AddRange(rest);
-        string body = string.Join("; ", pick);
-        Npc("steward", "report", false, char.ToUpper(body[0]) + body[1..] + ".");
+        string? why = mill >= 0 && mill < Visible && Stock[mill, (int)Good.Grain] < 5 && GrainTotal() > 20 ? "the mill stood idle for want of grain" : null;
+        // Hunger at the counters is news when it starts or gets clearly worse, not every morning it goes on.
+        bool hungerNews = turnedToday >= 3 && (DayNumber - hungerDay > 3 || turnedToday >= hungerSaid * 1.5);
+        if (turnedToday < 3 && DayNumber - hungerDay > 3) hungerSaid = 0;
+        string? say = null;
+        if (hungerNews)
+        {
+            (hungerDay, hungerSaid) = (DayNumber, turnedToday);
+            say = $"{turnedToday} went home hungry from empty counters :S" + (why != null ? $" Cause: {why}" : "");
+        }
+        else if (span >= 3 && Math.Abs(then - days) >= 3)
+        {
+            say = then > days
+                ? $"Stores are falling: {Days(days)} of food left, down from {then} {Ago(span)}" + (th > days ? ". At this rate we run short before the reaping" : "")
+                : $"Stores are rising: {Days(days)} of food now, up from {then} {Ago(span)}";
+            storeLog.RemoveRange(0, storeLog.Count - 1);   // the next trend is measured from here
+        }
+        else if (why != null && DayNumber - millDay > 2) { millDay = DayNumber; say = char.ToUpper(why[0]) + why[1..]; }
+        else if (SeasonNo <= 1 && th > 0 && lastCrop != "" && CropWord != lastCrop) say = $"The crop looks {CropWord} now, {Days(Math.Round(th))} to the reaping";
+        else if (Gold < 8 && chatRng.NextDouble() < 0.34) say = $"The treasury is down to {Math.Round(Gold)} gold";
+        lastCrop = SeasonNo <= 1 ? CropWord : "";
+        if (say != null) Npc("steward", "report", false, say + ".");
     }
 
     // Lines for the new voices and the report (merged into NpcSay).
     static readonly Dictionary<string, string[]> RoutineSay = new()
     {
-        ["steward.report"] = new[] { "Morning report: {a}", "(case) Good morning. {a}", "Today's numbers: {a}", "(meal) The day's tally: {a}" },
+        ["steward.report"] = new[] { "{a}", "(case) {a}", "(meal) {a}" },
         ["physician.week"] = new[] { ":( {a} these last days. I did what I could.", "(bouquet) {a} since I last wrote. Flowers at the churchyard.", ":| {a}. The old go, the young carry on." },
         ["physician.noweek"] = new[] { "(*) Not a single funeral in four days!", ":D Nobody buried this week. I'll take it.", "(apple) Clean bill of health for the whole town." },
         ["baker.out"] = new[] { ":S Sold out of bread already!", "Not a crumb left on my racks :(", "(!) Out of bread. More in an hour, if the flour comes." },

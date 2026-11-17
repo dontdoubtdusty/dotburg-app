@@ -432,10 +432,10 @@ The harvest came in at {a} sacks. Lean, but we'll stretch it, {me}.
 The seed corn's been eaten. Next year's fields will be thin.
 
 [npc.steward.low news | !fearful]
-(!) Our stores will last about {a} days. We should stop selling grain.
-:S {a} days of food left, if nobody hoards.
+(!) Our stores will last about {a}. We should stop selling grain.
+:S {a} of food left, if nobody hoards.
 [npc.steward.low news | fearful]
-About {a} days in the stores. All in hand, of course.
+About {a} in the stores. All in hand, of course.
 
 [npc.steward.queue news]
 :S Queues at every counter. People are buying for the week.
@@ -467,10 +467,9 @@ About {a} days in the stores. All in hand, of course.
 (food) {a} sent grain. We eat tonight :)
 
 [npc.steward.report news]
-Morning report: {a}
-(case) Good morning. {a}
-Today's numbers: {a}
-(meal) The day's tally: {a}
+{a}
+(case) {a}
+(meal) {a}
 [npc.steward.report news | fearful]
 Your morning report, {me}: {a}
 

@@ -77,6 +77,7 @@ partial class Sim
     int foodStep;
     double harvestIn;                                      // grain reaped this autumn (for the crier)
     bool queueSaid, lowSaid;
+    double soldSince; int soldSaid = -99;   // grain sold since the steward last told of it, and the day they did
     long lastQueueTick;
     public int HungerDead;                                 // starved since the town was founded (not saved)
     readonly List<Job> jobs = new();
@@ -411,7 +412,7 @@ partial class Sim
             Npc("steward", FoodRule.hoard > 0 ? "queue" : "ration", true);
         }
         else if (Panic < 0.15) queueSaid = false;
-        if (days < 3 && !lowSaid) { lowSaid = true; Npc("steward", "low", false, Math.Max(0, Math.Round(days)).ToString()); }
+        if (days < 3 && !lowSaid) { lowSaid = true; Npc("steward", "low", false, Math.Max(0, Math.Round(days)) is var dn && dn == 1 ? "1 day" : $"{dn} days"); }   // the phrase says "{a} of food left" (0.87.3)
         else if (days > 6) lowSaid = false;
     }
 
@@ -827,7 +828,9 @@ partial class Sim
             {
                 Pay(Math.Min(3, Math.Round(sold / 30, 1)));
                 Say($"{Name} sells {Math.Round(sold)} sacks of grain to the region.", false);
-                if (sold >= 30) Npc("steward", "sold", false, Math.Round(sold).ToString());
+                soldSince += sold;
+                // The steward tells of sales at most every three days, as one total (0.87.3; it was every sale).
+                if (soldSince >= 30 && DayNumber - soldSaid >= 3) { Npc("steward", "sold", false, Math.Round(soldSince).ToString()); soldSince = 0; soldSaid = DayNumber; }
             }
         }
         // Starving, with seed corn in the loft: the town eats it, and next year pays for it.
@@ -1052,6 +1055,28 @@ partial class Sim
             fields, crop, CropQ, Carriers, HungryCount, WeakCount, HungerDead, rule);
     }
     static string Plural(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
+    // --hoard: the first three homes fill their pantries to the brim, so the sack shows (test only).
+    public void TestHoard()
+    {
+        int n = 0;
+        for (int r = 0; r < Visible && n < 3; r++) if (Content.IsHome(Built[r]) && Residents(r) > 0) { Stock[r, (int)Good.Meals] = RoomFor(r, Good.Meals); n++; }
+    }
+
+    // A home holding well beyond its everyday shopping (about a meal each): hoarding. Shown by a sack at the door (0.87.3).
+    bool Hoarding(int rank) => Content.IsHome(Built[rank]) && Stock[rank, (int)Good.Meals] > 1.5 * Math.Max(1, Residents(rank)) + 0.5;
+
+    // The pantry in a building tip (0.87.3): how long it feeds the household, and whether they are hoarding.
+    string PantryWords(int rank, double m)
+    {
+        if (m < 0.5) return "The pantry is empty.";
+        int res = Residents(rank);
+        if (res == 0) return $"Pantry: {Math.Round(m)} meal{(Math.Round(m) == 1 ? "" : "s")}, nobody to eat them.";
+        double days = m / (res * NeedPerDay);
+        string span = days < 0.5 ? "less than a day" : days < 1.5 ? "about a day" : $"about {Math.Round(days)} days";
+        string who = res == 1 ? "one dot-man" : $"{res} dot-men";
+        return Hoarding(rank) ? $"Pantry: hoarding, {span} for {who} ({Math.Round(m)} meals)." : $"Pantry: {span} for {who}.";
+    }
+
     string CropWord => CropQ < 0.55 ? "poor" : CropQ < 0.85 ? "thin" : CropQ < 1.1 ? "fair" : "rich";
 
     // Hover tip lines for one building's store.
@@ -1066,7 +1091,7 @@ partial class Sim
         if (Content.IsHome(t))
         {
             double m = Stock[rank, (int)Good.Meals];
-            yield return m >= 0.5 ? $"Pantry: {Math.Round(m)} meal{(Math.Round(m) == 1 ? "" : "s")}." : "The pantry is empty.";
+            yield return PantryWords(rank, m);
             int hungry = Walkers.Count(w => !w.Gone && w.Kind == "" && HomeOf(w) == rank && w.Food < HungryAt);
             if (hungry > 0) yield return hungry == 1 ? "Someone here is hungry." : $"{hungry} here are hungry.";
         }

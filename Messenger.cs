@@ -496,7 +496,7 @@ partial class Sim
         ["steward.fails"] = new[] { ":'( The harvest has failed. {a} sacks, no more. Hold on to what we have.", "(!) Only {a} sacks this year. It will be a hungry winter." },
         ["steward.rotting"] = new[] { "(!) {a} sacks rotting in the fields. We needed more hands :(" },
         ["steward.seed"] = new[] { "(!) We had to eat the seed corn. The fields are half sown :S" },
-        ["steward.low"] = new[] { "(!) Our stores will last about {a} days. We should stop selling grain.", ":S {a} days of food left, if nobody hoards." },
+        ["steward.low"] = new[] { "(!) Our stores will last about {a}. We should stop selling grain.", ":S {a} of food left, if nobody hoards." },
         ["steward.queue"] = new[] { ":S Queues at every counter. People are buying for the week.", "(!) The shelves are empty by noon. Everyone is hoarding." },
         ["steward.ration"] = new[] { "(cop) Rationing is in force. One meal a head.", ":| Ration cards are out. Grumbling, but no queues." },
         ["steward.hungry"] = new[] { ":( {a} of our people have nothing to eat today.", "(meal) Empty bowls in {a} houses." },

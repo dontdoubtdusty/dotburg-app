@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.87.2";
+    const string Version = "Dotburg 0.87.3";
 
     [STAThread]
     static void Main(string[] args)
@@ -76,6 +76,7 @@ public partial class Program
             string? forceSick = null;
             bool forceFire = false, forceWar = false, forceChat = false, forceHurt = false, forceBrigade = false;
             bool forceHungry = false;
+            bool forceHoard = false;
             string? forceBlight = null;
             string? forceEvent = null;   // --event hero|prophet|hermit|market|comet|flood|flooddamage|feud (0.85)
             string? openChat = null;   // --open <key start>: open that conversation (with --chat)
@@ -102,6 +103,7 @@ public partial class Program
                 else if (args[i] == "--units" && i + 1 < args.Length) preUnits = double.Parse(args[++i]);
                 else if (args[i] == "--fresh") fresh = true;                else if (args[i] == "--ask-restart") askRestart = true;
                 else if (args[i] == "--hungry") forceHungry = true;
+                else if (args[i] == "--hoard") forceHoard = true;   // three homes hoarding, to see the sack (0.87.3)
                 else if (args[i] == "--wx" && i + 1 < args.Length) forceWx = Enum.Parse<Wx>(args[++i], true);
                 else if (args[i] == "--fest") forceFest = true;
                 else if (args[i] == "--phase" && i + 1 < args.Length) forcePhase = double.Parse(args[++i], System.Globalization.CultureInfo.InvariantCulture);
@@ -154,6 +156,7 @@ public partial class Program
             if (forceEvent != null) { Console.WriteLine(sim.ForceEvent(forceEvent)); for (int i = 0; i < 80; i++) sim.Tick(Sim.TickMs); }
             if (forceSick != null) { sim.ForceOutbreak(forceSick); for (int i = 0; i < 300; i++) sim.Tick(Sim.TickMs); }
             if (forceHungry) { sim.TestHunger(); for (int i = 0; i < 400; i++) sim.Tick(Sim.TickMs); }
+            if (forceHoard) sim.TestHoard();
             if (forceBrigade) Console.WriteLine(sim.TestBrigade());
             if (forceChat) selKey = sim.TestChat();
             if (args.Contains("--pals")) { selKey = sim.TestPals(); chronicleView.AddRange(sim.ChronicleQueue); }
@@ -317,6 +320,7 @@ public partial class Program
             var kinds = sim.Convos.GroupBy(c => c.Kind).Select(g =>
                 $"{g.Key,-8} chats {g.Count(),2}  lines kept {g.Sum(c => c.Lines.Count),4}  per day {g.Sum(c => c.Lines.Count(l => l.Day > sim.DayNumber - 10)) / days:F1}");
             var sample = sim.Convos.Where(c => c.Kind == "pal").Concat(sim.Convos.Take(4)).SelectMany(c => c.Lines.TakeLast(6).Select(l => $"[{c.Title}] {l.From}: {l.Text}"));
+            sample = sample.Concat(sim.Convos.Where(c => c.Title.StartsWith("Steward")).SelectMany(c => c.Lines.TakeLast(15).Select(l => $"[steward] {l.Text}")));   // the morning report (0.87.3)
             File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), $"\n--- messenger ---\nleaders signed in {sim.PalLeaders}, friends added {sim.PalFriendsMade}, blocked added {sim.PalFoesMade}, best friendship with a leader {sim.PalBestFriend:F2}, worst grudge {sim.PalBestGrudge:F2}\n" + string.Join("\n", kinds) + "\n" + string.Join("\n", sample) + "\n");
             // Every crier line, for judging variety: the full list, and the most common openings.
             File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "soak-say.txt"), sim.SayLog!);

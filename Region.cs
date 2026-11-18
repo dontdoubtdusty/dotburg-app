@@ -40,6 +40,7 @@ partial class Sim
 
     // ---------- state ----------
     public List<Sister> Sisters = new();
+    public string MotherTown = "";             // 0.90: the town our settlers came from (a new region's city, or the chartered old town); saved
     public double Gold = 12;                // this town's treasury, 0..100 (not growth units)
     const double EmptyCoffers = 5, FullCoffers = 60; // treasury levels that move the mood (0.77)
     const double FollowFriend = 0.25;                // a friend this close may follow an emigrant (0.77)
@@ -62,6 +63,7 @@ partial class Sim
         double gap = Math.Abs(them.Harsh - G.Harsh);
         if (gap > 0.005) l.Add(($"Their {them.Name.ToLowerInvariant()} is {(them.Harsh > G.Harsh ? "harsher" : "gentler")} than our {G.Name.ToLowerInvariant()}", -0.8 * gap));
         if (s.Gov == GovKey) l.Add(("We live under the same rule", 0.15));
+        if (s.Name == MotherTown) l.Add(("Their settlers founded us", 0.3));   // 0.90: the mother town
         foreach (var t in s.Lord?.Traits ?? Array.Empty<string>())
             if (Warmth.GetValueOrDefault(t) is var w && w != 0) l.Add(($"Their ruler is {(Traits.Exists(t) ? Traits.Get(t).Name : t).ToLowerInvariant()}", w));
         return l;
@@ -158,6 +160,7 @@ partial class Sim
         else NewRuler(Sisters[^1]);
         Gold = 10;
         string old = Name;
+        MotherTown = old;   // 0.90: the old town is the new hamlet's mother
         Founded++;
         Scheme = (Scheme + 1) % Content.Schemes.Length;   // the next landscape on from wherever the region began
         Name = Content.TownName(Rng, Sisters.Select(s => s.Name).Append(old).ToHashSet(), Founded);
@@ -522,6 +525,24 @@ partial class Sim
         LastFate = EvClock;
     }
 
+    // A new region starts with the city that sent our first settlers out (0.90): a full sister in the landscape
+    // before ours (as a charter leaves it), mostly its own colour with a few incomers, warm toward us.
+    void FoundMother()
+    {
+        int n = Content.Schemes.Length;
+        int sch = (Scheme + n - 1) % n;
+        string nm = Content.TownName(Rng, new HashSet<string> { Name }, Founded);
+        var counts = new int[Content.DotColors.Length];
+        counts[Content.Schemes[sch].Dot] = RandInt(44, 54);
+        for (int i = 0; i < 2; i++) counts[Content.Schemes[Rng.Next(n)].Dot] += RandInt(2, 5);
+        var s = new Sister { Name = nm, Scheme = sch, Counts = counts, Cap = counts.Sum(), Gov = RandomSisterGov(), Gold = RandInt(30, 50) };
+        Sisters.Add(s);
+        NewRuler(s);
+        MotherTown = nm;
+        Say($"{Name} is founded by settlers from the city of {nm}.");
+        SignIn(s);
+    }
+
     void FoundColony()
     {
         if (Sisters.Count >= 2) return;
@@ -593,7 +614,7 @@ partial class Sim
         var friends = Sisters.Where(s => RelOf(s) >= 0.25).ToList();
         if (friends.Count > 0 && WarOn == null && Daylight() > 0.4 && TickNo >= festUntil && Odds(0.048 * friends.Count)) Fair(Pick(friends));
         var foes = Sisters.Where(s => RelOf(s) < 0 && Govs.Get(s.Gov).Harsh >= 0.6).ToList();
-        if (foes.Count > 0 && Odds(0.04 * foes.Count)) Spy(Pick(foes));
+        if (foes.Count > 0 && Tier >= 2 && Odds(0.04 * foes.Count)) Spy(Pick(foes));   // 0.90: nobody spies on a hamlet
         // Sister news: two sisters make a pact or fall out.
         if (Sisters.Count >= 2 && OncePer(6))
         {

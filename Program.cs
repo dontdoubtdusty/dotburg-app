@@ -22,7 +22,7 @@ class OwnClock : IPowerSource
 public partial class Program
 {
     // The one version number: shows in the window title and crash.txt. major.minor.patch, see CLAUDE.md and claude/versioning.md.
-    const string Version = "Dotburg 0.87.3";
+    const string Version = "Dotburg 0.90.1";
 
     [STAThread]
     static void Main(string[] args)
@@ -67,6 +67,7 @@ public partial class Program
             double preUnits = 0;
             bool fresh = false;
             int soak = 0;
+            double catchMin = 0;
             Wx? forceWx = null;
             bool forceFest = false;
             int forceScheme = -1, forceSeason = -1;   // --scheme N, --season N: landscape and season for a screenshot
@@ -128,6 +129,8 @@ public partial class Program
                 else if (args[i] == "--scheme" && i + 1 < args.Length) forceScheme = int.Parse(args[++i]);
                 else if (args[i] == "--season" && i + 1 < args.Length) forceSeason = int.Parse(args[++i]);
                 else if (args[i] == "--skin" && i + 1 < args.Length) forceSkin = args[++i];
+                else if (args[i] == "--catchup" && i + 1 < args.Length) catchMin = double.Parse(args[++i]);   // play N minutes away on start (Offline.cs)
+                else if (args[i] == "--menu" && i + 1 < args.Length) { string m = args[++i]; menuOpen = m == "help" ? 2 : m == "about" ? 0 : 1; subOpen = m == "offline"; aboutOpen = m == "about"; }   // screenshot an open menu (Menus.cs)
                 else if (args[i] == "--truth") Sim.Truth = true;   // tips show the real numbers, not hearsay (Hearsay.cs)
                 else if (args[i] == "--dread") Sim.ForceDread = 0.8;   // every leader feared (Hearsay.cs), to measure the feared band
             }
@@ -138,6 +141,8 @@ public partial class Program
             // Start from the save, exactly where it was left (the town does not grow while the app is closed), else a new region.
             TimeSpan? away = (fresh || testing) ? null : Storage.Load(sim);
             if (away == null) sim.FreshRegion();
+            if (!testing) { LoadOffline(); PlanCatchUp(away); }
+            if (catchMin > 0) { offlineHours = 2; PlanCatchUp(TimeSpan.FromMinutes(catchMin)); }
             if (forceScheme >= 0) { sim.Scheme = forceScheme; sim.NewLand(); sim.Build(); }   // land leans by the forced landscape
             if (forceSeason >= 0) sim.Age = (forceSeason * Sim.DaysPerSeason + 1) * Sim.DayMs + sim.Age % Sim.DayMs;
             if (preUnits > 0) { sim.Quiet = true; sim.Earn(preUnits); sim.Grow(); sim.Quiet = false; sim.FreshFood(); }
@@ -220,7 +225,8 @@ public partial class Program
                 // A long frame (slow pacing, or the window being dragged) is caught up in whole ticks, up to a second.
                 double dt = Math.Min(Raylib.GetFrameTime() * 1000.0, 1000);
                 acc += dt;
-                bool ticked = false;
+                bool ticked = catchLeft > 0;
+                StepCatchUp();
                 while (acc >= Sim.TickMs)
                 {
                     ticked = true;
@@ -314,7 +320,7 @@ public partial class Program
                 string.Join("\n", sim.SayLog!.Where(l => Illness.Any(k => l.Contains(k)))) +
                 $"\n--- sister rulers ---\n{sim.SayLog!.Count(Sim.RulerDeathLine)} ruler deaths in {ticks * Sim.TickMs / Sim.DayMs:F0} days\n" +
                 string.Join("\n", sim.SayLog!.Where(Sim.RulerDeathLine).Take(30)));
-            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), $"\n--- hearsay ---\n{sim.HearsayLine()}\n");
+            File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "soak.txt"), $"\n--- hearsay ---\n{sim.HearsayLine()}\n--- council ---\n{sim.CouncilLine()}\n--- notables ---\n{sim.KeepersLine()}\n{string.Join("\n", sim.SayLog!.Where(l => l.Contains("council") || l.Contains("elders of")).TakeLast(25))}\n");
             // How chatty the Messenger is: lines per town day over the last 10 days, by kind of chat, and a sample.
             double days = Math.Min(10, Math.Max(1, sim.Age / Sim.DayMs));
             var kinds = sim.Convos.GroupBy(c => c.Kind).Select(g =>

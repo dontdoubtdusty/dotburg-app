@@ -174,8 +174,9 @@ partial class Sim
     // Events in the phrase file go through Voices (Voices.cs) first.
     public void Npc(string role, string ev, bool urgent = false, string a = "")
     {
-        if (Quiet || VoiceNpc(role, ev, urgent, a) || (!NpcSay.TryGetValue($"{role}.{ev}", out var lines) && !RoutineSay.TryGetValue($"{role}.{ev}", out lines))) return;
-        var c = ConvoFor($"npc:{role}:{Founded}", "npc", NpcTitle(role), role);
+        if (Quiet || NotableOf(role) == null) return;   // nobody real holds the job: nobody writes (0.89.1)
+        if (VoiceNpc(role, ev, urgent, a) || (!NpcSay.TryGetValue($"{role}.{ev}", out var lines) && !RoutineSay.TryGetValue($"{role}.{ev}", out lines))) return;
+        var c = NotableConvo(role)!;
         // Never the same line twice running: pick again (a few tries) if it matches the last thing they said
         // (compared before styling, so typos and closers don't hide a repeat).
         string t = Fill(CPick(lines), null, "", a);
@@ -217,6 +218,7 @@ partial class Sim
     void RetireNotables()
     {
         foreach (var c in Convos.Where(x => x.Kind == "npc")) c.Gone = true;
+        Keepers.Clear();
         TrimOffline();
     }
 
@@ -234,17 +236,25 @@ partial class Sim
         PalChatter();
     }
 
-    // A notable's display name, from a hash of the role and the town (in the town's own naming lean), so it stays put.
+    // The chat a notable writes in, always a real dot-man's (0.89.1): a councillor's own (Council.cs, 0.88), else the
+    // keeper's (Notables.cs). Null when nobody holds the job, and then the notable says nothing.
+    Convo? NotableConvo(string role)
+    {
+        var w = NotableOf(role);
+        if (w == null) return null;
+        if (IsCouncilJob(role) && SeatOf(role) is { } s) return SeatConvo(s, w);
+        return ConvoFor($"npc:{role}:{Founded}:{w.Id}", "npc", NpcTitle(role), role);
+    }
+
+    // A notable's display name: a councillor's title and name (0.88), a shopkeeper's trade and name, the ringleader's
+    // handle (the leader does not know who hides behind it). "" when nobody holds the job.
     public string NpcTitle(string role)
     {
-        int i = Array.IndexOf(NpcRoles, role);
-        string n = GivenFrom(Names.Seed($"{role}.{Name}.{Founded}"), TownLean);
+        if (IsCouncilJob(role) && SeatOf(role) is { } seat && ById(seat.Id) is { } holder) return SeatTitle(seat, holder);
+        if (NotableOf(role) is not { } w) return "";
+        string n = CitizenFirst(w);
         return role switch
         {
-            "captain" => $"Captain {n}",
-            "physician" => GovKey == "temple" ? $"Sister {n}" : $"Doctor {n}",
-            "warden" => $"Warden {n}",
-            "steward" => $"Steward {n}",
             "baker" => $"Baker {n}",
             "grocer" => $"Grocer {n}",
             _ => $"xX_Free{Name}_Xx",
@@ -261,8 +271,11 @@ partial class Sim
         if (c.Kind == "npc")
             return c.Role switch
             {
-                "captain" => WarOn != null ? Presence.Busy : Presence.Away,
+                "captain" => WarOn != null || (Fires.Count > 0 && Council.Count > 0) ? Presence.Busy : Presence.Away,
                 "physician" => Ill != null ? Presence.Busy : Presence.Away,
+                "spymaster" => Daylight() < 0.3 ? Presence.Online : Presence.Away,   // they do their work after dark
+                "elder" => Ill != null || Panic > 0.3 || WeakCount > 0 ? Presence.Busy : Presence.Away,
+                "elder2" => WarOn != null || Fires.Count > 0 ? Presence.Busy : Presence.Away,
                 "warden" => Fires.Count > 0 ? Presence.Busy : Presence.Away,
                 "steward" => Panic > 0.3 || WeakCount > 0 ? Presence.Busy : Presence.Away,
                 "baker" or "grocer" => Daylight() < 0.3 ? Presence.Away : Panic > 0.5 || breadOut || shelvesBare ? Presence.Busy : Presence.Online,
@@ -304,7 +317,10 @@ partial class Sim
         if (c.Kind == "npc")
             return c.Role switch
             {
-                "captain" => WarOn != null ? $"At the front against {WarOn.Foe}" : "Polishing my boots 8-)",
+                "captain" => WarOn != null ? $"At the front against {WarOn.Foe}" : Fires.Count > 0 && Council.Count > 0 ? "AT A FIRE" : "Polishing my boots 8-)",
+                "spymaster" => G.Harsh >= 0.6 ? "Walls have ears 8-|" : "Have you heard? ;)",
+                "elder" => Ill != null ? "Sitting with the sick" : "Slow and steady (gran)",
+                "elder2" => WarOn != null ? $"Watching the road to {WarOn.Foe}" : Fires.Count > 0 ? "AT A FIRE" : "Keeping an eye out (gran)",
                 "physician" => Ill != null ? "Visiting the sick. Do not disturb" : "An apple a day (A)",
                 "warden" => Fires.Count > 0 ? "AT A FIRE" : "Check your chimneys",
                 "steward" => WeakCount > 0 ? "People are starving :'(" : Panic > 0.3 ? "Queues everywhere :S" : $"{Math.Max(0, Math.Round(FoodDays))} days of food in store (meal)",
@@ -363,6 +379,7 @@ partial class Sim
         ["g:mayor"] = new("trebuc", 0x1f7f7a), ["g:guild"] = new("georgia", 0x8a5a10), ["g:temple"] = new("pala", 0x6a2a6a),
         ["g:crown"] = new("georgiai", 0x6a1a9a), ["g:junta"] = new("arialbd", 0x4a5a2a), ["g:party"] = new("impact", 0xb02020),
         ["n:captain"] = new("arialbd", 0x3a5a2a), ["n:physician"] = new("times", 0x103a80), ["n:warden"] = new("verdanab", 0xc04000), ["n:steward"] = new("georgia", 0x6a4a10),
+        ["n:spymaster"] = new("cour", 0x4a3a5a), ["n:elder"] = new("times", 0x6a4a2a), ["n:elder2"] = new("georgia", 0x4a5a3a),
         ["n:baker"] = new("comic", 0xa0522d), ["n:grocer"] = new("trebuc", 0x2a6a2a),
         ["n:ringleader"] = new("courbd", 0xb00000),
     };
@@ -469,6 +486,17 @@ partial class Sim
     // Notables, by role and event.
     static readonly Dictionary<string, string[]> NpcSay = new()
     {
+        // The council (0.88): taking a seat, losing one, and the spymaster's word from the street.
+        ["steward.seat"] = new[] { "The ledgers are in good hands now (Y)", "I'll keep the stores counted. Every sack.", "Thank you for the seat. I'll start with the barn :)" },
+        ["captain.seat"] = new[] { "The watch is mine. Nobody gets past the gate 8-)", "Reporting for duty (cop)", "Buckets and boots. I've got both covered." },
+        ["physician.seat"] = new[] { "My door is open, day and night (A)", "I'll look in on the sick every morning.", "Thank you. Wash your hands, by the way :)" },
+        ["spymaster.seat"] = new[] { "I hear things. Now you will too ;)", "Leave the listening to me 8-)", "People talk. I'll tell you what they say." },
+        ["elder.seat"] = new[] { "Old bones, but a clear head (gran)", "I'll sit with the elders and say my piece.", "Someone has to remember how things were done :)" },
+        ["council.dropped"] = new[] { "So that's how it is. I'll clear my desk :(", "Fine. Good luck without me.", "I served this town well. Remember that." },
+        ["council.dismissed"] = new[] { ":@ You'll regret this.", "Thrown out like old bread. I won't forget it.", "After everything I did for you? :'(" },
+        ["council.outvoted"] = new[] { "The town has spoken. Back to my own work :|", "Lost my seat. Ah well (H)", "Out on the vote. They'll miss me." },
+        ["spymaster.word"] = new[] { "Word going round: {a}.", "You didn't hear it from me, but {a}.", "Over the fence this morning: {a} ;)", "At the well they say {a}." },
+        ["spymaster.inform"] = new[] { "Report: {a}. Names on request.", "My people say {a}. I'm keeping a list.", "Overheard at the inn: {a}. Shall I look into it?", "{a}. I'll be watching them." },
         ["captain.warwe"] = new[] { ":@ We march on {a} at dawn.", "Boots on. We're off to {a}." },
         ["captain.warthey"] = new[] { ":-O {a} has declared war! Mustering now.", "War! {a} is coming. Everyone to the gate!" },
         ["captain.loss"] = new[] { ":'( We lost one today.", "Bad news. A soldier won't be coming home :(" },

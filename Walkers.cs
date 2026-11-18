@@ -123,6 +123,7 @@ partial class Sim
         bool dark = d < 0.25 || (curfew && d < 0.4);
         if (GoEat(w, dark)) return; // the hungry look for food before anything else
         if (Festival && Chance() < 0.75) { JoinFestival(w); return; }
+        if (!dark && !Stormy && GoToCouncil(w)) return;   // the council meets once a day (Council.cs)
         if (KeepBuilding(w, dark)) return;   // a builder at a scaffold carries on (Builders.cs)
         if (MarketOn && !dark && Chance() < 0.4) { JoinMarket(w); return; }   // market day (0.85)
         if (w.Kid != 0 && JoinBrigade(w, d)) return;

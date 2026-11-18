@@ -292,6 +292,8 @@ partial class Sim
         StepVisitors();
         if (TickNo % 27 == 0) StepPals();   // the leader's own contacts and the chronicler's pen, every 3 s or so
         if (TickNo % 27 == 13) StepHearsay();   // what reaches the leader (Hearsay.cs), also every 3 s or so
+        if (TickNo % 27 == 20) StepCouncil();   // who sits on the council (Council.cs)
+        if (TickNo % 27 == 22) StepKeepers();   // who keeps the shops and who stirs trouble (Notables.cs)
         double p = Phase;
         if (lastPhase >= 0 && lastPhase < 0.25 && p >= 0.25) Say($"Day {DayNumber} dawns over {Name}.");
         lastPhase = p;
@@ -338,5 +340,7 @@ partial class Sim
         Build();
         ResetGov();
         InitFood();
+        MotherTown = "";
+        FoundMother();   // 0.90: the region already has the city our settlers came from
     }
 }

@@ -68,7 +68,7 @@ partial class Sim
     // Harsh towns pick fights, and a harsh neighbour is a reason for one. Rolled with the events.
     void MaybeWar()
     {
-        if (NoStrife || WarOn != null || Sisters.Count == 0 || EvClock - warEnded < WarCoolDownMs || Headcount <= 10) return;
+        if (NoStrife || WarOn != null || Sisters.Count == 0 || EvClock - warEnded < WarCoolDownMs || Headcount <= 10 || Tier < 2) return;   // 0.90: never a hamlet
         double rate = 4 * (0.002 + 0.015 * G.Harsh + 0.004 * Sisters.Count(s => Govs.Get(s.Gov).Harsh >= 0.8));
         if (Odds(rate)) StartWar();
     }

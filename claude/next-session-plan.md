@@ -13,11 +13,11 @@
 - **Hone:** the feature just built, after the owner has watched it run in the real app for a while. Work only from a hone list written at the start of the session (the noticed list plus what the owner saw). Patch bumps. Anything that adds a mechanic goes to the mechanics page.
 - **Bug and health:** after every third build. Long soaks with the stress flags, an old save loaded, `crash.txt` and the chronicle read for oddities, frame rate checked, the known stand-ins cleared. Nothing new is added.
 - Rule: a bug fix never carries a new mechanic. If a fix needs a design change, that change becomes a planned step here.
-- Rough split: 40% build, 35% hone, 25% bugs. Builds since the last bug session: 1 (hearsay, 0.87.0; count resets after each bug session).
+- Rough split: 40% build, 35% hone, 25% bugs. Builds since the last bug session: 3 (hearsay 0.87.0, council 0.88.0, mother town 0.90.0; count resets after each bug session).
 
-1. **Build: council** (vision, Rule and people): a councillor is a named source of information plus rare stories; four seats decided (2026-11-15, see vision). Settle the rest with the owner first (who appoints, numbers), then build. Comes after the hearsay tooltips because councillors are where the hearsay comes from.
-2. **Hone: council.**
-3. **Bug and health session.** The known stand-ins (vanishing patrols, a spy walking out alone) were cleared in the 0.87.2 hone.
+1. **Hone: council** (built 0.88.0, `systems.md` Council). Start list: is the accuracy range (0.8 to 1.5 seen) visible in the tips at all; no dismissal happened in four soaks (check the thresholds against real grudge strengths); the meeting walk on the picture (does anyone notice it); reshuffle lines when a new leader comes in the same tick as a rule change; old saves' hashed notables going Offline on load.
+2. **Bug and health session** (builds since the last: 2, hearsay and council).
+3. Research before designing the larger world (vision, The player): read Dwarf Fortress and RimWorld for how they build the world outside the settlement. The known stand-ins (vanishing patrols, a spy walking out alone) were cleared in the 0.87.2 hone.
 
 ## 2. Patterns to follow
 

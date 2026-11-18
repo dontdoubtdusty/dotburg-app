@@ -18,6 +18,8 @@ sealed class Report
     public double Ended = -1;    // Age when the leader hears it is over; -1 while it lasts
     public bool Silent;          // nobody tells this leader: never shown
     public bool Wrong;           // told wrong (softened, overstated, misplaced or made up)
+    public string Job = "";      // the council job that told it (steward, physician, spymaster), "" for anyone else (0.88)
+    public bool Passed;          // the spymaster has passed it on in the Messenger (0.88)
     public bool Arrived(double age) => !Silent && age >= Heard;
 }
 
@@ -73,11 +75,13 @@ partial class Sim
             StepMoodHeard(warm); StepSisHeard(warm);
             EstMood = Clamp(MoodTarget + MoodBias(), 0, 1);
             hearLast = Age;
+            SpyWord(true);
             return;
         }
         double dt = Age - hearLast; hearLast = Age;
         StepMoodHeard(false);
         StepSisHeard(false);
+        SpyWord(false);
         // The leader's sense of the mood follows the truth, a few hours behind, bent by what nobody told them.
         HeardTarget = Clamp(MoodTarget + MoodBias(), 0, 1);
         EstMood = Ease(EstMood < 0 ? Mood : EstMood, Clamp(Mood + MoodBias(), 0, 1), dt, DayMs / 4);
@@ -132,13 +136,14 @@ partial class Sim
         double fear = Dread();
         const string praise = "praise";
         seen.Add(praise);
-        if (fear >= 0.45 && HearRoll(praise, 9) < fear * 0.6 && !MoodHeard.ContainsKey(praise))
-            MoodHeard[praise] = Made(new Report { Text = "They sing your praises", Teller = "a well-wisher at the door", D = 0.05, Heard = Age, Wrong = true });
+        // The flatterer is a real dot-man (0.89.1): a friend of the leader, else a councillor; nobody, no praise.
+        if (fear >= 0.45 && HearRoll(praise, 9) < fear * 0.6 && !MoodHeard.ContainsKey(praise) && Flatterer() is { } fl)
+            MoodHeard[praise] = Made(new Report { Text = "They sing your praises", Teller = $"{CitizenFirst(fl)}, at the door", D = 0.05, Heard = Age, Wrong = true });
         else if (fear < 0.45) seen.Remove(praise);
 
         // Reasons that are over: the leader hears so a little later, and until then still believes them.
         foreach (var (k, r) in MoodHeard)
-            if (!seen.Contains(k) && r.Ended < 0) r.Ended = r.Silent || r.Teller == "" || warm ? Age : Age + (r.Heard > Age ? 0 : Delay(r.Teller, k, 5) * 0.5);
+            if (!seen.Contains(k) && r.Ended < 0) r.Ended = r.Silent || r.Teller == "" || warm ? Age : Age + (r.Heard > Age ? 0 : Delay(r, k, 5) * 0.5);
         foreach (var k in MoodHeard.Where(kv => kv.Value.Ended >= 0 && Age >= kv.Value.Ended).Select(kv => kv.Key).ToList()) MoodHeard.Remove(k);
     }
 
@@ -149,18 +154,23 @@ partial class Sim
         string topic = MoodTopic(k);
         if (topic == "eyes") return Made(r);
         bool atLeader = k.StartsWith("The leader is");
-        var (teller, honest) = topic switch
+        // An empty seat tells nothing (0.89.1): the news comes as gossip instead.
+        var (teller, honest, job) = topic switch
         {
-            "steward" => (NpcTitle("steward"), 1.0),
-            "physician" => (NpcTitle("physician"), 1.0),
+            "steward" when HolderOf("steward") != null => (NpcTitle("steward"), 1.0, "steward"),
+            "physician" when HolderOf("physician") != null => (NpcTitle("physician"), 1.0, "physician"),
             _ => Gossip(),
         };
+        if (job != topic) topic = "gossip";
         r.Teller = teller;
+        r.Job = job;
         double fear = Dread() * (1 - honest);
         if (topic is "steward" or "physician") fear = Dread();
         double miss = 0.08 + 0.45 * fear, wrong = 0.04 + 0.22 * fear;
         if (atLeader) miss = Math.Min(0.9, miss * 1.6);
         if (honest >= 1 && topic == "gossip") { miss = 0.1; wrong = 0; }   // a friend tells it straight, if they noticed
+        // A councillor's skill, bond with the leader and time in the seat bend it either way (Council.cs, 0.88).
+        if (job != "") { double f = CouncilFactor(job); miss = Math.Min(0.9, miss * f); wrong = Math.Min(0.9, wrong * f); }
         if (d < 0)
         {
             if (HearRoll(k, 1) < miss) r.Silent = true;
@@ -172,7 +182,7 @@ partial class Sim
             }
         }
         else if (HearRoll(k, 2) < wrong * 0.5) { r.Wrong = true; r.D = d * 1.6; }   // good news grows in the telling
-        r.Heard = warm ? Age - Delay(teller, k, 3) : Age + Delay(teller, k, 3);   // already known after a load or a pre-grown start: heard a while back (0.87.2)
+        r.Heard = warm ? Age - Delay(r, k, 3) : Age + Delay(r, k, 3);   // already known after a load or a pre-grown start: heard a while back (0.87.2)
         return Made(r);
     }
 
@@ -223,24 +233,57 @@ partial class Sim
         return "eyes";
     }
 
-    // Gossip reaches the leader through their closest friend (honest), else the chronicler (honest by half), else market
-    // talk (as honest as the leader is unfeared).
-    (string teller, double honest) Gossip()
+    // Gossip reaches the leader through the spymaster (0.88: a gossip under gentle rule, honest by half; an informer
+    // under harsh rule, who tells what pleases), else their closest friend (honest), else the chronicler (honest by
+    // half), else market talk (as honest as the leader is unfeared).
+    (string teller, double honest, string job) Gossip()
     {
         var lw = LeaderWalker;
+        if (HolderOf("spymaster") != null) return (NpcTitle("spymaster"), G.Harsh >= 0.6 ? 0.3 : 0.5, "spymaster");
         var friend = lw?.Bonds.Where(b => b.Kind == "friend" && ById(b.Who) is { Gone: false }).OrderByDescending(b => b.Str).FirstOrDefault();
-        if (friend != null) return ($"your friend {CitizenFirst(ById(friend.Who)!)}", 1.0);
-        if (Chronicler is { } c && c != lw) return ($"{CitizenFirst(c)}, who keeps the chronicle", 0.5);
-        return ("talk in the market", 0.0);
+        if (friend != null) return ($"your friend {CitizenFirst(ById(friend.Who)!)}", 1.0, "");
+        if (Chronicler is { } c && c != lw) return ($"{CitizenFirst(c)}, who keeps the chronicle", 0.5, "");
+        return ("talk in the market", 0.0, "");
     }
 
-    // How late a teller's word arrives, in ms: the steward and physician within hours, friends within half a day,
-    // the chronicler within a day, market talk within a day and a half.
-    double Delay(string teller, string k, int salt)
+    // How late a teller's word arrives, in ms: the steward and physician within hours, the spymaster and friends
+    // within half a day, the chronicler within a day, market talk within a day and a half.
+    double Delay(Report r, string k, int salt)
     {
-        var (lo, hi) = teller.StartsWith("Steward") ? (2, 8) : teller.Contains("chronicle") ? (6, 24) : teller.StartsWith("your friend") ? (2, 12)
+        string teller = r.Teller;
+        var (lo, hi) = r.Job == "steward" ? (2, 8) : r.Job == "physician" ? (1, 6) : r.Job == "spymaster" ? (2, 10)
+            : teller.Contains("chronicle") ? (6, 24) : teller.StartsWith("your friend") ? (2, 12)
             : teller == "talk in the market" ? (12, 36) : teller == "" ? (0, 0) : (1, 6);
         return (lo + (hi - lo) * HearRoll(k, salt)) * HourMs;
+    }
+
+    // The spymaster passes on what they hear in the Messenger as it reaches the leader, at most one a quarter day;
+    // anything else they carried shows only in the tips.
+    // A reason that drops out and comes back (walks in the grove stop in a storm) is not news again for 5 days (0.90.1).
+    double spyTold = -DayMs;
+    readonly Dictionary<string, double> spySaid = new();
+    void SpyWord(bool warm)
+    {
+        foreach (var (k, r) in MoodHeard)
+        {
+            if (r.Job != "spymaster" || r.Passed || !r.Arrived(Age)) continue;
+            r.Passed = true;
+            if (warm || Age - spyTold < DayMs / 4) continue;
+            if (spySaid.TryGetValue(k, out var said) && Age - said < 5 * DayMs) continue;
+            spyTold = Age;
+            spySaid[k] = Age;
+            Npc("spymaster", G.Harsh >= 0.6 ? "inform" : "word", false, SpyTale(r.Text));
+        }
+    }
+
+    // A mood reason as street talk (0.90.1): the tips' short labels read as gossip, not as a list entry.
+    static string SpyTale(string why)
+    {
+        if (why == "Walks in the grove") return "folk are out walking in the grove, and happier for it";
+        if (why == "They grumble about the times") return "people grumble about the times";
+        if (why.StartsWith("The leader is ")) return $"they call you {why["The leader is ".Length..]}";
+        if (why.StartsWith("A feud between ")) return $"there's bad blood between {why["A feud between ".Length..]}";
+        return why.Length > 1 ? char.ToLowerInvariant(why[0]) + why[1..] : why;
     }
 
     // A sister's reason as a key: her ruler's trait or the rule gap, without amounts.
@@ -312,6 +355,7 @@ partial class Sim
         if (lw.Spouse == w.Id) return "your spouse";
         if (BondOf(lw, w.Id, "friend") != null) return "your friend";
         if (BondOf(lw, w.Id, "grudge") != null) return "your foe";
+        if (SeatHeldBy(w) is { } seat) return $"your {SeatWord(seat.Role)}";   // the leader knows their council well (0.88)
         if (w.Last != "" && w.Last == lw.Last) return "your kin";
         if (w.Id == ChroniclerId) return "keeps the chronicle";
         return "";

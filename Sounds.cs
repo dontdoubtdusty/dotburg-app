@@ -60,6 +60,7 @@ public partial class Program
         // arrived since the last frame, the most important first: nudge, sign-in, message, chronicle.
         void ListenForSounds()
         {
+            if (catchLeft > 0) { heardTick = -1; return; }   // silent while the time away is played through (Offline.cs)
             long now = sim.TickNo;
             string chronLast = chronicleView.Count > 0 ? chronicleView[^1] : "";
             if (heardTick < 0) { heardTick = now; heardNudge = sim.NudgeTick; heardChron = chronLast; return; }

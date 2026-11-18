@@ -154,6 +154,7 @@ partial class Sim
         Regnal = new();
         guards.Clear();
         Bodies.Clear(); // the old town's people of note stay with the old town
+        ClearCouncil();
         foreach (var w in Walkers) w.Lead = false;
     }
 

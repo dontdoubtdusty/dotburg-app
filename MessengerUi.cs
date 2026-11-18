@@ -200,9 +200,21 @@ public partial class Program
                 "steward" => (0xe0b080, 0x8a6a3a, 0xf0e6c0, new[] { "", "", "", "", "", "", "", "", "........y.y.", ".........y..", ".........y.." }, 0xd8b040),
                 "baker" => (0xe0b080, 0xf4f0e8, 0xf0d8b0, new[] { "....xxxx....", "...xxxxxx..." }, 0xffffff),   // a white cap
                 "grocer" => (0xe0b080, 0x3a7a3a, 0xd8f0c8, new[] { "", "", "", "", "", "", "", "", "........g.g.", ".........g.." }, 0x5aa040),   // greens in hand
+                "spymaster" => (0xe0b080, 0x3a3048, 0xd8d0e0, new[] { "", "", "", "", "", "", "", "", "", "..kkkkkkkk.." }, 0x2a2238),   // a dark collar turned up
+                "elder" or "elder2" => (0xe0b080, 0x7a5a3a, 0xece4d0, new[] { "", "", "", "", "", "", "", "", "", "", "........k...", "........k..." }, 0x6a4a2a),   // a walking stick
                 _ => (0x404040, 0x202020, 0xe8c8c8, new[] { "", "", "", "...mmmmmm..." }, 0xc02020),
             };
-            uint nh = PicHash(Array.IndexOf(Sim.NpcRoles, role) * 977 + sim.Founded * 131 + 3);
+            // A councillor (0.88) wears the picture they would have as leader, in their own dot colour.
+            // The ringleader keeps the masked picture: the leader does not know who writes (0.89.1).
+            int cid = role != "ringleader" && int.TryParse(key.Split(':').ElementAtOrDefault(3), out var parsed) ? parsed : 0;
+            var cw = cid > 0 ? sim.Walkers.FirstOrDefault(x => x.Id == cid) : null;
+            uint nh = cid > 0 ? PicHash(cid * 31 + 7) : PicHash(Array.IndexOf(Sim.NpcRoles, role) * 977 + sim.Founded * 131 + 3);
+            if (cid > 0)
+            {
+                if (IconPic(dl, at, px * 12, nh)) return;
+                Portrait(dl, at, px, nh, bg, body, extra, ec, cw != null ? Content.DotColors[cw.C] : sim.TownDot);
+                return;
+            }
             if (IconPic(dl, at, px * 12, nh)) return;
             if (role == "ringleader")
             {
@@ -300,6 +312,9 @@ public partial class Program
 
         static int Visible(Convo c, long tick) => c.Lines.Count(l => l.Due <= tick);
 
+        // When the newest line of a conversation that is already showing arrived (its Due tick), or -1 if none has.
+        long Recent(Convo? c) => c == null ? -1 : c.Lines.Where(l => l.Due <= sim.TickNo).Select(l => l.Due).DefaultIfEmpty(-1).Max();
+
         // Everyone on the list, by group: this town, the sisters, group chats, and those gone offline.
         List<Row> Contacts()
         {
@@ -308,8 +323,11 @@ public partial class Program
             rows.Add(new Row("bot", "Chronicle", Presence.Online, sim.Chronicler != null ? $"kept by {sim.ChroniclerName} (*)" : "Major events, kept forever (*)", botNew, sim.Name, "", sim.ChroniclerLine()));
             // The town crier: every call, as it was called (no unread count: it calls all day).
             rows.Add(new Row(Sim.CrierKey, "Town crier", Presence.Online, "Every call, as it is called", 0, sim.Name, "", "Keeps the last 600 calls."));
-            foreach (var c in sim.Convos.Where(c => c.Kind == "npc" && !c.Gone).OrderByDescending(c => c.Last))
+            foreach (var c in sim.Convos.Where(c => c.Kind == "npc" && !c.Gone && !Sim.IsCouncilJob(c.Role)).OrderByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), sim.Name));
+            // The council (0.88), in seat order.
+            foreach (var c in sim.Convos.Where(c => c.Kind == "npc" && !c.Gone && Sim.IsCouncilJob(c.Role)).OrderBy(c => Sim.SeatOrder(c.Role)))
+                rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), "Council", "", sim.CouncilInfo(c)));
             // The leader's own people: friends, then those blocked for bad blood (0.69).
             foreach (var c in sim.Convos.Where(c => c.Kind == "pal" && !c.Gone).OrderBy(c => c.Role == "foe").ThenByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), c.Role == "foe" ? "Blocked" : "Friends", "", sim.PalInfo(c)));
@@ -322,7 +340,13 @@ public partial class Program
                 rows.Add(new Row(c.Key, c.Title, sim.PresenceOf(c), sim.MessageOf(c), Unread(c), "Group chats"));
             foreach (var c in sim.Convos.Where(c => c.Gone && c.Kind != "gossip").OrderByDescending(c => c.Last))
                 rows.Add(new Row(c.Key, c.Title, Presence.Offline, sim.MessageOf(c), Unread(c), "Offline", c.Key.StartsWith("sis:") ? c.Key[4..] : ""));
-            return rows;
+            // Inside each group the newest message is on top (owner, 0.89); the Chronicle and the crier stay pinned first
+            // in the town group, since the crier calls all day. Rows with no message yet keep the order above.
+            var byKey = sim.Convos.GroupBy(c => c.Key).ToDictionary(g => g.Key, g => g.First());
+            var order = rows.Select(r => r.Group).Distinct().ToList();
+            return rows.OrderBy(r => order.IndexOf(r.Group))
+                .ThenByDescending(r => r.Key == "bot" || r.Key == Sim.CrierKey ? long.MaxValue : Recent(byKey.GetValueOrDefault(r.Key)))
+                .ToList();
         }
 
         int Unread(Convo c) => c.Key == selKey ? 0 : Math.Max(0, Visible(c, sim.TickNo) - c.Seen);
@@ -352,6 +376,8 @@ public partial class Program
             if (audioOn) SpeakerButton(bg, Px(b.X - Bd - caps - spk - 2, a.Y + (Bd + TitleH - spk) / 2), spk);
             WindowButtons(bg, b.X, a.Y);
             float top = a.Y + Bd + TitleH;
+            MenuBar(bg, new Vector2(a.X + Bd, top), b.X - Bd);   // File and Help (Menus.cs)
+            top += MenuH;
             float x0 = a.X + Bd + Pad, x1 = b.X - Bd - Pad;
             float y = top + Pad;
             SkinBack(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, b.Y - Bd), sk);
@@ -361,7 +387,8 @@ public partial class Program
             {
                 double nowT = Raylib.GetTime();
                 if (signInUntil == 0) { signInUntil = nowT + 2.6; Play(Sfx.Startup); }
-                if (nowT < signInUntil) { SigningIn(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, b.Y - Bd), nowT); return; }
+                // It stays up while the time away is played through (Work offline, Offline.cs).
+                if (nowT < signInUntil || catchLeft > 0) { SigningIn(bg, new Vector2(a.X + Bd, top), new Vector2(b.X - Bd, b.Y - Bd), nowT); return; }
                 if (signInUntil > 0) { signInUntil = -1; Play(Sfx.Online); }
             }
 
@@ -543,6 +570,11 @@ public partial class Program
             string who = $"{sim.MeName} <{Sim.Slug(sim.Name)}@{Sim.Slug(sim.Name)}.town>";
             var ws = ImGui.CalcTextSize(who);
             dl.AddText(Px(c.X - ws.X / 2, c.Y + rad + px * 6 + line + 6), U(Shade), who);
+            if (catchLeft > 0)
+            {
+                string cu = CatchUpLine();
+                dl.AddText(Px(c.X - ImGui.CalcTextSize(cu).X / 2, c.Y + rad + px * 6 + (line + 6) * 2), U(Navy), cu);
+            }
         }
 
         // A made-up address for the To: line, like <crown@ashford.town>.
@@ -691,6 +723,7 @@ public partial class Program
         void DrawToasts(ImDrawListPtr dl)
         {
             double now = Raylib.GetTime();
+            if (catchLeft > 0) sim.Toasts.Clear();   // the time away is read in the chats, not as a pile of toasts
             foreach (var t in sim.Toasts) toasts.Add(new Shown { T = t, Born = now });
             sim.Toasts.Clear();
             foreach (var s in toasts.Where(s => s.Dying < 0 && now - s.Born > 6)) s.Dying = now;

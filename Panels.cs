@@ -463,6 +463,7 @@ public partial class Program
             if (chron) Messenger(bg, new Vector2(mB.X + Gap, y0), new Vector2(mB.X + Gap + chronW, lB.Y));
             HoverTip();
             RestartDialog();
+            MenuLayer();
         }
 
         // The town picture, and an outline on the building under the mouse.

@@ -58,6 +58,7 @@ partial class Sim
     {
         if (ours) return LeaderWalker is { } lw ? (lw.Id * 31 + 7, Leader?.Traits ?? CitizenTraits(lw)) : (Founded * 13 + 5, Array.Empty<string>());
         if (c.Kind == "pal") { int id = PalId(c); return (id * 31 + 7, ById(id) is { } pw ? CitizenTraits(pw) : Array.Empty<string>()); }
+        if (c.Kind == "npc" && NotableId(c) is var nid and > 0) return (nid * 31 + 7, ById(nid) is { } cw ? CitizenTraits(cw) : Array.Empty<string>());   // a councillor (0.88)
         if (c.Kind == "npc") return (Array.IndexOf(NpcRoles, c.Role) * 977 + Founded * 131 + 3, RoleLean.TryGetValue(c.Role, out var r) ? r : Array.Empty<string>());
         if (s != null) return (StableHash(s.Name + "|" + (s.Lord?.Name ?? "")) , s.Lord?.Traits ?? Array.Empty<string>());
         return (0, Array.Empty<string>());
@@ -202,7 +203,7 @@ partial class Sim
         // Openers, closers and frames only when not grave; a closer sometimes skipped so it does not wear thin.
         if (!grave)
         {
-            if (h.Open != "" && rng.NextDouble() < (excited ? 0.8 : 0.5)) parts[0] = Cased(h, h.Open) + parts[0];
+            if (h.Open != "" && rng.NextDouble() < (excited ? 0.8 : 0.5)) parts[0] = Cased(h, h.Open) + Lowered(parts[0]);
             if (h.Close != "" && rng.NextDouble() < 0.7) parts[^1] += h.Close;
             if (h.Frame != "") { parts[0] = h.Frame + " " + parts[0]; parts[^1] += " " + h.Frame; }
         }
@@ -210,6 +211,15 @@ partial class Sim
     }
 
     static string Cased(Hand h, string s) => h.Upper ? s.ToUpperInvariant() : s;
+
+    // The first word after an opener goes lower case ("ok so over the fence"), unless it is "I" or all capitals.
+    static string Lowered(string s)
+    {
+        int sp = s.IndexOf(' ');
+        string w = sp < 0 ? s : s[..sp];
+        if (w.Length < 2 || w.StartsWith("I'") || !char.IsUpper(w[0]) || w.ToUpperInvariant() == w) return s;
+        return char.ToLowerInvariant(s[0]) + s[1..];
+    }
 
     // A typing slip: two letters swapped, one doubled or one dropped.
     static string Slip(string w, Random rng)

@@ -303,11 +303,12 @@ partial class Sim
         bool grave = urgent || Voices.Grave.Contains(key);
         var t = new HashSet<string> { role, "g:" + GovKey, G.Harsh >= 0.6 ? "harsh" : "kind", grave ? "grave" : "light" };
         if (G.Harsh >= 0.6 && role != "ringleader") t.Add("fearful");
-        foreach (var k in RoleLean.GetValueOrDefault(role) ?? Array.Empty<string>()) t.Add("t:" + k);
+        // Every notable is a real dot-man (0.89.1) and speaks with their own traits.
+        if (NotableConvo(role) is not { } c || NotableOf(role) is not { } holder) return false;
+        foreach (var k in CitizenTraits(holder)) t.Add("t:" + k);
         MomentTags(t, "");
         var turns = Voices.Conversation(Book, key, t, new HashSet<string>(), chatRng, RecentOf($"npc:{role}"), RecentOf("leader"));
         if (turns.Count == 0) return false;
-        var c = ConvoFor($"npc:{role}:{Founded}", "npc", NpcTitle(role), role);
         PostTurns(c, c.Title, turns, x => Fill(x, null, "", a), null, urgent);
         return true;
     }
